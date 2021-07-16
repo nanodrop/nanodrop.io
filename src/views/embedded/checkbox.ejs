@@ -347,8 +347,12 @@
             .then((res) => {
                 ticket = res.ticket
                 dropAmount = res.megaAmount
-                document.getElementById("drop-amount").innerText = dropAmount
-                enableCheckbox()
+                if (dropAmount == 0 || dropAmount == "0"){
+                    checkboxError("no funds")
+                } else {
+                    document.getElementById("drop-amount").innerText = dropAmount
+                    enableCheckbox()
+                }
             })
             .catch((err) => {
                 alert("error")

@@ -12,12 +12,15 @@ const { hexToRaws } = require("./nano-wallet/nano-keys")
 
 const { createTicket, checkTicket } = require("./tickets")
 
+const { minAmount } = require('../../config/config.json')
+
 MAX_VALUE = TunedBigNumber("0.01").multipliedBy(megaNano).toString(10)
 
 //Returns 0.01% of the balance, rounded down.
 //Example: With a balance of 1.145 Nano, returns 0.001 instead 0.00145
 //Or returns the maximum configured amount
 function dropAmount(balance = wallet.info.balance) {
+    if (!TunedBigNumber(balance).isGreaterThanOrEqualTo(minAmount)) return "0"
     let amount = TunedBigNumber(balance).multipliedBy("0.001").toString(10)
     amountFixed = TunedBigNumber(amount).minus(amount.substr(1, amount.length))
     if (TunedBigNumber(amountFixed).isGreaterThan(MAX_VALUE)) {
@@ -30,7 +33,11 @@ function dropAmount(balance = wallet.info.balance) {
 function info() {
     let data_info = wallet.info
     data_info.amount = dropAmount(data_info.balance)
-    data_info.total_sent_percentage = TunedBigNumber(100).dividedBy(TunedBigNumber(data_info.total_received).dividedBy(data_info.total_sent)).toFixed(2).toString(10)
+    if (data_info.total_received == '0' || data_info.total_sent == '0'){
+        data_info.total_sent_percentage = 0
+    } else {
+        data_info.total_sent_percentage = TunedBigNumber(100).dividedBy(TunedBigNumber(data_info.total_received).dividedBy(data_info.total_sent)).toFixed(2).toString(10)
+    }
     return data_info
 }
 

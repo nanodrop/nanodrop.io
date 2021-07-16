@@ -28,7 +28,8 @@ function createTicket(amount, ip, account = "unknown") {
     const ticketSignedChecksum = blakeChecksum(ticketSigned)
 
     // Formated ticket
-    const formatedTicket = amountHex.replace(/^0+/, '') + '-' + expiresHex + '-' + ticketSignedChecksum
+    let formatedTicket = amountHex.replace(/^0+/, '') + '-' + expiresHex + '-' + ticketSignedChecksum
+    if (formatedTicket.startsWith('-')) formatedTicket = '0' + formatedTicket // when amount == 0
 
     console.log("Created ticket: " + formatedTicket.toUpperCase())
 
