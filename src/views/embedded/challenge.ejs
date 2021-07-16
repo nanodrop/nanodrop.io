@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>NanoDrop - Challenge</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
+<body>
+    <div class="bg" style="
+        background: #0e111f;
+        background-image: url(/assets/loading.gif);
+        background-size: 50%;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        background-position: center;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.75">
+    </div>
+    <div id="g-recaptcha" style="display: none;"></div>
+
+
+    <script>
+        const google_reCaptcha = {
+            v2: {
+                siteKey: "<%- google_reCaptcha.v2.siteKey %>"
+            },
+            v3: {
+                siteKey: "<%- google_reCaptcha.v3.siteKey %>"
+            }
+        }
+
+        let oAuth = { token: "" }
+        let submited = false
+
+        function onSubmit(recaptchaV3_token) {
+            submited = true
+            try {
+                const recaptchaV2_token = grecaptcha.getResponse(recaptcha_v2_widget)
+                window.top.postMessage({ target: "checkbox", from: "challenge", success: true, recaptchaV2_token: recaptchaV2_token, recaptchaV3_token: recaptchaV3_token, oAuth_token: oAuth.token }, '*')
+            } catch (err) {
+                window.top.postMessage({ target: "checkbox", from: "challenge", success: false, error: err }, '*')
+            }
+        }
+
+        function expiredRecaptcha() {
+            if (!submited) window.top.postMessage({ target: "checkbox", from: "challenge", success: false, error: "expired recaptcha" }, '*')
+        }
+
+        function errorRecaptcha(err) {
+            console.error(err)
+            window.top.postMessage({ target: "checkbox", from: "challenge", success: false, error: err }, '*')
+        }
+
+        function execV3() {
+            window.recaptchaSolved = true
+            grecaptcha.execute(recaptcha_v3_widget)
+        }
+
+        let recaptcha_v2_widget;
+        var onloadCallback = function () {
+
+            // Renders the HTML element with id 'example1' as a reCAPTCHA widget.
+            // The id of the reCAPTCHA widget is assigned to 'widgetId1'.
+            recaptcha_v2_widget = grecaptcha.render("g-recaptcha", {
+                'sitekey': google_reCaptcha.v2.siteKey,
+                'size': 'invisible',
+                'expired-callback': expiredRecaptcha,
+                'error-callback': errorRecaptcha,
+                'callback': execV3
+            });
+
+            recaptcha_v3_widget = grecaptcha.render({
+                'sitekey': google_reCaptcha.v3.siteKey,
+                'callback': onSubmit,
+                'size': 'invisible'
+            });
+
+            grecaptcha.execute(recaptcha_v2_widget)
+            if (!window.recaptchaCloseListener_loaded) recaptchaCloseListener()
+        };
+
+        function recaptchaCloseListener() {
+            window.recaptchaCloseListener_loaded = true
+            try {
+                // find the open reCaptcha window
+                HTMLCollection.prototype.find = Array.prototype.find
+                var recaptchaWindow = document
+                    .getElementsByTagName('iframe')
+                    .find(x => x.src.includes('google.com/recaptcha/api2/bframe'))
+                    .parentNode.parentNode
+
+                // and now we are listening on CSS changes on it
+                // when the opacity has been changed to 0 we know that
+                // the window has been closed
+                new MutationObserver(x => recaptchaWindow.style.opacity == 0 && recatpchaOnClose())
+                    .observe(recaptchaWindow, { attributes: true, attributeFilter: ['style'] })
+
+            } catch (err) {
+                setTimeout(function () {
+                    recaptchaCloseListener()
+                }, 200)
+            }
+        }
+
+        function recatpchaOnClose() {
+            if (!window.recaptchaSolved) {
+                console.log('recaptcha window has been closed')
+                window.top.postMessage({ target: "checkbox", from: "challenge", success: false, error: "recaptcha window has been closed" }, '*')
+            }
+        }
+
+        window.onload = function () {
+
+            window.top.postMessage({
+                target: "checkbox",
+                from: "challenge",
+                loaded: "challenge"
+            }, '*')
+        
+        }
+
+    </script>
+
+    <script src="https://www.google.com/recaptcha/api.js?onload=onloadCallback&render=explicit" async defer></script>
+
+</body>
+
+</html>

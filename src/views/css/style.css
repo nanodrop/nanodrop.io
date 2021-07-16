@@ -1,0 +1,410 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@200&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300&display=swap');
+
+/* General */
+body {
+    background-color: aliceblue;
+}
+h2 {
+  color: #444;
+}
+button:focus{
+  outline: none;
+  border: none;
+}
+.jumbotron {
+  background-color: #fff;
+  border-top: 1px solid #eee;
+  border-bottom: 1px solid #eee;
+  transition: background-color 0.5s ease;
+}
+
+
+/* Navbar */
+.navbar {
+  background-color: #fff;
+  color: #888;
+  border: none;
+  border-bottom: 1px solid #eee;
+}
+.navbar-inverse {
+background-color: white;
+}
+.navbar-inverse .navbar-collapse, .navbar-inverse .navbar-form {
+border-color: #eee;
+}
+.navbar-inverse .navbar-toggle:focus, .navbar-inverse .navbar-toggle:hover {
+background-color: #ccc;
+}
+.navbar-inverse .navbar-nav>li>a {
+  color: #888;
+}
+.navbar-inverse .navbar-nav>li>a:hover {
+  color:#4A90E2;
+}
+.navbar-inverse .navbar-toggle {
+border-color: #ccc;
+}
+.navbar-inverse .navbar-toggle .icon-bar {
+background-color: #aaa;
+}
+.navbar-inverse .navbar-nav>.active>a, .navbar-inverse .navbar-nav>.active>a:focus, .navbar-inverse .navbar-nav>.active>a:hover {
+  background-color: transparent;
+  color: #888;
+}
+.navbar .logo-nav {
+width: 30px;
+margin-top: -5px;
+opacity: .6;
+}
+.navbar .sr-only {
+position: absolute;
+width: 1px;
+height: 1px;
+padding: 0;
+margin: -1px;
+overflow: hidden;
+clip: rect(0,0,0,0);
+white-space: nowrap;
+border: 0;
+}
+/* Theme switch button */
+.theme-switch {
+  width: 120px;
+  margin: 0 20px;
+}
+.theme-switch p { 
+  font-size: 90%;
+  line-height: 2.8rem;
+  margin: 0;
+  margin-top: -1px;
+}
+.theme-switch label, .theme-switch .toggle {
+  height: 2.8rem;
+  border-radius: 100px;
+  margin-top: -1.1px;
+}
+.theme-switch label {
+  width: 100%;
+  background-color: rgba(0,0,0,.1);
+  border-radius: 100px;
+  border: 1px solid rgba(255,255,255,.1);
+  position: relative;
+  margin: 1rem 0 1rem 0; 
+  cursor: pointer;
+}
+.theme-switch .toggle {
+  position: absolute;
+  width: 50%;
+  background-color: #fff;
+  box-shadow: 0 2px 15px rgba(0,0,0,.15);
+  transition: transform .3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  margin-left: -1px;
+}
+.theme-switch .names {
+  font-size: 90%;
+  font-weight: bolder;
+  width: 70%;
+  margin-left: 15%;
+  position: absolute;
+  display: flex;
+  justify-content: space-between;
+  user-select: none;
+}
+/* -------- Switch Styles ------------*/
+[type="checkbox"] {
+  display: none;
+}
+/* Toggle */
+[type="checkbox"]:checked + .theme-switch .toggle{
+  transform: translateX(100%);
+  background-color: #34323D;
+  margin-left: 1px;
+}
+[type="checkbox"]:checked + .theme-switch .dark{
+  opacity: 1;
+}
+[type="checkbox"]:checked + .theme-switch .light{
+  opacity: .5;
+}
+/* App */
+[type="checkbox"]:checked + .theme-switch .switch-body{
+  background-color:  #26242E;
+  color: white;
+}
+
+
+/* Faucet main page */
+.mainScreen {
+    /* min-height: calc(100vh - 80px); */
+}
+.title, .jumbotron h1 {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 4.2em;
+  text-transform: uppercase;
+  color: #428fde;
+  font-weight: 200;
+}
+@media only screen and (max-width: 600px) {
+  .title, .jumbotron h1 {
+    font-size: 3.5em;
+  }
+}
+@media only screen and (max-width: 420px) {
+  .title, .jumbotron h1 {
+    font-size: 2.8em;
+  }
+}
+@media only screen and (max-width: 320px) {
+  .title, .jumbotron h1 {
+    font-size: 2.4em;
+  }
+}
+.subtitle {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 18px;
+  color: rgba(0, 0, 0, 0.5);
+  font-weight: 300;
+}
+.title .drop-icon {
+  font-size: .65em;
+  color: #428fde;
+  opacity: 0.9;
+}
+.input-group {
+  position: relative;
+}
+.input-group .icon-ok, .input-group .icon-error {
+  font-size: 18px;
+  width: 20px;
+  height: 18px;
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  z-index: 10;
+  transform: translate(0, -50%);
+  color: #428fde;
+  text-align: center;
+  display: none;
+}
+.input-group .icon-error {
+  color: #ea5365;
+}
+
+.input-group.ok .icon-ok, .input-group.error .icon-error{
+  display: block;
+}
+.input-account {
+  padding-left: 32px;
+}
+.input-account:focus {
+  border-color: #66afe9;
+  outline: 0;
+}
+.input-group.error .input-account:focus {
+  border-color: rgba(284, 83, 101, .7);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.075) inset, 0 0 8px rgba(284, 83, 101, 0.6);
+}
+.progress {
+  display: none;
+}
+.already_paid {
+    line-height: 24px;
+    font-size: 12.5px;
+    color: #888;
+}
+.qr-modal {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  z-index: 1000000;
+  top: 0;
+  left: 0;
+  background-color: rgba(0,0,0,.9);
+  display: none;
+}
+.qr-content {
+  width: 500px;
+  max-width: 80%;
+  height: 500px;
+  max-height: 80%;
+  position: absolute;
+  top:  50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+#qr-reader {
+  border-radius: 3px;
+}
+#qr-shaded-region {
+  border-radius: 3px;
+}
+#qr-reader video {
+  border-radius: 3px;
+}
+.close {
+  background-color: transparent;
+  width: 40px;
+  height: 40px;
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+  border-radius: 100%;
+  padding: 10px;
+  color: #fff;
+  line-height: 20px;
+  cursor: pointer;
+}
+.close:hover {
+  color: #ea5365;
+}
+
+
+/* Pay Table */
+.table th, .table td {
+  text-align: center;
+}
+.table .account {
+  word-break: break-all;
+}
+.paytable .container {
+  max-height: 400px;
+  position: relative;
+}
+.paytable .container::after {
+  width: 100%;
+  height: 24px;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom, rgba(255,255,255,0),  rgba(255,255,255,1));
+}
+.paytable .container .overflow-table {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+
+/* Footer */
+.footer .jumbotron {
+  background-color: #F0F2F5;
+}
+.footer-basic {
+  padding:40px 0;
+  color:#4b4c4d;
+}
+.footer-basic ul {
+  padding:0;
+  list-style:none;
+  text-align:center;
+  font-size:16px;
+  line-height:1.6;
+  margin-bottom:0;
+}
+@media only screen and (max-width: 600px) {
+  .footer-basic ul {
+    font-size: 14px;
+  }
+}
+.footer-basic li {
+  padding:0 10px;
+}
+.footer-basic ul a {
+  color:inherit;
+  text-decoration:none;
+  opacity:0.8;
+}
+.footer-basic ul a:hover {
+  opacity:1;
+}
+.footer-basic .social {
+  text-align:center;
+  padding-bottom:25px;
+}
+.footer-basic .social > a {
+  font-size: 32px;
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
+  display: inline-block;
+  text-align: center;
+  margin: 0 8px;
+  color: inherit;
+  opacity: 0.75;
+}
+.footer-basic .social > a:hover {
+  opacity:0.9;
+}
+.footer-basic .stamp {
+  margin-top:15px;
+  text-align:center;
+  font-size:13px;
+  color:#aaa;
+  margin-bottom:0;
+}
+
+
+/* Dark Theme */
+body.dark {
+  background-color: #2F3136;
+  background-color: #27292d;
+  background-color: #202226;
+  transition: background-color 0.5s ease;
+}
+.dark nav {
+border-color: #444;
+}
+.dark h2 {
+  color: #eee;
+}
+.dark .navbar, .dark .navbar-inverse {
+  background-color: #26242E;
+}
+.dark .navbar-inverse .navbar-collapse, .dark .navbar-inverse .navbar-form {
+border-color: transparent;
+}
+.dark .navbar-inverse .navbar-toggle, .dark .navbar-inverse .navbar-toggle {
+background-color: #23232A;
+}
+.dark .navbar-inverse .navbar-toggle:focus, .dark .navbar-inverse .navbar-toggle:hover {
+background-color: #34323D;
+}
+.dark .jumbotron {
+  color: white;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  background-color: #26242E;
+  border-color: #333;
+}
+.dark .input-account {
+background-color: #23232A;
+border-color: #444;
+color: #aaa;
+}
+.dark .btn-scan {
+background-color: #34323D;
+border-color: #444;
+color: #fff;
+}
+.dark h4 {
+  color: white;
+}
+.dark .progress {
+background-color: #34323D;
+box-shadow: 0 2px 2px rgb(0 0 0 / 15%);
+}
+.dark .paytable .container::after {
+  background: linear-gradient(to bottom, rgba(38,36,46,0),  rgba(38,36,46,1));
+}
+.dark .footer-basic {
+color:#aaa;
+}
+.dark .social > a {
+color:#aaa;
+}
+.dark .footer-basic .stamp {
+color: #555;
+}

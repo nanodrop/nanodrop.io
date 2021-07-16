@@ -1,0 +1,30 @@
+{
+    "name": "nanodrop.io",
+    "version": "1.0.0",
+    "description": "Open Source and Embedded Nano Faucet",
+    "main": "init.js",
+    "private": true,
+    "scripts": {
+        "dev": "nodemon ./src/init",
+        "start": "node ./src/init"
+    },
+    "dependencies": {
+        "axios": "^0.21.1",
+        "bignumber.js": "^9.0.1",
+        "blakejs": "^1.1.0",
+        "cors": "^2.8.5",
+        "ejs": "^3.1.6",
+        "express": "^4.17.1",
+        "google-auth-library": "^7.0.2",
+        "qr-image": "^3.2.0",
+        "ws": "^7.5.0",
+        "dotenv": "^10.0.0"
+    },
+    "devDependencies": {
+        "nodemon": "^2.0.6"
+    },
+    "engines": {
+        "node": ">= 6.0.0",
+        "npm": ">= 3.0.0"
+    }
+}

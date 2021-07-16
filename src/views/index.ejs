@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<%- include("static/head.ejs") %>
+
+    <body cz-shortcut-listen="true" style="zoom: 1;" class="dark-false">
+        <!-- partial:index.partial.html -->
+        
+        <%- include("static/navbar.ejs") %>
+
+            <%- include("static/faucet.ejs") %>
+
+                <%- include("static/about.ejs") %>
+
+                    <%- include("static/paytable.ejs") %>
+
+                        <%- include("static/dev.ejs") %>
+
+                            <%- include("static/donate.ejs") %>
+
+                                <%- include("static/footer.ejs") %>
+
+
+                                    <script id="google_reCaptcha_credentials_declaration">
+                                        const google_reCaptcha = {
+                                            v2: {
+                                                siteKey: "<%- google_reCaptcha.v2.siteKey %>"
+                                            },
+                                            v3: {
+                                                siteKey: "<%- google_reCaptcha.v3.siteKey %>"
+                                            }
+                                        }
+                                    </script>
+
+                                    <script src="/js/utils.js"></script>
+
+                                    <script src="/js/websockets.js"></script>
+
+                                    <script src="/js/main.js"></script>
+
+                                    <script src="/js/scanner.js"></script>
+
+    </body>
+
+</html>

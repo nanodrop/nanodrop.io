@@ -1,0 +1,11 @@
+version: "3.8"
+services:
+  nanodrop:
+    build: .
+    image: anarkrypto/nanodrop
+    container_name: nanodrop
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./data:/usr/src/app/data
+      - ./config:/usr/src/app/config
