@@ -5,7 +5,7 @@
     "main": "init.js",
     "private": true,
     "scripts": {
-        "dev": "nodemon ./src/init",
+        "dev": "nodemon ./src/init -i data/",
         "start": "node ./src/init"
     },
     "dependencies": {
@@ -21,7 +21,7 @@
         "dotenv": "^10.0.0"
     },
     "devDependencies": {
-        "nodemon": "^2.0.6"
+        "nodemon": "^2.0.12"
     },
     "engines": {
         "node": ">= 6.0.0",
