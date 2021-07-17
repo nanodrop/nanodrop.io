@@ -1,9 +1,13 @@
+require('dotenv/config')
 const express = require('express')
 const bodyParser = require('body-parser');
 const cors = require('cors')
 const path = require('path');
 const WebSocket = require('ws')
 const { accounts_monitor } = require('./models/nano_websockets')
+const { deriveKeyPair } = require('./models/nano-wallet/nano-keys')
+
+const myAccount = deriveKeyPair(process.env.SEED, parseInt(process.env.INDEX)).address
 
 const http_port = 3000
 const ws_port = 3001
@@ -58,19 +62,12 @@ const startWSServer = function () {
         // Check if msg is valid
         data = JSON.parse(msg)
         if ("topic" in data && data.topic == "confirmation") {
-          if ("options" in data && "accounts" in data.options) {
-
-            // Check if accounts are valid
-            data.options.accounts.forEach(account => {
-              // check if account is valid
-            })
 
             // Start monitoring and repeat msgs for client
-            accounts_monitor(data.options.accounts, function (res) {
+            accounts_monitor([myAccount], function (res) {
               socket.send(JSON.stringify(res))
             })
 
-          }
         } else {
           socket.send(JSON.stringify({ error: "invalid topic" }))
         }

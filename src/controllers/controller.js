@@ -17,6 +17,9 @@ const RECAPTCHA_V3_SITE_KEY = process.env.RECAPTCHA_V3_SITE_KEY
 
 exports.index = (req, res) => {
   res.render('index', {
+    faucet: {
+      account: myAccount
+    },
     google_reCaptcha: {
       v2: {
         siteKey: RECAPTCHA_V2_SITE_KEY
@@ -73,7 +76,6 @@ exports.ticket = function (req, res) {
   if (json.action == "create") {
     const amount = api.dropAmount()
     const ticket = api.createTicket(amount, ip, account)
-    console.log("Created Ticket: " + ticket)
     res.status(200).json({
       ticket: ticket,
       amount: amount,

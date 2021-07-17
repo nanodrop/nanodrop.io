@@ -2,7 +2,7 @@ const WebSocket = require('ws')
 
 const { websockets_api } = require("../../config/config.json")
 
-const DEBUG = false
+const DEBUG = true
 let SOCKET = false
 
 /* Nano websockets */
@@ -17,16 +17,16 @@ function new_websocket(url, ready_callback, message_callback) {
     }
     socket.onerror = function (e) {
         if (DEBUG) console.error('WebSocket error');
-        if (DEBUG) console.error(e);
+        if (DEBUG) console.error(e.error);
     }
     socket.onmessage = function (msg) {
-        if (DEBUG) console.log('New message from: ' + url);
+        //console.log('New message from: ' + url);
         if (message_callback !== undefined) message_callback(msg);
     }
     return socket;
 }
 
-function start_websockets(accounts, params, callback) {
+function start_websockets(params, callback) {
     new_websocket(websockets_api, function (socket) {
 
         SOCKET = socket
@@ -44,7 +44,7 @@ function start_websockets(accounts, params, callback) {
     });
 }
 
-async function keepAlive () {
+async function keepAlive() {
     if (SOCKET === false) return
     SOCKET.send(JSON.stringify({ "action": "ping" }))
     setTimeout(keepAlive, 60000)
@@ -77,15 +77,16 @@ const callbacks = {}
 function accounts_monitor(accounts, callback) {
 
     return new Promise((resolve, reject) => {
-        function return_receives(res) {
+
+        function trigger_callbacks(res) {
 
             const block_subtype = res.message.block.subtype
+            const account = res.message.block.account
             const link_as_account = res.message.block.link_as_account
 
-            if (block_subtype == "send" && Object.keys(callbacks).includes(link_as_account)) {
-
-                callbacks[link_as_account].forEach(callback => callback(res))
-
+            if (block_subtype == "send" || block_subtype == "receive") {
+                if (account in callbacks) callbacks[account].forEach(callback => callback(res))
+                if (link_as_account in callbacks) callbacks[link_as_account].forEach(callback => callback(res))
             }
         }
 
@@ -110,14 +111,14 @@ function accounts_monitor(accounts, callback) {
                 all_local_accounts: true,
                 accounts: accounts
             }
-            start_websockets(accounts, params, function(res){
+            start_websockets(params, function (res) {
                 if (res == "opened") {
                     resolve("opened")
                 } else {
-                    return_receives(res)
+                    trigger_callbacks(res)
                 }
 
-            keepAlive()
+                keepAlive()
 
             })
         } else {

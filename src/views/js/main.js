@@ -10,9 +10,10 @@ try {
 
     function loadPayTableList() {
 
-        function addPayItem(amount, account, hash) {
+        function addPayItem(type, amount, account, hash) {
             const blockCell = document.createElement("tr")
             blockCell.innerHTML = '\
+                    <td class="type">' + type + '</td> \
                     <td class="amount">' + toMegaNano(amount) + '</td> \
                     <td class="account">' + account + '</td> \
                     <td class="block"><a href="https://nanocrawler.cc/explorer/block/' + hash + '" target="_blank">Explorer</a></td>'
@@ -20,8 +21,10 @@ try {
         }
 
         function listen_websockets() {
-            start_websockets(["nano_3m6o1ti4og5s1rwj174qpb1m58pops9eg3xt79c3io791srem74nd471j7ho"], function (res) {
-                addPayItem(res.amount, res.account, res.hash)
+            start_websockets(function (res) {
+                if (res.block.link_as_account != faucet.account) {
+                    addPayItem(res.block.subtype, res.amount, res.account, res.hash)
+                }
             })
         }
 
@@ -29,7 +32,7 @@ try {
             .then((txs) => {
                 for (let n in txs) {
                     tx = txs[(txs.length - 1) - n] //invert
-                    addPayItem(tx.amount, tx.account, tx.hash)
+                    addPayItem(tx.type, tx.amount, tx.account, tx.hash)
                 }
 
                 listen_websockets()

@@ -176,7 +176,7 @@ function listenMessages(){
                 } else if ("loaded" in e.data && e.data.loaded == false){
                     nanodrop.rendered = false
                 } else if ("success" in e.data && e.data.success == true) {
-                    if (config.onsuccessCallback !== null && confi.onsuccessCallback != "") {
+                    if (config.onsuccessCallback !== null && config.onsuccessCallback != "") {
                         if (window[config.onsuccessCallback] == undefined) {
                             alert("onsuccessCallback '" + config.onsuccessCallback + "' does not exist")
                         } else {
@@ -189,7 +189,7 @@ function listenMessages(){
                     }
                     resetIframe("nanoDrop_oAuth")
                 } else if ("success" in e.data && e.data.success == false){
-                    if (config.onerrorCallback !== null && confi.onerrorCallback != "") {
+                    if (config.onerrorCallback !== null && config.onerrorCallback != "") {
                         if (window[config.onerrorCallback] == undefined) {
                             alert("onerrorCallback '" + config.onerrorCallback + "' does not exist")
                         } else {

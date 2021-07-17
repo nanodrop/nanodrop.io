@@ -16,7 +16,7 @@ const { minAmount } = require('../../config/config.json')
 
 MAX_VALUE = TunedBigNumber("0.01").multipliedBy(megaNano).toString(10)
 
-//Returns 0.01% of the balance, rounded down.
+//Returns 0.1% of the balance, rounded down.
 //Example: With a balance of 1.145 Nano, returns 0.001 instead 0.00145
 //Or returns the maximum configured amount
 function dropAmount(balance = wallet.info.balance) {

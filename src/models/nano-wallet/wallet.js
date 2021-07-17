@@ -34,7 +34,7 @@ function deriveWallet() {
 }
 
 function receive(blockHash, amount) {
-    console.info("Receiving " + toMegaNano(amount) + " Nano...")
+    console.info("Receiving " + toMegaNano(amount) + " Nano. Block: " + blockHash)
     return new Promise((resolve, reject) => {
         const newBalance = BigNumber(info.balance).plus(amount).toString(10)
         const receiveBlock = createBlock({
@@ -67,7 +67,7 @@ function receive(blockHash, amount) {
 }
 
 function send(to, amount) {
-    console.info("Sending " + toMegaNano(amount) + " Nano...")
+    console.info("Sending " + toMegaNano(amount) + " Nano to " + to)
     return new Promise((resolve, reject) => {
         const newBalance = BigNumber(info.balance).minus(amount).toString(10)
         const sendBlock = createBlock({
@@ -140,7 +140,6 @@ async function sync() {
                             let received = 0
                             for (let hash in blocks) {
                                 let amount = blocks[hash]
-                                console.info("Receiving " + toMegaNano(amount) + " Nano. Block: " + hash)
                                 await receive(hash, amount)
                                     .then((res) => {
                                         received++
@@ -182,21 +181,23 @@ async function sync() {
 function selfReceive() {
     accounts_monitor([myWallet.account], function (res) {
 
-        const amount = res.message.amount
-        const hash = res.message.hash
-
-        // Check if amount is >= minimum amount
-        if (!TunedBigNumber(amount).isGreaterThanOrEqualTo(config.minAmount)) return
-
-        // Receive funds
-        receive(hash, amount)
-            .then((response) => {
-                console.log("Received " + toMegaNano(amount) + " Nano. Hash: " + response.hash)
-            })
-            .catch((err) => {
-                console.log("Fail receiving: " + hash)
-                console.error(err)
-            })
+        if (res.message.block.subtype == "send" && res.message.block.link_as_account == myWallet.account){
+            const amount = res.message.amount
+            const hash = res.message.hash
+    
+            // Check if amount is >= minimum amount
+            if (!TunedBigNumber(amount).isGreaterThanOrEqualTo(config.minAmount)) return
+    
+            // Receive funds
+            receive(hash, amount)
+                .then((response) => {
+                    console.log("Received " + toMegaNano(amount) + " Nano. Hash: " + response.hash)
+                })
+                .catch((err) => {
+                    console.log("Fail receiving: " + hash)
+                    console.error(err)
+                })
+        }
 
     })
 }

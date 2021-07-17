@@ -19,32 +19,17 @@ function new_websocket(url, ready_callback, message_callback) {
     return socket;
 }
 
-function start_websockets(accounts, callback) {
+function start_websockets(callback) {
     new_websocket(websockets_api, function (socket) {
-
-        // If received a single account (string), instead a list, convert to array
-        // If is not string neither array, return error
-        if (typeof accounts === "string"){
-            accounts = [accounts]
-        } else if (typeof accounts !== "object"){
-            return "Invalid Accounts"
-        }
 
         // Set Params
         let params = {
             action: "subscribe",
-            topic: "confirmation",
-            options: {
-              all_local_accounts: true,
-              accounts: accounts
-            }
+            topic: "confirmation"
           }
         
         //Subscribe websocket
         socket.send(JSON.stringify(params));
-
-        //params.topic = "new_unconfirmed_block"
-        //socket.send(JSON.stringify(params));
 
     }, function (response) {
         // onmessage
