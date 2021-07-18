@@ -23,7 +23,7 @@ try {
         function listen_websockets() {
             start_websockets(function (res) {
                 if (res.block.link_as_account != faucet.account) {
-                    addPayItem(res.block.subtype, res.amount, res.account, res.hash)
+                    addPayItem(res.block.subtype, res.amount, res.link_as_account, res.hash)
                 }
             })
         }
