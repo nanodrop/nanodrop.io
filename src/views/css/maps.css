@@ -1,0 +1,153 @@
+.countries_container {
+    width: 1000px;
+    max-width: 100%;
+    position: relative;
+    padding-right: 200px;
+    background-color: rgb(217, 236, 255);
+    border-radius: 6px;
+}
+
+.dark .countries_container {
+    background: #34323D;
+}
+
+.map_container {
+    width: 100%;
+    position: relative;
+}
+
+.countries_ranking {
+    position: absolute;
+    width: 200px;
+    height: 100%;
+    top: 0;
+    right: 0;
+    text-align: center;
+    padding: 10px;
+    background-color: rgb(217, 236, 255);
+    border-radius: 6px;
+    overflow-y: auto;
+    color: #222;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.countries_ranking .country {
+    display: flex;
+    padding: 4px;
+    background-color: #fff;
+    color: #222;
+    margin: 1px;
+    font-size: 12px;
+    width: 100%;
+    justify-content: space-between;
+}
+
+.dark .countries_ranking .country {
+    background-color: #34323D;
+    color: #eee;
+}
+
+.country_new_drop {
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    padding: 0 80px;
+    bottom: 10px;
+    left: 0;
+    z-index: 2;
+}
+
+.country_new_drop .inner-box {
+    min-width: 100px;
+    max-width: 100%;
+    padding: 6px 15px;
+    text-align: center;
+    background-color: #fff;
+    border-radius: 4px;
+}
+
+.country_new_drop .inner-box .content {
+    display: flex;
+    width: 100%;
+    align-items: center;
+}
+
+.dark .country_new_drop .inner-box {
+    background-color: #34323D;
+    border: 1px solid #444;
+}
+
+.country_new_drop .inner-box label {
+    font-size: 15px;
+    color: #555;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 300;
+    margin: 0;
+    padding: 0;
+}
+
+.dark .country_new_drop .inner-box label {
+    color: #eee;
+}
+
+.country_new_drop .inner-box img {
+    width: 20px;
+    height: 20px;
+    margin-top: -2px;
+    margin-right: 10px;
+    opacity: .7;
+}
+
+.country_new_drop .inner-box .countryName {
+    font-weight: bold;
+    color: #777;
+}
+
+.dark .country_new_drop .inner-box .countryName {
+    color: #ccc;
+}
+
+.countries_ranking .countries_header {
+    color: #444;
+    font-weight: bold;
+}
+
+.dark .countries_ranking .countries_header {
+    color: #eee;
+}
+
+.ranking_position {
+    width: 30px;
+}
+
+.country_name {
+    width: 100px;
+}
+
+.users {
+    width: 40px;
+}
+
+@media (max-width: 740px) {
+    .countries_container {
+        padding-right: 0;
+        padding-bottom: 120px;
+    }
+
+    .countries_ranking {
+        height: 180px;
+        width: 100%;
+        top: calc(100% - 120px);
+        left: 0;
+    }
+
+    .country_new_drop .inner-box {
+        padding: 4px 10px;
+    }
+
+    .country_new_drop .inner-box label {
+        font-size: 12px;
+    }
+
+}

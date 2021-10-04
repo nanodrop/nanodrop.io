@@ -1,0 +1,105 @@
+<div id="charts">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
+    <div class="jumbotron mainScreen">
+        <center>
+
+            <h2>NanoDrop Analytics</h2>
+            <br>
+
+            <div id="container">
+
+                <div
+                    style="display: flex; width: 1000px; max-width: 100%; margin-bottom: 40px; flex-wrap: wrap; justify-content: center;">
+
+                    <div style="display: flex; align-self: center;">
+                        <div class="ko-progress-circle" id="ko-progress-circle" data-progress="0">
+                            <div class="ko-circle">
+                                <div class="full ko-progress-circle__slice">
+                                    <div class="ko-progress-circle__fill"></div>
+                                </div>
+                                <div class="ko-progress-circle__slice">
+                                    <div class="ko-progress-circle__fill"></div>
+                                    <div class="ko-progress-circle__fill ko-progress-circle__bar"></div>
+                                </div>
+                            </div>
+                            <div class="ko-progress-circle__overlay">
+                                <div class="message">We <br> already paid <br> <span class="value">0%</span> <br> of our
+                                    funds!</div>
+                            </div>
+                        </div>
+
+                        <div class="ko-progress-circle" data-progress="0" id="drops_counter">
+                            <div class="ko-circle">
+                                <div class="full ko-progress-circle__slice">
+                                    <div class="ko-progress-circle__fill"></div>
+                                </div>
+                                <div class="ko-progress-circle__slice">
+                                    <div class="ko-progress-circle__fill"></div>
+                                    <div class="ko-progress-circle__fill ko-progress-circle__bar"></div>
+                                </div>
+                            </div>
+                            <div class="ko-progress-circle__overlay">
+                                <div class="message"><span class="value">19765</span> <br> Drops</div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div style="width: 450px; max-width: 100%; height: 200px;">
+                        <canvas id="myChart" width="450" height="200"></canvas>
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        </center>
+
+    </div>
+
+    <script src="/js/analytics/chart.js"></script>
+
+</div>
+
+
+<div id="global-chart">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
+    <div class="jumbotron mainScreen">
+        <center>
+
+            <h2>Drops by Countries</h2>
+            <br>
+            <div id="container">
+
+                <div class="countries_container">
+                    <div class="countries_ranking">
+                        <div class="country countries_header"><span class="ranking_position">Nº</span><span
+                                class="country_name">Countries</span><span class="users">Drops</span></div>
+                        <div class="" id="countries_ranking_body"></div>
+                    </div>
+
+                    <div class="map_container">
+                        <div class="country_new_drop">
+                            <div class="inner-box" id="country_new_drop_alert" style="display: none;">
+                                <div class="content">
+                                    <img src="/assets/logo.png" class="alert-icon">
+                                    <label>
+                                        New Drop from <span class="countryName">Brazil</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="svgMapDrops"></div>
+                    </div>
+                </div>
+            </div>
+
+
+    </div>
+
+    </center>
+
+    <script src="/js/analytics/map.js"></script>
+
+</div>
