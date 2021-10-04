@@ -18,6 +18,10 @@
     <meta name="msapplication-config" content="/icons/browserconfig.xml">
     <meta name="theme-color" content="#ffffff">
 
+    <script>
+        <%- include('./authorization.ejs') %>
+    </script>
+
     <style>
         html {
             font-family: sans-serif;
@@ -46,7 +50,7 @@
     </style>
 </head>
 
-<body cz-shortcut-listen="true" style="zoom: 1;">
+<body cz-shortcut-listen="true" style="zoom: 1; opacity: 0;">
 
     <div id="nd-anchor-container" class="nd-anchor nd-anchor-normal nd-anchor-flex nd-anchor-<%- config.theme %>">
         <div class="nd-anchor-content">
@@ -162,7 +166,7 @@
             checkboxSpinner.style.opacity = 0
         }
 
-        function checkboxReset(data) {
+        function checkboxReset() {
             checkboxStopLoader()
             document.querySelector(".recaptcha-checkbox-checkmark").classList.remove("animate")
             document.querySelector(".checkbox-error").classList.remove("animate")
@@ -187,12 +191,13 @@
             document.querySelector(".recaptcha-checkbox-checkmark").classList.add("animate")
         }
 
-        function checkboxError(err) {
+        function checkboxError(err, title = 'Error') {
+            console.error(err)
             if (err == "recaptcha window has been closed") return checkboxReset()
             checkboxReset()
             document.querySelector(".recaptcha-checkbox-border").style.display = "none"
             document.querySelector(".checkbox-error").classList.add("animate")
-            document.getElementById("recaptcha-anchor-label").innerText = 'Error'
+            document.getElementById("recaptcha-anchor-label").innerText = title
             document.getElementById("recaptcha-anchor-label").innerHTML += '<span class="error"></span>'
             document.getElementById("recaptcha-anchor-label").querySelector("span").innerText = err
         }
@@ -240,9 +245,10 @@
                                     }
                                 } else if ("account" in e.data) {
                                     if (e.data.account === null || isNanoAddress(e.data.account)) {
+                                        if (e.data.account !== null) checkboxReset()
                                         account = e.data.account
                                     } else {
-                                        console.error("Iframe message error: invalid nano account")
+                                        checkboxError("invalid nano account")
                                     }
                                 }
                             } else {
@@ -282,7 +288,7 @@
                             checkboxSuccess(res)
                             window.top.postMessage({ from: "checkbox", success: true, hash: res.hash, amount: res.amount }, '*')
                         } else if ("success" in res && res.success == false) {
-                            if (typeof (res.error) === "string" && res.error.includes("low score")) {
+                            if (typeof (res.error) === "string" && ( res.error.includes("low score") || res.error.includes("proxy detected") )) {
                                 window.top.postMessage({ from: "checkbox", action: "oauth" }, '*')
                                 addListener(function (e) {
                                     if (e.data.from == "oauth") {
@@ -347,7 +353,7 @@
             .then((res) => {
                 ticket = res.ticket
                 dropAmount = res.megaAmount
-                if (dropAmount == 0 || dropAmount == "0"){
+                if (dropAmount == 0 || dropAmount == "0") {
                     checkboxError("no funds")
                 } else {
                     document.getElementById("drop-amount").innerText = dropAmount
@@ -360,10 +366,16 @@
             })
 
         window.onload = function () {
-            msgListener()
-            onMessage()
-            window.top.postMessage({ from: "checkbox", loaded: "checkbox" }, '*')
+            document.body.style.opacity = 1
+            if (!checkPermission()) {
+                checkboxError("Require access at: contact@nanodrop.io", "Access Denied")
+            } else {
+                msgListener()
+                onMessage()
+                window.top.postMessage({ from: "checkbox", loaded: "checkbox" }, '*')
+            }
         }
+        
     </script>
 
 </body>

@@ -10,14 +10,12 @@ const rpc = require("./rpc");
 const { checkKey, checkIndex } = require('./check');
 const { toMegaNano, TunedBigNumber } = require('./convert')
 const { accounts_monitor } = require('../nano_websockets')
-const { updateWalletInfo } = require('../data')
+const { updateWalletInfo, walletInfo, walletHistory, updateWalletHistory } = require('../data')
+
+const { sleep } = require('../utils.js')
 
 const config = require(path.join(__dirname, '../../../config/config.json'))
-let info = require(path.join(__dirname, '../../../data/wallet/info.json'))
-
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
+let info = { ...walletInfo }
 
 let myWallet = {}
 function deriveWallet() {
@@ -49,11 +47,28 @@ function receive(blockHash, amount) {
                 receiveBlock.block.work = work
                 rpc.broadcast(receiveBlock.block)
                     .then((res) => {
+
+                        // Update wallet info
                         info.pending -= amount
                         info.balance = newBalance
                         info.frontier = receiveBlock.hash
                         info.total_received = BigNumber(info.total_received).plus(amount).toString(10)
                         updateWalletInfo(info)
+
+                        // Get more info from node (like local_timestamp) and save block in history
+                        rpc.block_info(receiveBlock.hash)
+                            .then((res) => updateWalletHistory([res]))
+                            .catch((err) => console.error(err))
+
+                        // Cache PoW
+                        getWork(sendBlock.hash)
+                            .then((res) => {
+                                console.info("Next work pre-cached!")
+                            })
+                            .catch((err) => {
+                                console.info("Error pre-caching...")
+                            })
+
                         resolve({ hash: receiveBlock.hash, amount: amount })
                     })
                     .catch((err) => {
@@ -83,10 +98,19 @@ function send(to, amount) {
                 rpc.broadcast(sendBlock.block)
                     .then((res) => {
                         if ("hash" in res && res.hash == sendBlock.hash) {
+
+                            // update wallet info
                             info.balance = newBalance
                             info.frontier = sendBlock.hash
                             info.total_sent = BigNumber(info.total_sent).plus(amount).toString(10)
                             updateWalletInfo(info)
+
+                            // Get more info from node (like local_timestamp) and save block in history
+                            rpc.block_info(sendBlock.hash)
+                                .then((res) => updateWalletHistory([res]))
+                                .catch((err) => console.error(err))
+
+                            // Cache PoW
                             getWork(sendBlock.hash)
                                 .then((res) => {
                                     console.info("Next work pre-cached!")
@@ -94,6 +118,7 @@ function send(to, amount) {
                                 .catch((err) => {
                                     console.info("Error pre-caching...")
                                 })
+
                             resolve({ hash: sendBlock.hash, amount: amount })
                         } else {
                             reject("Invalid response broadcasting")
@@ -109,8 +134,89 @@ function send(to, amount) {
     })
 }
 
+function syncHistory() {
+    return new Promise((resolve, reject) => {
+        if (walletHistory.length) { // start from previous block saved
+            let historyPrevious = walletHistory[walletHistory.length - 1].hash
+            if (historyPrevious != info.frontier) {
+                console.info("Updating wallet history")
+                rpc.account_history(myWallet.account, {
+                    raw: true,
+                    head: historyPrevious,
+                    offset: 1,
+                    reverse: true
+                })
+                    .then((history) => {
+                        if (updateWalletHistory(history)) {
+                            resolve()
+                        } else {
+                            reject("history saving error")
+                        }
+                    })
+                    .catch((err) => reject(err))
+            } else {
+                resolve()
+            }
+        } else { // start from scratch
+            console.info("Updating wallet history")
+            rpc.account_history(myWallet.account, {
+                raw: true,
+                reverse: true
+            })
+                .then((history) => {
+                    if (updateWalletHistory(history)) {
+                        resolve()
+                    } else {
+                        reject("history saving error")
+                    }
+                })
+                .catch((err) => reject(err))
+        }
+    })
+}
+
+// If there is pending balance,
+// receives tx with amounts greater than minimum
+function receivePendings() {
+    if (info.pending >= config.minAmount && info.pending != old_pending) {
+        rpc.pending_blocks(myWallet.account, config.minAmount)
+            .then(async function (blocks) {
+                let received = 0
+                for (let hash in blocks) {
+                    let amount = blocks[hash]
+                    await receive(hash, amount)
+                        .then((res) => {
+                            received++
+                            console.info("Received " + toMegaNano(amount) + " Nano! Hash: " + res.hash)
+
+                            //pre cache next work, if exists more pending blocks use DIFFICULTY_RECEIVE
+                            let nextPoWDiff = "all"
+                            if (Object.keys(blocks).length > received) {
+                                nextPoWDiff = "receive"
+                            }
+                            getWork(res.hash, nextPoWDiff)
+                                .then((res) => {
+                                    console.info("Next work pre-cached!")
+                                }).catch((err) => {
+                                    console.error(err)
+                                })
+                        })
+                        .catch(async function (err) {
+                            console.log("Error receiving: " + err)
+                            await sleep(5000)
+                        })
+                }
+            })
+            .catch((err) => {
+                console.log("Error receiving: " + err)
+            })
+    }
+}
+
 async function sync() {
     return new Promise((resolve, reject) => {
+
+        console.info("Syncing Wallet...")
 
         let old_pending = info.pending
 
@@ -130,43 +236,12 @@ async function sync() {
                 info.weight = res.weight
                 updateWalletInfo(info)
 
-                resolve()
-
-                // If there is pending balance,
-                // receives tx with amounts greater than minimum
-                if (info.pending >= config.minAmount && info.pending != old_pending) {
-                    rpc.pending_blocks(myWallet.account, config.minAmount)
-                        .then(async function (blocks) {
-                            let received = 0
-                            for (let hash in blocks) {
-                                let amount = blocks[hash]
-                                await receive(hash, amount)
-                                    .then((res) => {
-                                        received++
-                                        console.info("Received " + toMegaNano(amount) + " Nano! Hash: " + res.hash)
-
-                                        //pre cache next work, if exists more pending blocks use DIFFICULTY_RECEIVE
-                                        let nextPoWDiff = "all"
-                                        if (Object.keys(blocks).length > received) {
-                                            nextPoWDiff = "receive"
-                                        }
-                                        getWork(res.hash, nextPoWDiff)
-                                            .then((res) => {
-                                                console.info("Next work pre-cached!")
-                                            }).catch((err) => {
-                                                console.error(err)
-                                            })
-                                    })
-                                    .catch(async function (err) {
-                                        console.log("Error receiving: " + err)
-                                        await sleep(5000)
-                                    })
-                            }
-                        })
-                        .catch((err) => {
-                            console.log("Error receiving: " + err)
-                        })
-                }
+                syncHistory(info.frontier)
+                    .then(() => {
+                        resolve()
+                        receivePendings()
+                    })
+                    .catch((err) => reject(err))
             })
             .catch((err) => {
                 if (err == "Account not found") {
@@ -181,13 +256,13 @@ async function sync() {
 function selfReceive() {
     accounts_monitor([myWallet.account], function (res) {
 
-        if (res.message.block.subtype == "send" && res.message.block.link_as_account == myWallet.account){
+        if (res.message.block.subtype == "send" && res.message.block.link_as_account == myWallet.account) {
             const amount = res.message.amount
             const hash = res.message.hash
-    
+
             // Check if amount is >= minimum amount
             if (!TunedBigNumber(amount).isGreaterThanOrEqualTo(config.minAmount)) return
-    
+
             // Receive funds
             receive(hash, amount)
                 .then((response) => {

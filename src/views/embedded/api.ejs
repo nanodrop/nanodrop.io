@@ -1,6 +1,8 @@
 "use strict";
 
-const url = window.location.href
+const url = window.location;
+const baseUrl = url.protocol + "//" + url.host + "/"
+
 let renderEl = null
 const config = {
     defaultElRenderName: "<%- config.defaultElRenderName %>",
@@ -76,7 +78,7 @@ const nanodrop = {
 
             // Loads checkbox iframe 
             renderEl.innerHTML = ' \
-            <iframe id="nanoDropCheckbox" src="https://nanodrop.io/api/checkbox" + params \
+            <iframe id="nanoDropCheckbox" src="' + baseUrl + 'api/checkbox' + params + '" \
                 width="' + config.width + '" height="' + config.height + '" \
                 style="position: relative; border: 0"> \
             </iframe>'
@@ -135,17 +137,21 @@ function isNanoAddress(address) {
 }
 
 function displayChallenge(){
-    document.getElementById("nanodrop_hidden_content").innerHTML += '<iframe id="nanoDrop_challenge" src="https://nanodrop.io/api/challenge" width="100%" height="100%" style="position: fixed; top: 0; left: 0; z-index: 10000000; border: 0"></iframe>'
+    document.getElementById("nanodrop_hidden_content").innerHTML += '<iframe id="nanoDrop_challenge" src="<%= config.rootUrl %>/api/challenge" width="100%" height="100%" style="position: fixed; top: 0; left: 0; z-index: 10000000; border: 0"></iframe>'
 }
 
 function displayOAuth(){
-    document.getElementById("nanodrop_hidden_content").innerHTML += '<iframe id="nanoDrop_oAuth" src="https://nanodrop.io/api/oauth" width="100%" height="100%" style="position: fixed; top: 0; left: 0; z-index: 10000000; border: 0"></iframe>'
+    document.getElementById("nanodrop_hidden_content").innerHTML += '<iframe id="nanoDrop_oAuth" src="<%= config.rootUrl %>/api/oauth" width="100%" height="100%" style="position: fixed; top: 0; left: 0; z-index: 10000000; border: 0"></iframe>'
+}
+
+function hostnameFromUrl(url){
+    return new URL(url).hostname
 }
 
 function listenMessages(){
     window.onmessage = function (e) {
         msgListeners.forEach(listener => listener(e))
-        if (e.origin == "https://nanodrop.io" && typeof (e.data) == "object" && "from" in e.data) {
+        if (hostnameFromUrl(e.origin) == hostnameFromUrl('<%= config.rootUrl %>') && typeof (e.data) == "object" && "from" in e.data) {
             if ( "target" in e.data && e.data.target == "checkbox") {
                 document.getElementById('nanoDropCheckbox').contentWindow.postMessage(e.data, '*')
                 
@@ -251,7 +257,7 @@ window.onload=function (){
                 })
                 .catch((err) => {
                     alert(err)
-                })      
+                })
         }
     }
 

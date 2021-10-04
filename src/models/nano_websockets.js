@@ -1,6 +1,6 @@
 const WebSocket = require('ws')
 
-const { websockets_api } = require("../../config/config.json")
+const { nodeWS } = require("../../config/config.json")
 
 const DEBUG = true
 let SOCKET = false
@@ -27,7 +27,7 @@ function new_websocket(url, ready_callback, message_callback) {
 }
 
 function start_websockets(params, callback) {
-    new_websocket(websockets_api, function (socket) {
+    new_websocket(nodeWS, function (socket) {
 
         SOCKET = socket
 

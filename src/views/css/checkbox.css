@@ -239,7 +239,7 @@ body {
 }
 
 .nd-anchor-logo-img {
-    background: url("https://nanodrop.io/icons/favicon-32x32.png");
+    background: url("/icons/favicon-32x32.png");
     background-repeat: no-repeat;
     opacity: 0.75;
 }

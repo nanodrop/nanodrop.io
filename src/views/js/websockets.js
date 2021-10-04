@@ -1,5 +1,3 @@
-const websockets_api = "wss://ws.nanodrop.io"
-
 /* Nano websockets */
 function new_websocket(url, ready_callback, message_callback) {
     let socket = new WebSocket(url);
@@ -19,8 +17,8 @@ function new_websocket(url, ready_callback, message_callback) {
     return socket;
 }
 
-function start_websockets(callback) {
-    new_websocket(websockets_api, function (socket) {
+function start_websockets(url, callback) {
+    new_websocket(url, function (socket) {
 
         // Set Params
         let params = {

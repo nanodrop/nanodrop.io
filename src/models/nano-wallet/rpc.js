@@ -1,7 +1,9 @@
 const axios = require("axios")
 const { node, worker, minAmount } = require("../../../config/config.json")
 const { BASE_DIFFICULTY, BASE_DIFFICULTY_RECEIVE, work_validate } = require('./work')
-const BigNumber = require('bignumber.js')
+const { TunedBigNumber, toRaws } = require('./convert')
+
+const MIN_AMOUNT = toRaws(minAmount)
 
 const postRPC = function (data, nodeAddress = node) {
     if (typeof (nodeAddresses) == "string") nodeAddresses = [nodeAddresses]
@@ -34,13 +36,13 @@ const postRPC = function (data, nodeAddress = node) {
 function balance_history(account) {
     let block, amount, pending_valid = 0, total_received = "0", total_sent = "0"
     return new Promise((resolve, reject) => {
-        pending_blocks(account, minAmount)
+        pending_blocks(account, MIN_AMOUNT)
             .then((pendings) => {
 
-                // Get only valid pending balance (all-tx-amount => minAmount)
+                // Get only valid pending balance (all-tx-amount => MIN_AMOUNT)
                 for (let blockHash in pendings) {
                     amount = pendings[blockHash]
-                    pending_valid = BigNumber(pending_valid).plus(amount).toString(10)
+                    pending_valid = TunedBigNumber(pending_valid).plus(amount).toString(10)
                 }
                 
                 const data = {
@@ -55,8 +57,8 @@ function balance_history(account) {
                             try {
                                 for (let i in res.history) {
                                     block = res.history[i]
-                                    if (block.subtype == "receive") total_received = BigNumber(total_received).plus(block.amount).toString(10)
-                                    if (block.subtype == "send") total_sent = BigNumber(total_sent).plus(block.amount).toString(10)
+                                    if (block.subtype == "receive") total_received = TunedBigNumber(total_received).plus(block.amount).toString(10)
+                                    if (block.subtype == "send") total_sent = TunedBigNumber(total_sent).plus(block.amount).toString(10)
                                 }
                                 resolve({ balance: res.history[0].balance, pending_valid: pending_valid, total_received: total_received, total_sent: total_sent })
                             } catch (err) {
@@ -113,7 +115,7 @@ function account_info(account) {
                 }
             })
             .catch((err) => {
-                if ("error" in err && err.error.includes("Account not found")) {
+                if (typeof(err) === "object" && "error" in err && err.error.includes("Account not found")) {
 
                     let info = {
                         account: account,
@@ -138,12 +140,12 @@ function account_info(account) {
                             info.pending = res.pending
 
                             // Get only valid pending balance
-                            pending_blocks(account, minAmount)
+                            pending_blocks(account, MIN_AMOUNT)
                                 .then((pendings) => {
                                     let pending_valid = 0
                                     for (let blockHash in pendings) {
                                         amount = pendings[blockHash]
-                                        pending_valid = BigNumber(pending_valid).plus(amount).toString(10)
+                                        pending_valid = TunedBigNumber(pending_valid).plus(amount).toString(10)
                                     }
                                     info.pending_valid = pending_valid
                                     resolve(info)
@@ -158,12 +160,18 @@ function account_info(account) {
     })
 }
 
-function account_history(account) {
+function account_history(account, options = false) {
     return new Promise((resolve, reject) => {
-        const data = {
+        let data = {
             "action": "account_history",
             "account": account,
             "count": -1
+        }
+        if (options) {
+            if (options.raw) data.raw = options.raw
+            if (options.head) data.head = options.head
+            if (options.offset) data.offset = options.offset
+            if (options.reverse) data.reverse = options.reverse
         }
         postRPC(data)
             .then((res) => {
@@ -231,6 +239,7 @@ function block_info(hash) {
                         block.amount = res.amount
                         block.hash = hash
                         block.local_timestamp = res.local_timestamp
+                        block.subtype = res.subtype
                         resolve(block)
                     } catch (err) {
                         reject(err)
