@@ -93,7 +93,7 @@ Edit the ```config/config.json``` file and put in the rpc, websockets and worker
 ### Running in dev mode:
 
 ```console
-nodemon ./src/init.js
+nodemon ./src/init.js -i ./data
 ```
 
 ### Running in Prod with Docker
@@ -112,3 +112,7 @@ If all goes well, you will receive this message:
 ```
 
 For Google reCaptcha and Google oAuth to work you will need to configure your own DNS.
+
+### contact:
+
+contact@nanodrop.io

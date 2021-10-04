@@ -1,62 +1,52 @@
 try {
 
-    function formatError(err) {
-        console.error(err)
-        if (typeof (err) == "object") return JSON.stringify(err)
-        if (typeof (err) == "string") return err.toString()
-        return "Unknown Error"
-
-    }
-
     function loadPayTableList() {
 
-        function addPayItem(type, amount, account, hash) {
+        function addPayItem(type, amount, account, hash, timestamp) {
             const blockCell = document.createElement("tr")
             blockCell.innerHTML = '\
                     <td class="type">' + type + '</td> \
                     <td class="amount">' + toMegaNano(amount) + '</td> \
-                    <td class="account">' + account + '</td> \
-                    <td class="block"><a href="https://nanocrawler.cc/explorer/block/' + hash + '" target="_blank">Explorer</a></td>'
+                    <td class="account tAccount">' + account + '</td> \
+                    <td class="block"><a href="https://nanocrawler.cc/explorer/block/' + hash + '" target="_blank">Explorer</a></td> \
+                    <td class="time">' + timeDifference(Date.now(), timestamp * 1000) + '</td>'
             document.querySelector("#payTable tbody").prepend(blockCell)
         }
 
         function listen_websockets() {
-            start_websockets(function (res) {
-                if (res.block.link_as_account != faucet.account) {
-                    addPayItem(res.block.subtype, res.amount, res.link_as_account, res.hash)
+            start_websockets(CONFIG.urlWS, function (res) {
+                if (res.block.link_as_account != config.faucet.account) {
+                    addPayItem(res.block.subtype, res.amount, res.block.link_as_account, res.hash)
                 }
             })
         }
 
-        getJson("/api/history")
-            .then((txs) => {
-                for (let n in txs) {
-                    tx = txs[(txs.length - 1) - n] //invert
-                    addPayItem(tx.type, tx.amount, tx.account, tx.hash)
-                }
-
+        getJson("/api/history?period=all")
+            .then((blocks) => {
+                blocks.forEach((block) => {
+                    addPayItem(block.subtype, block.amount, block.account, block.hash, block.local_timestamp)
+                })
+                getPagination('#payTable');
+                $('#maxRows').trigger('change');
                 listen_websockets()
-
             }).catch((err) => {
                 console.error("/api/history Error: " + formatError(err.error))
             })
     }
 
-    function loadSentPercentage() {
+    function loadDropsInfo() {
 
         getJson("/api/info")
             .then((info) => {
-                $(".already_paid span").text(info.total_sent_percentage + "%")
-                $(".progress").fadeIn()
-                $(".progress-bar-striped").attr("aria-valuenow", info.total_sent_percentage)
-                $(".progress-bar-striped").css("width", info.total_sent_percentage + "%")
+                setPaidFunds(info.total_sent_percentage)
+                setDropsCounter(info.drops)
             }).catch((err) => {
                 console.error("/api/info Error: " + formatError(err.error))
             })
     }
 
     loadPayTableList()
-    loadSentPercentage()
+    loadDropsInfo()
 
 
     $("#copyLink").click(function () {
@@ -67,13 +57,11 @@ try {
     })
 
     function awaitNanoDrop() {
-        function sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
-        return new Promise (async function (resolve, reject) {
-            for (let i = 0; i < 300; i++){
-                if (typeof(nanodrop) == "object" && "rendered" in nanodrop && nanodrop.rendered === true) {
-                    return resolve(rendered)
+        console.log("awaiting nanodrop")
+        return new Promise(async function (resolve, reject) {
+            for (let i = 0; i < 300; i++) {
+                if (typeof (nanodrop) == "object" && "rendered" in nanodrop && nanodrop.rendered === true) {
+                    return resolve(true)
                 }
                 await sleep(200)
             }
@@ -88,11 +76,15 @@ try {
                 darkMode = true
                 if (!isSwitch) $("#themeSwitch").prop("checked", true)
                 $("body").addClass("dark")
+                loadDropsMap("dark")
+                getJson("/?theme=dark&setOnly")
                 awaitNanoDrop().then(() => nanodrop.changeTheme('dark'))
             } else if (theme == 'light') {
                 darkMode = false
                 if (!isSwitch) $("#themeSwitch").prop("checked", false)
                 $("body").removeClass("dark")
+                loadDropsMap("light")
+                getJson("/?theme=light&setOnly")
                 awaitNanoDrop().then(() => nanodrop.changeTheme('light'))
             }
         }
@@ -106,16 +98,23 @@ try {
             }
         })
 
-        // Detect Dark Theme
-        const darkThemeMq = window.matchMedia("(prefers-color-scheme: dark)")
-        if (darkThemeMq.matches) changeTheme('dark')
-        darkThemeMq.addListener(e => {
-            if (e.matches) {
-                changeTheme('dark')
-            } else {
-                changeTheme('light')
-            }
-        })
+        // Auto detect saved theme
+        if ($("body").hasClass("dark")) {
+            changeTheme("dark")
+        }
+
+        // Detect Dark Mode
+        if ($("body").hasClass("default-theme")) {
+            const darkThemeMq = window.matchMedia("(prefers-color-scheme: dark)")
+            if (darkThemeMq.matches) changeTheme('dark')
+            darkThemeMq.addListener(e => {
+                if (e.matches) {
+                    changeTheme('dark')
+                } else {
+                    changeTheme('light')
+                }
+            })
+        }
 
         $('#addNanoAddress').on('input', function () {
             const val = $(this).val()
@@ -135,6 +134,11 @@ try {
                 awaitNanoDrop().then(() => nanodrop.setAccount(null))
             }
         })
+
+        loadWeekly()
+
+        loadDropsMap()
+
     })
 
 } catch (err) {

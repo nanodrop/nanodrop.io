@@ -11,7 +11,13 @@
     <link href='https://use.fontawesome.com/releases/v5.8.1/css/all.css' rel='stylesheet'>
 
     <link href="/css/style.css" rel="stylesheet" type="text/css">
+    <link href="/css/progress-circle.css" rel="stylesheet" type="text/css">
     <link href="/css/checkbox.css" rel="stylesheet" type="text/css">
+
+    <link href="/css/dist/svg-worldmap.css" rel="stylesheet">
+    <script src="/js/dist/svg-worldmap.js"></script>
+
+    <link href="/css/maps.css" rel="stylesheet">
 
     <meta name="google-signin-client_id"
         content="744441358065-749akgj4mmeqic12m749si9dc05hbkv1.apps.googleusercontent.com">
@@ -29,13 +35,13 @@
     <meta name="theme-color" content="#ffffff">
 
     <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-D14HZ6K57M"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=<%= config.google_gtag_analytics %>"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
         function gtag() { dataLayer.push(arguments); }
         gtag('js', new Date());
 
-        gtag('config', 'G-D14HZ6K57M');
+        gtag('config', '<%= config.google_gtag_analytics %>');
     </script>
 
 </head>

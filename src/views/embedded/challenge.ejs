@@ -53,6 +53,7 @@
         }
 
         function errorRecaptcha(err) {
+            if (typeof(err) === 'undefined') err = "google recaptcha error"
             console.error(err)
             window.top.postMessage({ target: "checkbox", from: "challenge", success: false, error: err }, '*')
         }
@@ -110,7 +111,7 @@
 
         function recatpchaOnClose() {
             if (!window.recaptchaSolved) {
-                console.log('recaptcha window has been closed')
+                console.warn('recaptcha window has been closed')
                 window.top.postMessage({ target: "checkbox", from: "challenge", success: false, error: "recaptcha window has been closed" }, '*')
             }
         }

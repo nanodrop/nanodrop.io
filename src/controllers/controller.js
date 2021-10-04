@@ -1,12 +1,15 @@
 require('dotenv/config')
 const api = require('../models/api')
 const rpc = require("../models/nano-wallet/rpc.js")
+const { lastWeek } = require("../models/analytics.js")
 const { createQRCode } = require('../models/qr_code');
 const { toMegaNano } = require("../models/nano-wallet/convert")
 const { deriveKeyPair } = require("../models/nano-wallet/nano-keys")
 const { checkNanoAddress } = require("../models/nano-wallet/check")
-const { dropsCount } = require("../models/data")
+const { dropsCount, walletHistory, countries_drops } = require("../models/data")
 const whitelist = require("../../config/whitelist.json")
+const CONFIG = require("../../config/config.json")
+const { parseURL } = require("../models/utils")
 
 const myAccount = deriveKeyPair(process.env.SEED, parseInt(process.env.INDEX)).address
 const donateQR = createQRCode(myAccount)
@@ -14,12 +17,46 @@ const donateQR = createQRCode(myAccount)
 const OAUTH_CLIENT_ID = process.env.OAUTH_CLIENT_ID
 const RECAPTCHA_V2_SITE_KEY = process.env.RECAPTCHA_V2_SITE_KEY
 const RECAPTCHA_V3_SITE_KEY = process.env.RECAPTCHA_V3_SITE_KEY
+const GTAG_ANALYTICS = process.env.GTAG_ANALYTICS
 
 exports.index = (req, res) => {
+
+  let config = {
+    theme: 'light default-theme'
+  }
+  session = req.session;
+
+  // Define theme
+  if (req.query.theme != undefined) {
+    if (req.query.theme.toLowerCase() == "light" || req.query.theme.toLowerCase() == "dark") {
+      config.theme = req.query.theme.toLowerCase()
+      session.theme = config.theme
+      if (req.query.onlySet != undefined) {
+        res.status(200).json({success: true})
+        return
+      }
+    } else {
+      res.status(400).json({
+        error: "invalid theme"
+      });
+      return
+    }
+  } else if (session.theme != undefined) {
+    if (session.theme.toLowerCase() == "light" || session.theme.toLowerCase() == "dark") {
+      config.theme = session.theme.toLowerCase()
+      session.theme = session.theme // Update cookie
+    }
+  }
+
   res.render('index', {
-    faucet: {
-      account: myAccount
+    config: {
+      rootUrl: CONFIG.url,
+      urlWS: CONFIG.urlWS,
+      faucet: {
+        account: myAccount
+      }
     },
+    google_gtag_analytics: GTAG_ANALYTICS,
     google_reCaptcha: {
       v2: {
         siteKey: RECAPTCHA_V2_SITE_KEY
@@ -27,7 +64,8 @@ exports.index = (req, res) => {
       v3: {
         siteKey: RECAPTCHA_V3_SITE_KEY
       }
-    }
+    },
+    theme: config.theme
   })
 }
 
@@ -75,12 +113,19 @@ exports.ticket = function (req, res) {
 
   if (json.action == "create") {
     const amount = api.dropAmount()
-    const ticket = api.createTicket(amount, ip, account)
-    res.status(200).json({
-      ticket: ticket,
-      amount: amount,
-      megaAmount: toMegaNano(amount)
-    })
+    api.createTicket(amount, ip, account)
+      .then((ticket) => {
+        res.status(200).json({
+          ticket: ticket,
+          amount: amount,
+          megaAmount: toMegaNano(amount)
+        })
+      })
+      .catch((err) => {
+        res.status(400).json({
+          error: err
+        });
+      })
   }
 
 }
@@ -120,9 +165,9 @@ exports.drop = function (req, res) {
 
   if (Object.keys(dropData)) {
     const dropsHistory = dropsCount(dropData)
-    if (dropsHistory.account >= 1) return res.status(400).json({ success: false, error: "limit reached for this account, sorry" })
-    if (dropsHistory.ip >= 7) return res.status(400).json({ success: false, error: "limit reached for this ip, sorry" })
-    if (dropsHistory.email >= 3) return res.status(400).json({ success: false, error: "limit reached for this email, sorry" })
+    if (dropsHistory.account >= CONFIG.limits.account) return res.status(400).json({ success: false, error: "limit reached for this account, sorry" })
+    if (dropsHistory.ip >= CONFIG.limits.ip) return res.status(400).json({ success: false, error: "limit reached for this ip, sorry" })
+    if (dropsHistory.email >= CONFIG.limits.email) return res.status(400).json({ success: false, error: "limit reached for this email, sorry" })
   }
 
   api.drop(json, function (code, response) {
@@ -146,15 +191,16 @@ exports.challenge = (req, res) => {
 exports.checkbox = (req, res) => {
   // Set default config
   let config = {
+    rootUrl: parseURL(CONFIG.url),
     theme: "light"
   }
-  if (req.query.theme != undefined){
-    if (req.query.theme.toLowerCase() == "light" || req.query.theme.toLowerCase() == "dark"){
+  if (req.query.theme != undefined) {
+    if (req.query.theme.toLowerCase() == "light" || req.query.theme.toLowerCase() == "dark") {
       config.theme = req.query.theme.toLowerCase()
     }
   }
   res.render('embedded/checkbox', {
-    config: config
+    config: config,
   })
 }
 
@@ -170,6 +216,7 @@ exports.apiJS = (req, res) => {
 
   // Set default config
   let config = {
+    rootUrl: parseURL(CONFIG.url),
     defaultElRenderName: "nanodrop-checkbox",
     theme: "light",
     render: "default",
@@ -181,8 +228,8 @@ exports.apiJS = (req, res) => {
   }
 
   // Set available configs query
-  if (req.query.theme != undefined){
-    if (req.query.theme.toLowerCase() == "light" || req.query.theme.toLowerCase() == "dark"){
+  if (req.query.theme != undefined) {
+    if (req.query.theme.toLowerCase() == "light" || req.query.theme.toLowerCase() == "dark") {
       config.theme = req.query.theme.toLowerCase()
     } else {
       res.status(400).json({
@@ -190,18 +237,18 @@ exports.apiJS = (req, res) => {
       })
     }
   }
-  if (req.query.onload != undefined){
+  if (req.query.onload != undefined) {
     config.onloadCallback = req.query.onload
   }
-  if (req.query.onsuccess != undefined){
+  if (req.query.onsuccess != undefined) {
     config.onsuccessCallback = req.query.onsuccess
   }
-  if (req.query.onerror != undefined){
+  if (req.query.onerror != undefined) {
     config.onerrorCallback = req.query.onerror
   }
-  if (req.query.render != undefined){
+  if (req.query.render != undefined) {
     config.onloadCallback = req.query.onload
-    if (req.query.render.toLowerCase() == "default" || req.query.render.toLowerCase() == "explicit"){
+    if (req.query.render.toLowerCase() == "default" || req.query.render.toLowerCase() == "explicit") {
       config.render = req.query.render.toLowerCase()
     } else {
       res.status(400).json({
@@ -225,12 +272,42 @@ exports.info = function (req, res) {
 }
 
 exports.history = function (req, res) {
-  rpc.account_history(myAccount)
-    .then((response) => {
-      res.status(200).json(response)
-    }).catch((err) => {
-      res.status(503).json(err)
+
+  // Set available configs query
+  if (req.query.period != undefined) {
+    if (req.query.period.toLowerCase() == "all") {
+      console.log(walletHistory)
+      res.status(200).json(walletHistory)
+    }
+  } else if (req.query.drops != undefined) {
+    if (req.query.drops.toLowerCase() == "bycountry") {
+      let dropsByCountry = {}
+
+      // Get only the size of the IP list, ensuring user privacy
+      for (let countryCode in countries_drops) {
+        dropsByCountry[countryCode] = {
+          "drops": countries_drops[countryCode].drops,
+          "users": countries_drops[countryCode].users.length,
+          "proxyServers": countries_drops[countryCode].proxyServers.length,
+          "proxyUsers": {
+              natives: countries_drops[countryCode].proxyUsers.natives.length,
+              foreigners: countries_drops[countryCode].proxyUsers.foreigners.length
+          }
+        }
+      }
+      res.status(200).json(dropsByCountry)
+    } else if (req.query.drops.toLowerCase() == "weekly") {
+      res.status(200).json(lastWeek())
+    } else {
+      res.status(400).json({
+        error: "invalid query"
+      })
+    }
+  } else {
+    res.status(400).json({
+      error: "invalid period"
     })
+  }
 }
 
 exports.node = function (req, res) {

@@ -1,7 +1,16 @@
 {
+    "url": "https://example.com",
+    "urlWS": "wss://ws.example.com",
     "node": "http://[::1]:7076",
-    "websockets_api": "ws://[::1]:7078",
-    "worker": "http://[::1]:7076",
+    "nodeWS": "ws://[::1]:7078",
+    "worker": "https://[::1]:7076",
     "representative": "nano_3kc8wwut3u8g1kwa6x4drkzu346bdbyqzsn14tmabrpeobn8igksfqkzajbb",
-    "minAmount": "1000000000000000000000000"
+    "percentage": 0.001,
+    "minAmount": "0.000001",
+    "maxAmount": "0.01",
+    "limits": {
+        "account": 1,
+        "ip": 5,
+        "email": 3
+    }
 }

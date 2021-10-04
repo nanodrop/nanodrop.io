@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<%- include("static/head.ejs") %>
+<%- include("static/head.ejs", {config: google_gtag_analytics}) %>
 
-    <body cz-shortcut-listen="true" style="zoom: 1;" class="dark-false">
+    <body cz-shortcut-listen="true" style="zoom: 1;" class="<%- theme %>">
         <!-- partial:index.partial.html -->
         
         <%- include("static/navbar.ejs") %>
@@ -11,6 +11,8 @@
             <%- include("static/faucet.ejs") %>
 
                 <%- include("static/about.ejs") %>
+
+                <%- include("static/charts.ejs") %>
 
                     <%- include("static/paytable.ejs") %>
 
@@ -21,7 +23,7 @@
                                 <%- include("static/footer.ejs") %>
 
 
-                                    <script id="google_reCaptcha_credentials_declaration">
+                                    <script>
                                         const google_reCaptcha = {
                                             v2: {
                                                 siteKey: "<%- google_reCaptcha.v2.siteKey %>"
@@ -30,8 +32,12 @@
                                                 siteKey: "<%- google_reCaptcha.v3.siteKey %>"
                                             }
                                         }
-                                        const faucet = {
-                                            account: "<%- faucet.account %>"
+                                        const CONFIG = {
+                                            rootUrl: "<%- config.rootUrl %>",
+                                            urlWS: "<%- config.urlWS %>",
+                                            faucet: {
+                                                account: "<%- config.faucet.account %>"
+                                            }
                                         }
                                     </script>
 
