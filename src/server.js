@@ -1,16 +1,19 @@
 require('dotenv/config')
 const express = require('express')
-const bodyParser = require('body-parser');
+const cookieParser = require("cookie-parser")
+const sessions = require('express-session')
+const bodyParser = require('body-parser')
 const cors = require('cors')
-const path = require('path');
+const path = require('path')
 const WebSocket = require('ws')
 const { accounts_monitor } = require('./models/nano_websockets')
 const { deriveKeyPair } = require('./models/nano-wallet/nano-keys')
 
 const myAccount = deriveKeyPair(process.env.SEED, parseInt(process.env.INDEX)).address
+const SESSION_SECRET = process.env.SESSION_SECRET
 
-const http_port = 3000
-const ws_port = 3001
+const http_port = 4000
+const ws_port = 4001
 
 const startServer = function () {
 
@@ -26,6 +29,18 @@ const startServer = function () {
   app.set('view engine', 'ejs');
 
   app.use(bodyParser.text({ inflate: true, limit: '4kb', type: '*/*' }));
+
+  //session middleware
+  app.use(sessions({
+    secret: SESSION_SECRET,
+    saveUninitialized: true,
+    cookie: { maxAge: 1000 * 60 * 60 * 24 * 365 }, // 1 year
+    resave: false
+  }));
+
+  // cookie parser middleware
+  app.use(cookieParser());
+
 
   const routes = require('./routes/routes');
   app.use("/", routes)
@@ -63,10 +78,10 @@ const startWSServer = function () {
         data = JSON.parse(msg)
         if ("topic" in data && data.topic == "confirmation") {
 
-            // Start monitoring and repeat msgs for client
-            accounts_monitor([myAccount], function (res) {
-              socket.send(JSON.stringify(res))
-            })
+          // Start monitoring and repeat msgs for client
+          accounts_monitor([myAccount], function (res) {
+            socket.send(JSON.stringify(res))
+          })
 
         } else {
           socket.send(JSON.stringify({ error: "invalid topic" }))

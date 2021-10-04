@@ -14,16 +14,18 @@ function waitForSync(i = 0) {
     const attemps = 20
     return new Promise((resolve, reject) => {
         wallet.sync()
-            .then((res) => { resolve(res) })
+            .then((res) => resolve(res))
             .catch((err) => {
                 console.error("Wallet Sync Failed: " + formatError(err))
                 if (attemps - i == 0) {
                     console.info("Attempts exceeded!. Exiting...")
                     exit()
                 }
-                console.log("Trying again in 30 seconds")
+                console.log("Trying again in " + wait_seconds + " seconds")
                 setTimeout(function () {
                     waitForSync(i++)
+                        .then((res) => resolve(res))
+                        .catch((err) => reject(err))
                 }, wait_seconds * 1000)
             })
     })
