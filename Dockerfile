@@ -6,12 +6,6 @@ LABEL Description="Open Source and Embedded Nano Faucet" \
 
 WORKDIR /usr/src/app
 
-# Copy source files
-COPY ./src ./src
-COPY ./data ./data
-COPY ./config ./config
-COPY ./.env ./.env
-
 # Prepare environment
 COPY ./package*.json ./
 RUN npm install

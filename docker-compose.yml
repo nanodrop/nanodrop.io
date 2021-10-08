@@ -7,5 +7,4 @@ services:
     restart: unless-stopped
     network_mode: host
     volumes:
-      - ./data:/usr/src/app/data
-      - ./config:/usr/src/app/config
+      - ./:/usr/src/app/
