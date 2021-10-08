@@ -368,7 +368,7 @@
         window.onload = function () {
             document.body.style.opacity = 1
             if (!checkPermission()) {
-                checkboxError("Require access at: contact@nanodrop.io", "Access Denied")
+                checkboxError("Require access at: <%= config.contact %>", "Access Denied")
             } else {
                 msgListener()
                 onMessage()

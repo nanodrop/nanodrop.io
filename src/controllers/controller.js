@@ -22,7 +22,7 @@ const GTAG_ANALYTICS = process.env.GTAG_ANALYTICS
 exports.index = (req, res) => {
 
   let config = {
-    theme: 'light default-theme'
+    theme: 'light default-theme',
   }
   session = req.session;
 
@@ -65,7 +65,8 @@ exports.index = (req, res) => {
         siteKey: RECAPTCHA_V3_SITE_KEY
       }
     },
-    theme: config.theme
+    theme: config.theme,
+    contact: CONFIG.contact
   })
 }
 
@@ -192,7 +193,8 @@ exports.checkbox = (req, res) => {
   // Set default config
   let config = {
     rootUrl: parseURL(CONFIG.url),
-    theme: "light"
+    theme: "light",
+    contact: CONFIG.contact
   }
   if (req.query.theme != undefined) {
     if (req.query.theme.toLowerCase() == "light" || req.query.theme.toLowerCase() == "dark") {

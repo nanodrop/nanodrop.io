@@ -12,5 +12,6 @@
         "account": 1,
         "ip": 5,
         "email": 3
-    }
+    },
+    "contact": "contact@example.com"
 }
