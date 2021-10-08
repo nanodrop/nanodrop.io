@@ -1,31 +1,124 @@
 const axios = require("axios")
-const { node, worker, minAmount } = require("../../../config/config.json")
+const { nodes, workers, minAmount } = require("../../../config/config.json")
 const { BASE_DIFFICULTY, BASE_DIFFICULTY_RECEIVE, work_validate } = require('./work')
 const { TunedBigNumber, toRaws } = require('./convert')
 
 const MIN_AMOUNT = toRaws(minAmount)
 
-const postRPC = function (data, nodeAddress = node) {
-    if (typeof (nodeAddresses) == "string") nodeAddresses = [nodeAddresses]
-    return new Promise(async function (resolve, reject) {
-        let i = 0
-        await axios.post(nodeAddress, data)
+let node_counter = 0
+// If there is one more address after the current one, return it. Otherwise back to the first (0)
+function nextNode() {
+    (node_counter + 1) > (nodes.length - 1) ? node_counter = 0 : node_counter++
+}
+
+/*
+    With a fallback we rely on alternative nodes when the first one has some error such as: 
+        - Not responding
+        - Returns a server error
+        - Returns an invalid format response.
+    As the method Promise.any is only supported in node.js >= v15.0, so let's create an alternative function
+    But instead of an array, we use an object to identify the URL of each promise.
+*/
+const rpcFallback = (data, urls = nodes, count = 1) => {
+    return new Promise((resolve, reject) => {
+
+        const sleep = (ms) => {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        let requests = {}, result = { fulfilled: [], rejected: [] }
+
+        // Resolve with the first fulfilled promise or push rejected promises
+        for (let i = 0; i < urls.length; i++) {
+            requests[urls[i]] = postRPC(data, urls[i], true)
+            requests[urls[i]]
+                .then((res) => {
+                    result.fulfilled.length ? null : resolve(res)
+                    result.fulfilled.push(res)
+                }).catch((err) => result.rejected.push(err))
+        }
+
+        // Reject with the first url error if all promises were rejected
+        Promise.allSettled(Object.values(requests))
+            .then(() => {
+                if (result.rejected.length == Object.keys(requests).length) {
+                    if (count < FALLBACK_TRIES) {
+                        count++
+                        sleep(FALLBACK_SLEEP)
+                            .then(() => {
+                                rpcFallback(data, urls, count)
+                                    .then(resolve)
+                                    .catch(reject)
+                            })
+                    } else {
+                        requests[urls[0]]
+                            .catch((defaultErr) => {
+                                reject(defaultErr)
+                            })
+                    }
+                }
+            })
+
+    })
+}
+
+const postRPC = (data, nodeAddresses = nodes) => {
+    return new Promise((resolve, reject) => {
+
+        // By defautl, postRPC receive a list of rpc node addresses.
+        // But in fallback, it receives a single node address
+        // Sometimes the url will be an RPC node, sometimes a worker.
+        let nodeAddress, fallbacking
+        if (typeof(nodeAddresses) == "object") {
+            fallbacking = false
+            nodeAddress = nodeAddresses[0]
+        } else if (typeof(nodeAddresses) == "string") {
+            fallbacking = true
+            nodeAddress = nodeAddresses
+        }
+
+        axios({
+            method: "post",
+            url: nodeAddress,
+            timeout: TIMEOUT,
+            headers: {
+                "Content-Type": "application/json"
+            },
+            data: data
+        })
             .then((res) => {
                 if (typeof res.data === 'object') {
                     if ("error" in res.data) {
+                        console.error("Node Error " + JSON.stringify(res.data.error))
                         reject(res.data)
                     } else {
                         resolve(res.data)
                     }
                 } else {
-                    reject("invalid node response")
+                    console.error(`Invalid node response (${nodeAddress})`)
+                    if (!fallbacking, nodeAddresses) {
+                        rpcFallback(data)
+                            .then(resolve)
+                            .catch(reject)
+                    } else {
+                        reject("Invalid node response")
+                    }
                 }
             }).catch((err) => {
                 if (err.response) {
-                    reject(err.response.data);
+                    console.error(`Node Response Error (${nodeAddress}): ${JSON.stringify(err.response.data)}`)
+                    reject(err.response.data)
                 } else if (err.request) {
-                    reject("no response from node")
+                    console.error(`No response from node (${nodeAddress})`)
+                    if (!fallbacking) {
+                        rpcFallback(data, nodeAddresses)
+                            .then(resolve)
+                            .catch(reject)
+                    } else {
+                        reject("No response from node")
+                    }
                 } else {
+                    console.error(`Node Response Error (${nodeAddress}): ${JSON.stringify(err.message)}`)
                     reject(err.message)
                 }
             })
@@ -260,7 +353,7 @@ function work_generate(hash, difficulty = BASE_DIFFICULTY) {
             hash: hash,
             difficulty: difficulty
         }
-        postRPC(data, worker)
+        postRPC(data, workers)
             .then((res) => {
                 resolve(res)
             }).catch((err) => {
