@@ -4,6 +4,9 @@ const { BASE_DIFFICULTY, BASE_DIFFICULTY_RECEIVE, work_validate } = require('./w
 const { TunedBigNumber, toRaws } = require('./convert')
 
 const MIN_AMOUNT = toRaws(minAmount)
+const TIMEOUT = 1000 * 5 // 5 seconds
+const FALLBACK_TRIES = 3
+const FALLBACK_SLEEP = 1000 * 5 // 5 seconds
 
 let node_counter = 0
 // If there is one more address after the current one, return it. Otherwise back to the first (0)
