@@ -147,10 +147,14 @@ function syncHistory() {
                     reverse: true
                 })
                     .then((history) => {
-                        if (updateWalletHistory(history)) {
-                            resolve()
+                        if (history.length){
+                            if (updateWalletHistory(history)) {
+                                resolve()
+                            } else {
+                                reject("history saving error")
+                            }
                         } else {
-                            reject("history saving error")
+                            resolve()
                         }
                     })
                     .catch((err) => reject(err))
@@ -164,10 +168,14 @@ function syncHistory() {
                 reverse: true
             })
                 .then((history) => {
-                    if (updateWalletHistory(history)) {
-                        resolve()
+                    if (history.length){
+                        if (updateWalletHistory(history)) {
+                            resolve()
+                        } else {
+                            reject("history saving error")
+                        }
                     } else {
-                        reject("history saving error")
+                        resolve()
                     }
                 })
                 .catch((err) => reject(err))

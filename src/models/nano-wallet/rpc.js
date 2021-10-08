@@ -72,10 +72,10 @@ const postRPC = (data, nodeAddresses = nodes) => {
         // But in fallback, it receives a single node address
         // Sometimes the url will be an RPC node, sometimes a worker.
         let nodeAddress, fallbacking
-        if (typeof(nodeAddresses) == "object") {
+        if (typeof (nodeAddresses) == "object") {
             fallbacking = false
             nodeAddress = nodeAddresses[0]
-        } else if (typeof(nodeAddresses) == "string") {
+        } else if (typeof (nodeAddresses) == "string") {
             fallbacking = true
             nodeAddress = nodeAddresses
         }
@@ -92,7 +92,7 @@ const postRPC = (data, nodeAddresses = nodes) => {
             .then((res) => {
                 if (typeof res.data === 'object') {
                     if ("error" in res.data) {
-                        console.error("Node Error " + JSON.stringify(res.data.error))
+                        console.error("Error " + JSON.stringify(res.data.error))
                         reject(res.data)
                     } else {
                         resolve(res.data)
@@ -140,23 +140,17 @@ function balance_history(account) {
                     amount = pendings[blockHash]
                     pending_valid = TunedBigNumber(pending_valid).plus(amount).toString(10)
                 }
-                
-                const data = {
-                    "action": "account_history",
-                    "account": account,
-                    "count": -1,
-                    "raw": true
-                }
-                postRPC(data)
-                    .then((res) => {
-                        if ("history" in res && res.history != "") {
+
+                account_history(account, { "raw": true })
+                    .then((history) => {
+                        if (history != "") {
                             try {
-                                for (let i in res.history) {
-                                    block = res.history[i]
+                                for (let i in history) {
+                                    block = history[i]
                                     if (block.subtype == "receive") total_received = TunedBigNumber(total_received).plus(block.amount).toString(10)
                                     if (block.subtype == "send") total_sent = TunedBigNumber(total_sent).plus(block.amount).toString(10)
                                 }
-                                resolve({ balance: res.history[0].balance, pending_valid: pending_valid, total_received: total_received, total_sent: total_sent })
+                                resolve({ balance: history[0].balance, pending_valid: pending_valid, total_received: total_received, total_sent: total_sent })
                             } catch (err) {
                                 reject(err)
                             }
@@ -211,7 +205,8 @@ function account_info(account) {
                 }
             })
             .catch((err) => {
-                if (typeof(err) === "object" && "error" in err && err.error.includes("Account not found")) {
+
+                if (typeof (err) === "object" && "error" in err && err.error.includes("Account not found")) {
 
                     let info = {
                         account: account,
@@ -277,7 +272,11 @@ function account_history(account, options = false) {
                     reject(err)
                 }
             }).catch((err) => {
-                reject(err)
+                if (typeof (err) === "object" && "error" in err && err.error.includes("Account not found")) {
+                    resolve("")
+                } else {
+                    reject(err)
+                }
             })
     })
 }

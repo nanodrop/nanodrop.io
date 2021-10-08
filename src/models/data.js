@@ -194,6 +194,7 @@ function dropsCount(data){
 module.exports = {
     walletInfo,
     walletHistory,
+    ip_list,
     updateIPList,
     updateNanoAccountsList,
     updateEmailsList,

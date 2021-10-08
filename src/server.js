@@ -12,8 +12,8 @@ const { deriveKeyPair } = require('./models/nano-wallet/nano-keys')
 const myAccount = deriveKeyPair(process.env.SEED, parseInt(process.env.INDEX)).address
 const SESSION_SECRET = process.env.SESSION_SECRET
 
-const http_port = 4000
-const ws_port = 4001
+const http_port = 3000
+const ws_port = 3001
 
 const startServer = function () {
 

@@ -1,4 +1,4 @@
-const info = require("../../data/final.json")
+const info = require("./data").ip_list
 const axios = require("axios")
 const fs = require('fs');
 
