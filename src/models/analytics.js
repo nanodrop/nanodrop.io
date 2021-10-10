@@ -2,7 +2,7 @@ const info = require("./data").ip_list
 const axios = require("axios")
 const fs = require('fs');
 
-exports.lastWeek = () => {
+const lastWeek = () => {
     const rangeTime = 1000 * 60 * 60 * 24 * 7 // 1 week in ms
     const date = new Date() // current date
     const currentTime = date.getTime() - (1000 * 60 * 60 * 24 * 9) // timestamp in ms
@@ -34,7 +34,7 @@ exports.lastWeek = () => {
     return drops
 }
 
-exports.ipInfo = (ip, fallback = false) => {
+const ipInfo = (ip, fallback = false) => {
     return new Promise((resolve, reject) => {
 
         // Default API
@@ -116,4 +116,9 @@ exports.ipInfo = (ip, fallback = false) => {
                 }
             })
     })
+}
+
+module.exports = {
+    lastWeek,
+    ipInfo
 }
