@@ -86,9 +86,9 @@ function updateNanoAccountsList(account){
     updateFile(filesPath.drops.nanoAccounts, nanoAccounts_list)    
 }
 
-function updateIPList(ip){
+function updateIPList(ip, ts = timestamp()) {
     if (! (ip in ip_list)) ip_list[ip] = []
-    ip_list[ip].push(timestamp())
+    ip_list[ip].push(ts)
     updateFile(filesPath.drops.ipList, ip_list)
 }
 
