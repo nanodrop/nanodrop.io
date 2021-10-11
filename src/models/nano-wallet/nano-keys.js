@@ -122,6 +122,7 @@ module.exports = {
   createRandomSeed,
   parseNanoAddress,
   deriveKeyPair,
+  deriveAddress,
   derivePublicKey,
   signBlock,
   hexToByteArray,
