@@ -50,10 +50,6 @@ function parseNanoAddress(address) {
   }
 }
 
-function blakeChecksum(hash){
-  return byteArrayToHex(blake2b(hexToByteArray(hash), null, 5).reverse())
-}
-
 function deriveSecretKey(seed, index) {
 
   const seedBytes = hexToByteArray(seed)
@@ -93,6 +89,9 @@ function createRandomSeed() {
   return byteArrayToHex(random_seed)
 }
 
+function blakeChecksum(hash){
+  return byteArrayToHex(blake2b(hexToByteArray(hash), null, 5).reverse())
+}
 
 function rawsToHex(raws) {
   return TunedBigNumber(raws).toString(16).padStart(32, '0')
@@ -123,6 +122,7 @@ module.exports = {
   createRandomSeed,
   parseNanoAddress,
   deriveKeyPair,
+  derivePublicKey,
   signBlock,
   hexToByteArray,
   byteArrayToHex,
