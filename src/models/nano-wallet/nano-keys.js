@@ -19,9 +19,8 @@ function signBlock(hash, secretKey)  {
   return byteArrayToHex(signatureBytes)
 }
 
-function deriveAddress(publicKey, prefix) {
+function deriveAddress(publicKey, prefix = "nano_") {
   if (!checkKey(publicKey)) throw new Error('Public key is not valid')
-  if (!prefix) prefix = "nano_"
   const publicKeyBytes = hexToByteArray(publicKey)
   const paddedPublicKeyBytes = hexToByteArray(publicKey)
   const encodedPublicKey = encodeNanoBase32(paddedPublicKeyBytes)

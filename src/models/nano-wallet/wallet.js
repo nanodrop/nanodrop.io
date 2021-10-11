@@ -3,7 +3,7 @@ const path = require('path')
 const fs = require('fs')
 require('dotenv/config')
 
-const { deriveKeyPair, verifyBlock, parseNanoAddress } = require("./nano-keys")
+const { deriveKeyPair, deriveAddress, derivePublicKey } = require("./nano-keys")
 const { createBlock, hashBlock } = require("./block")
 const { getWork } = require("./work")
 const rpc = require("./rpc");
@@ -12,7 +12,7 @@ const { toMegaNano, TunedBigNumber } = require('./convert')
 const { accounts_monitor } = require('../nano_websockets')
 const { updateWalletInfo, walletInfo, walletHistory, updateWalletHistory } = require('../data')
 
-const { sleep } = require('../utils.js')
+const { sleep, CustomError } = require('../utils.js')
 
 const config = require(path.join(__dirname, '../../../config/config.json'))
 let info = { ...walletInfo }
@@ -20,14 +20,31 @@ let info = { ...walletInfo }
 let myWallet = {}
 function deriveWallet() {
     try {
-        const keyPair = deriveKeyPair(process.env.SEED, parseInt(process.env.INDEX))
+        let keyPair = {}
+        if (checkKey(process.env.PRIVATE_KEY)) {
+            keyPair.privateKey = process.env.PRIVATE_KEY
+            keyPair.publicKey = derivePublicKey(process.env.PRIVATE_KEY)
+            keyPair.account = deriveAddress(keyPair.publicKey)
+        } else {
+            if (!isNaN(process.env.INDEX) && checkIndex(parseInt(process.env.INDEX))) {
+                if (checkKey(process.env.SEED)) {
+                    keyPair = deriveKeyPair(process.env.SEED, parseInt(process.env.INDEX))
+                } else {
+                    throw new Error("Invalid SEED in env file")
+                }
+            } else {
+                throw new Error("Invalid INDEX in env file")
+            }
+        }
         myWallet.account = keyPair.address
         myWallet.privateKey = keyPair.privateKey
         myWallet.publicKey = keyPair.publicKey
-        return myWallet.account
-    } catch (err) {
-        console.error("Error deriving wallet")
-        throw new Error(err)
+        return {
+            account: myWallet.account,
+            publicKey: myWallet.publicKey
+        }
+    } catch (e) {
+        throw new CustomError("Deriving wallet", e.message)
     }
 }
 
@@ -147,7 +164,7 @@ function syncHistory() {
                     reverse: true
                 })
                     .then((history) => {
-                        if (history.length){
+                        if (history.length) {
                             if (updateWalletHistory(history)) {
                                 resolve()
                             } else {
@@ -168,7 +185,7 @@ function syncHistory() {
                 reverse: true
             })
                 .then((history) => {
-                    if (history.length){
+                    if (history.length) {
                         if (updateWalletHistory(history)) {
                             resolve()
                         } else {

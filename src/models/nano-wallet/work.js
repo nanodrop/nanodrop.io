@@ -1,9 +1,6 @@
-require('dotenv/config')
+require('dotenv/config');
 const path = require('path');
 const blake2b = require('blakejs').blake2b;
-const { deriveKeyPair } = require("./nano-keys")
-
-const publicKey = deriveKeyPair(process.env.SEED, parseInt(process.env.INDEX)).publicKey
 
 const BASE_DIFFICULTY = "fffffff800000000"
 const BASE_DIFFICULTY_RECEIVE = "fffffffe00000000"
@@ -53,7 +50,8 @@ let currentWork = {
 
 function getWork(hash, type = "all"){
     if (hash == "0000000000000000000000000000000000000000000000000000000000000000"){
-        hash = publicKey
+        const { deriveWallet } = require('./wallet')
+        hash = deriveWallet().publicKey
     }
     return new Promise((resolve, reject) => {
         if (currentWork.hash == hash && (currentWork.type == "all" || currentWork.type == type)) {

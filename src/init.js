@@ -34,8 +34,8 @@ function waitForSync(i = 0) {
 async function init() {
     try {
 
-        const account = wallet.deriveWallet()
-        console.info("Imported account: " + account)
+        const FAUCET_ACCOUNT = wallet.deriveWallet().account
+        console.info("Imported account: " + FAUCET_ACCOUNT)
 
         await waitForSync()
         console.info("Wallet Sync Ok!")

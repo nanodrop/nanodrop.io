@@ -7,9 +7,9 @@ const cors = require('cors')
 const path = require('path')
 const WebSocket = require('ws')
 const { accounts_monitor } = require('./models/nano_websockets')
-const { deriveKeyPair } = require('./models/nano-wallet/nano-keys')
+const { deriveWallet } = require('./models/nano-wallet/wallet.js')
 
-const myAccount = deriveKeyPair(process.env.SEED, parseInt(process.env.INDEX)).address
+const FAUCET_ACCOUNT = deriveWallet().account
 const SESSION_SECRET = process.env.SESSION_SECRET
 
 const http_port = 3000
@@ -79,7 +79,7 @@ const startWSServer = function () {
         if ("topic" in data && data.topic == "confirmation") {
 
           // Start monitoring and repeat msgs for client
-          accounts_monitor([myAccount], function (res) {
+          accounts_monitor([FAUCET_ACCOUNT], function (res) {
             socket.send(JSON.stringify(res))
           })
 

@@ -4,15 +4,16 @@ const rpc = require("../models/nano-wallet/rpc.js")
 const { lastWeek } = require("../models/analytics.js")
 const { createQRCode } = require('../models/qr_code');
 const { toMegaNano } = require("../models/nano-wallet/convert")
-const { deriveKeyPair } = require("../models/nano-wallet/nano-keys")
 const { checkNanoAddress } = require("../models/nano-wallet/check")
 const { dropsCount, walletHistory, countries_drops } = require("../models/data")
 const whitelist = require("../../config/whitelist.json")
 const CONFIG = require("../../config/config.json")
 const { parseURL } = require("../models/utils")
+const { deriveWallet } = require('../models/nano-wallet/wallet.js')
 
-const myAccount = deriveKeyPair(process.env.SEED, parseInt(process.env.INDEX)).address
-const donateQR = createQRCode(myAccount)
+const FAUCET_ACCOUNT = deriveWallet().account
+
+const donateQR = createQRCode(FAUCET_ACCOUNT)
 
 const OAUTH_CLIENT_ID = process.env.OAUTH_CLIENT_ID
 const RECAPTCHA_V2_SITE_KEY = process.env.RECAPTCHA_V2_SITE_KEY
@@ -53,7 +54,7 @@ exports.index = (req, res) => {
       rootUrl: CONFIG.url,
       urlWS: CONFIG.urlWS,
       faucet: {
-        account: myAccount
+        account: FAUCET_ACCOUNT
       }
     },
     google_gtag_analytics: GTAG_ANALYTICS,
@@ -313,7 +314,7 @@ exports.history = function (req, res) {
 }
 
 exports.node = function (req, res) {
-  rpc.telemetry(myAccount)
+  rpc.telemetry(FAUCET_ACCOUNT)
     .then((response) => {
       res.status(200).json(response)
     }).catch((err) => {

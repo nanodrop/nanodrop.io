@@ -12,3 +12,13 @@ exports.sleep = (ms) => {
 exports.timestamp = () => {
     return Date.now()
 }
+
+// Cria um novo objeto que herda o construtor de Error através do prototype.
+function CustomError(name, message) {
+    this.name = name || 'Error';
+    this.message = message || "Check log!";
+  }
+  CustomError.prototype = Object.create(CustomError.prototype);
+  CustomError.prototype.constructor = CustomError;
+
+exports.CustomError = CustomError
