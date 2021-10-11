@@ -24,7 +24,7 @@ function deriveWallet() {
         if (checkKey(process.env.PRIVATE_KEY)) {
             keyPair.privateKey = process.env.PRIVATE_KEY
             keyPair.publicKey = derivePublicKey(process.env.PRIVATE_KEY)
-            keyPair.account = deriveAddress(keyPair.publicKey)
+            keyPair.address = deriveAddress(keyPair.publicKey)
         } else {
             if (!isNaN(process.env.INDEX) && checkIndex(parseInt(process.env.INDEX))) {
                 if (checkKey(process.env.SEED)) {
