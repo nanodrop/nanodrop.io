@@ -80,9 +80,9 @@ function updateWalletHistory(data){
     return true   
 }
 
-function updateNanoAccountsList(account){
+function updateNanoAccountsList(account, ts = timestamp()){
     if (!(account in nanoAccounts_list)) nanoAccounts_list[account] = []
-    nanoAccounts_list[account].push(timestamp())
+    nanoAccounts_list[account].push(ts)
     updateFile(filesPath.drops.nanoAccounts, nanoAccounts_list)    
 }
 
@@ -92,9 +92,9 @@ function updateIPList(ip, ts = timestamp()) {
     updateFile(filesPath.drops.ipList, ip_list)
 }
 
-function updateEmailsList(email){
+function updateEmailsList(email, ts = timestamp()){
     if (! (email in emails_list)) emails_list[email] = []
-    emails_list[email].push(timestamp())
+    emails_list[email].push(ts)
     updateFile(filesPath.drops.emails, emails_list)  
 }
 
