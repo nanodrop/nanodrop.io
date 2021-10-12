@@ -1,0 +1,12 @@
+<script>
+    function checkPermission() {
+
+        const hostnameFromUrl = (url) => new URL(url).hostname;
+
+        // Can only be loaded as iframe
+        if (window.location.href == window.parent.location.href) return false
+
+        // Check if parent host has permission
+        return window.parent.location.hostname != hostnameFromUrl("<%= config.rootUrl %>") ? false : true
+    }
+</script>

@@ -241,23 +241,26 @@ body {
 .nd-anchor-logo-img {
     background: url("/icons/favicon-32x32.png");
     background-repeat: no-repeat;
-    opacity: 0.75;
 }
 
 .nd-anchor-logo-img-portrait {
     background-size: 32px;
     height: 32px;
-    margin: 0 13px 0 13px;
     width: 32px;
+    margin: 0 13px 0 13px;
 }
 
 .nd-anchor-light .nd-anchor-logo-text,
+.nd-anchor-light .nd-anchor-logo-text-refresh,
+.nd-anchor-light .nd-anchor-logo-text-refreshing,
 .nd-anchor-light div a:link,
 .nd-anchor-light div a:visited {
     color: #777;
 }
 
-.nd-anchor-logo-text {
+.nd-anchor-logo-text,
+.nd-anchor-light .nd-anchor-logo-text-refresh,
+.nd-anchor-light .nd-anchor-logo-text-refreshing {
     cursor: default;
     font-family: Roboto, helvetica, arial, sans-serif;
     font-size: 10px;
@@ -365,6 +368,37 @@ body {
     color: #777;
 }
 
+/* Refresh Checkbox */
+
+.checkbox-refresh .nd-anchor-footer {
+    cursor: pointer;
+}
+
+.nd-anchor-logo-text-refresh, .nd-anchor-logo-text-refreshing {
+    display: none;
+}
+
+.checkbox-refresh .nd-anchor-logo-text, .checkbox-refreshing .nd-anchor-logo-text {
+    display: none;
+}
+
+.checkbox-refresh .nd-anchor-logo-text-refresh, .checkbox-refreshing .nd-anchor-logo-text-refreshing  {
+    display: block;
+}
+
+.checkbox-refresh .nd-anchor-logo-img, .checkbox-refreshing .nd-anchor-logo-img {
+    background: url("/assets/refresh.png");
+    background-size: 32px;
+    height: 32px;
+    width: 32px;
+}
+
+.checkbox-refreshing .nd-anchor-logo-img {
+    animation: spinner-spin linear 2.5s infinite;
+    transition-duration: 1s;
+    background-repeat: no-repeat;
+}
+
 /* Dark mode */
 
 .nd-anchor-dark {
@@ -377,7 +411,11 @@ body {
     color: #eee;
 }
 
-.nd-anchor-dark .nd-anchor-logo-text, .nd-anchor-dark div a:link, .nd-anchor-dark div a:visited {
+.nd-anchor-dark .nd-anchor-logo-text,
+.nd-anchor-dark .nd-anchor-logo-text-refresh,
+.nd-anchor-dark .nd-anchor-logo-text-refreshing,
+.nd-anchor-dark div a:link,
+.nd-anchor-dark div a:visited {
     color: #aaa;
 }
 
