@@ -1,6 +1,4 @@
-const BigNumber = require('bignumber.js')
 const path = require('path')
-const fs = require('fs')
 require('dotenv/config')
 
 const { deriveKeyPair, deriveAddress, derivePublicKey } = require("./nano-keys")
@@ -8,7 +6,7 @@ const { createBlock, hashBlock } = require("./block")
 const { getWork } = require("./work")
 const rpc = require("./rpc");
 const { checkKey, checkIndex } = require('./check');
-const { toMegaNano, TunedBigNumber } = require('./convert')
+const { toMegaNano, toRaws, TunedBigNumber } = require('./convert')
 const { accounts_monitor } = require('../nano_websockets')
 const { updateWalletInfo, walletInfo, walletHistory, updateWalletHistory } = require('../data')
 
@@ -16,6 +14,8 @@ const { sleep, CustomError } = require('../utils.js')
 
 const config = require(path.join(__dirname, '../../../config/config.json'))
 let info = { ...walletInfo }
+
+const MIN_AMOUNT = toRaws(config.minAmount)
 
 let myWallet = {}
 function deriveWallet() {
@@ -48,10 +48,10 @@ function deriveWallet() {
     }
 }
 
-function receive(blockHash, amount) {
+function receive(blockHash, amount, syncing = false) {
     console.info("Receiving " + toMegaNano(amount) + " Nano. Block: " + blockHash)
     return new Promise((resolve, reject) => {
-        const newBalance = BigNumber(info.balance).plus(amount).toString(10)
+        const newBalance = TunedBigNumber(info.balance).plus(amount).toString(10)
         const receiveBlock = createBlock({
             account: myWallet.account,
             balance: newBalance,
@@ -66,10 +66,10 @@ function receive(blockHash, amount) {
                     .then((res) => {
 
                         // Update wallet info
-                        info.pending -= amount
+                        info.pending = TunedBigNumber(info.pending).minus(amount).toString(10)
                         info.balance = newBalance
                         info.frontier = receiveBlock.hash
-                        info.total_received = BigNumber(info.total_received).plus(amount).toString(10)
+                        info.total_received = TunedBigNumber(info.total_received).plus(amount).toString(10)
                         updateWalletInfo(info)
 
                         // Get more info from node (like local_timestamp) and save block in history
@@ -77,31 +77,29 @@ function receive(blockHash, amount) {
                             .then((res) => updateWalletHistory([res]))
                             .catch((err) => console.error(err))
 
-                        // Cache PoW
-                        getWork(sendBlock.hash)
-                            .then((res) => {
-                                console.info("Next work pre-cached!")
-                            })
-                            .catch((err) => {
-                                console.info("Error pre-caching...")
-                            })
+                        if (!syncing) {
+                            // Cache PoW
+                            getWork(receiveBlock.hash)
+                                .then((res) => {
+                                    console.info("Next work pre-cached!")
+                                })
+                                .catch((err) => {
+                                    console.info("Error pre-caching...")
+                                })
+                        }
 
                         resolve({ hash: receiveBlock.hash, amount: amount })
                     })
-                    .catch((err) => {
-                        reject("Error broadcasting: " + JSON.stringify(err))
-                    })
+                    .catch((err) => reject("Error broadcasting: " + JSON.stringify(err)))
             })
-            .catch((err) => {
-                reject("Error in Proof of Work: " + JSON.stringify(err))
-            })
+            .catch((err) => reject("Error in Proof of Work: " + JSON.stringify(err)))
     })
 }
 
 function send(to, amount) {
     console.info("Sending " + toMegaNano(amount) + " Nano to " + to)
     return new Promise((resolve, reject) => {
-        const newBalance = BigNumber(info.balance).minus(amount).toString(10)
+        const newBalance = TunedBigNumber(info.balance).minus(amount).toString(10)
         const sendBlock = createBlock({
             account: myWallet.account,
             balance: newBalance,
@@ -119,7 +117,7 @@ function send(to, amount) {
                             // update wallet info
                             info.balance = newBalance
                             info.frontier = sendBlock.hash
-                            info.total_sent = BigNumber(info.total_sent).plus(amount).toString(10)
+                            info.total_sent = TunedBigNumber(info.total_sent).plus(amount).toString(10)
                             updateWalletInfo(info)
 
                             // Get more info from node (like local_timestamp) and save block in history
@@ -141,13 +139,9 @@ function send(to, amount) {
                             reject("Invalid response broadcasting")
                         }
                     })
-                    .catch((err) => {
-                        reject("Error broadcasting: " + JSON.stringify(err))
-                    })
+                    .catch((err) => reject("Error broadcasting: " + JSON.stringify(err)))
             })
-            .catch((err) => {
-                reject("Error in Proof of Work: " + JSON.stringify(err))
-            })
+            .catch((err) => reject("Error in Proof of Work: " + JSON.stringify(err)))
     })
 }
 
@@ -203,15 +197,16 @@ function syncHistory() {
 // If there is pending balance,
 // receives tx with amounts greater than minimum
 function receivePendings() {
-    if (info.pending >= config.minAmount && info.pending != old_pending) {
-        rpc.pending_blocks(myWallet.account, config.minAmount)
+    if (TunedBigNumber(info.pending_valid).isGreaterThanOrEqualTo(MIN_AMOUNT)) {
+        rpc.pending_blocks(myWallet.account, MIN_AMOUNT)
             .then(async function (blocks) {
                 let received = 0
                 for (let hash in blocks) {
                     let amount = blocks[hash]
-                    await receive(hash, amount)
+                    await receive(hash, amount, true)
                         .then((res) => {
                             received++
+                            info.pending_valid = TunedBigNumber(info.pending_valid).minus(amount)
                             console.info("Received " + toMegaNano(amount) + " Nano! Hash: " + res.hash)
 
                             //pre cache next work, if exists more pending blocks use DIFFICULTY_RECEIVE
@@ -243,14 +238,13 @@ async function sync() {
 
         console.info("Syncing Wallet...")
 
-        let old_pending = info.pending
-
         rpc.account_info(myWallet.account)
             .then((res) => {
 
                 // Save wallet state
                 info.balance = res.balance
                 info.pending = res.pending
+                info.pending_valid = res.pending_valid
                 info.frontier = res.frontier
                 info.representative = res.representative
                 info.total_received = res.total_received
@@ -266,7 +260,7 @@ async function sync() {
                         resolve()
                         receivePendings()
                     })
-                    .catch((err) => reject(err))
+                    .catch(reject)
             })
             .catch((err) => {
                 if (err == "Account not found") {
@@ -286,7 +280,7 @@ function selfReceive() {
             const hash = res.message.hash
 
             // Check if amount is >= minimum amount
-            if (!TunedBigNumber(amount).isGreaterThanOrEqualTo(config.minAmount)) return
+            if (!TunedBigNumber(amount).isGreaterThanOrEqualTo(MIN_AMOUNT)) return
 
             // Receive funds
             receive(hash, amount)

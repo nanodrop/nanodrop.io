@@ -55,9 +55,7 @@ const rpcFallback = (data, urls = nodes, count = 1) => {
                             })
                     } else {
                         requests[urls[0]]
-                            .catch((defaultErr) => {
-                                reject(defaultErr)
-                            })
+                            .catch(reject)
                     }
                 }
             })
@@ -158,9 +156,9 @@ function balance_history(account) {
                             // Unopened Account
                             resolve({ balance: 0, total_received: total_received, total_sent: total_sent, pending_valid: pending_valid, })
                         }
-                    }).catch((err) => reject(err))
+                    }).catch(reject)
             })
-            .catch((err) => reject(err))
+            .catch(reject)
     })
 }
 
@@ -198,7 +196,7 @@ function account_info(account) {
                             info.pending_valid = res.pending_valid
                             resolve(info)
                         })
-                        .catch((err) => reject(err))
+                        .catch(reject)
 
                 } catch (err) {
                     reject(err)
@@ -230,20 +228,27 @@ function account_info(account) {
 
                             info.pending = res.pending
 
-                            // Get only valid pending balance
-                            pending_blocks(account, MIN_AMOUNT)
-                                .then((pendings) => {
-                                    let pending_valid = 0
-                                    for (let blockHash in pendings) {
-                                        amount = pendings[blockHash]
-                                        pending_valid = TunedBigNumber(pending_valid).plus(amount).toString(10)
-                                    }
-                                    info.pending_valid = pending_valid
-                                    resolve(info)
-                                })
-                                .catch((err) => reject(err))
+                            if (TunedBigNumber(info.pending).isGreaterThanOrEqualTo(MIN_AMOUNT)) {
+
+                                // Get only valid pending balance
+                                pending_blocks(account, MIN_AMOUNT)
+                                    .then((pendings) => {
+                                        let pending_valid = 0
+                                        for (let blockHash in pendings) {
+                                            amount = pendings[blockHash]
+                                            pending_valid = TunedBigNumber(pending_valid).plus(amount).toString(10)
+                                        }
+                                        info.pending_valid = pending_valid
+                                        resolve(info)
+                                    })
+                                    .catch(reject)
+                            } else {
+                                info.pending_valid = 0
+                                resolve(info)
+                            }
+
                         })
-                        .catch((err) => reject(err))
+                        .catch(reject)
                 } else {
                     reject(err)
                 }
@@ -288,11 +293,8 @@ function account_balance(account) {
             "account": account
         }
         postRPC(data)
-            .then((res) => {
-                resolve({ balance: res.balance, pending: res.pending })
-            }).catch((err) => {
-                reject(err)
-            })
+            .then((res) => resolve({ balance: res.balance, pending: res.pending }))
+            .catch(reject)
     })
 }
 
@@ -313,9 +315,7 @@ function pending_blocks(account, threshold = 0) {
                 } catch (err) {
                     reject(err)
                 }
-            }).catch((err) => {
-                reject(err)
-            })
+            }).catch(reject)
     })
 }
 
@@ -342,9 +342,7 @@ function block_info(hash) {
                 } else {
                     reject("block not found")
                 }
-            }).catch((err) => {
-                reject(err)
-            })
+            }).catch(reject)
     })
 }
 
@@ -356,11 +354,8 @@ function work_generate(hash, difficulty = BASE_DIFFICULTY) {
             difficulty: difficulty
         }
         postRPC(data, workers)
-            .then((res) => {
-                resolve(res)
-            }).catch((err) => {
-                reject(err)
-            })
+            .then(resolve)
+            .catch(reject)
     })
 }
 
@@ -378,9 +373,7 @@ function broadcast(block_json) {
                 } else {
                     reject(res)
                 }
-            }).catch((err) => {
-                reject(err)
-            })
+            }).catch(reject)
     })
 }
 
@@ -396,9 +389,7 @@ function telemetry(account) {
                 } catch (err) {
                     reject(err)
                 }
-            }).catch((err) => {
-                reject(err)
-            })
+            }).catch(reject)
     })
 }
 
