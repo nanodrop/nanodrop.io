@@ -279,7 +279,6 @@ exports.history = function (req, res) {
   // Set available configs query
   if (req.query.period != undefined) {
     if (req.query.period.toLowerCase() == "all") {
-      console.log(walletHistory)
       res.status(200).json(walletHistory)
     }
   } else if (req.query.drops != undefined) {
