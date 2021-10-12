@@ -1,6 +1,6 @@
 function setPaidFunds(n) {
-    $('.ko-progress-circle').attr('data-progress', parseInt(n));
-    $('.ko-progress-circle .message .value').text(n + '%');
+    $('#paid_percentage').attr('data-progress', parseInt(n));
+    $('#paid_percentage .message .value').text(n + '%');
 }
 
 async function setDropsCounter(n) {
