@@ -1,3 +1,8 @@
+const TunedBigNumber = BigNumber.clone({
+    EXPONENTIAL_AT: 1e9,
+    DECIMAL_PLACES: 36,
+})
+
 function getJson(url) {
     return new Promise((resolve, reject) => {
         fetch(url, {
@@ -51,21 +56,18 @@ function hasNanoAddress(content = "") {
     return false
 }
 
-function toMegaNano(raws) {
-    raws = raws.toString()
-    let megaNano
-    if (raws == "0") return "0"
-    if ((raws.length - 30) > 0) {
-        megaNano = raws.substr(0, raws.length - 30)
-        fraction = raws.substr(raws.length - 30, raws.length - (raws.length - 30))
-        if (fraction.length && parseInt(fraction) != 0) megaNano += '.' + fraction
-    } else {
-        megaNano = "0." + "0".repeat(30 - raws.length) + raws
-    }
-    while (megaNano[megaNano.length - 1] == '0') {
-        megaNano = megaNano.substr(0, megaNano.length - 1)
-    }
-    return megaNano
+const megaNano = "1000000000000000000000000000000" //raws
+
+const toRaws = function (meganano) {
+    return TunedBigNumber(megaNano).multipliedBy(meganano).toString(10)
+}
+
+const toMegaNano = function (raws) {
+    return TunedBigNumber(raws).dividedBy(megaNano).toString(10)
+}
+
+function friendlyAmount(amount, decimals){
+    return TunedBigNumber(toMegaNano(amount)).decimalPlaces(decimals).toString(10)
 }
 
 function timeDifference(current, previous) {

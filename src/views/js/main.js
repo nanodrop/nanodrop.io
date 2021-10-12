@@ -1,3 +1,6 @@
+
+const MAX_DECIMALS = 8
+
 try {
 
     function loadPayTableList() {
@@ -6,7 +9,7 @@ try {
             const blockCell = document.createElement("tr")
             blockCell.innerHTML = '\
                     <td class="type">' + type + '</td> \
-                    <td class="amount">' + toMegaNano(amount) + '</td> \
+                    <td class="amount">' + friendlyAmount(amount, MAX_DECIMALS) + '</td> \
                     <td class="account tAccount">' + account + '</td> \
                     <td class="block"><a href="https://nanocrawler.cc/explorer/block/' + hash + '" target="_blank">Explorer</a></td> \
                     <td class="time">' + timeDifference(Date.now(), timestamp * 1000) + '</td>'
@@ -24,12 +27,17 @@ try {
         getJson("/api/history?period=all")
             .then((blocks) => {
                 blocks.forEach((block) => {
-                    addPayItem(block.subtype, block.amount, block.account, block.hash, block.local_timestamp)
+                    if (block.subtype == "change" ) {
+                        addPayItem(block.subtype, '---', block.representative, block.hash, block.local_timestamp)
+                    } else {
+                        addPayItem(block.subtype, block.amount, block.account, block.hash, block.local_timestamp)
+                    }
                 })
                 getPagination('#payTable');
                 $('#maxRows').trigger('change');
                 listen_websockets()
             }).catch((err) => {
+                console.log(err)
                 console.error("/api/history Error: " + formatError(err.error))
             })
     }
