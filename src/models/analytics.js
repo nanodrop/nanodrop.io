@@ -1,4 +1,4 @@
-const info = require("./data").ip_list
+const { ip_list } = require("./data")
 const axios = require("axios")
 const fs = require('fs');
 
@@ -17,9 +17,9 @@ const lastWeek = () => {
     weekday[6] = "Sat";
 
     let drops = {}
-    for (let ip in info) {
-        if (info[ip].drops.length) {
-            info[ip].drops.forEach((timestamp) => {
+    for (let ip in ip_list) {
+        if (ip_list[ip].length) {
+            ip_list[ip].forEach((timestamp) => {
                 if (timestamp >= (currentTime - rangeTime)) {
                     let mDay = new Date(timestamp).getDate()
                     let wDay = weekday[new Date(timestamp).getDay()]
