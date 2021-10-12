@@ -9,7 +9,7 @@ try {
             const blockCell = document.createElement("tr")
             blockCell.innerHTML = '\
                     <td class="type">' + type + '</td> \
-                    <td class="amount">' + friendlyAmount(amount, MAX_DECIMALS) + '</td> \
+                    <td class="amount">' + ( type == "change" ? '---' : friendlyAmount(amount, MAX_DECIMALS, true)) + '</td> \
                     <td class="account tAccount">' + account + '</td> \
                     <td class="block"><a href="https://nanocrawler.cc/explorer/block/' + hash + '" target="_blank">Explorer</a></td> \
                     <td class="time">' + timeDifference(Date.now(), timestamp * 1000) + '</td>'

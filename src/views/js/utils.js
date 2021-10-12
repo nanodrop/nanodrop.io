@@ -66,8 +66,9 @@ const toMegaNano = function (raws) {
     return TunedBigNumber(raws).dividedBy(megaNano).toString(10)
 }
 
-function friendlyAmount(amount, decimals){
-    return TunedBigNumber(toMegaNano(amount)).decimalPlaces(decimals).toString(10)
+function friendlyAmount(amount, decimals = 8, padWhenZero = false){
+    const formated = TunedBigNumber(toMegaNano(amount)).decimalPlaces(decimals).toString(10)
+    return padWhenZero && formated == '0' && amount > 0 ? `${formated}.${''.padEnd(decimals, 0)}` : formated
 }
 
 function timeDifference(current, previous) {
