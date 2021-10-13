@@ -20,7 +20,7 @@
 
                             <%- include("static/donate.ejs") %>
 
-                                <%- include("static/footer.ejs", {contact: contact}) %>
+                                <%- include("static/footer.ejs", {contact: config.contact}) %>
 
 
                                     <script>
@@ -35,6 +35,7 @@
                                         const CONFIG = {
                                             rootUrl: "<%- config.rootUrl %>",
                                             urlWS: "<%- config.urlWS %>",
+                                            blockExplorer: "<%- config.blockExplorer %>",
                                             faucet: {
                                                 account: "<%- config.faucet.account %>"
                                             }

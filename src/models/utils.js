@@ -13,7 +13,7 @@ exports.timestamp = () => {
     return Date.now()
 }
 
-// Cria um novo objeto que herda o construtor de Error através do prototype.
+// Creates a new object that inherits the Error constructor through the prototype.
 function CustomError(name, message) {
     this.name = name || 'Error';
     this.message = message || "Check log!";

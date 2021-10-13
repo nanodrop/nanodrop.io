@@ -1,6 +1,6 @@
 {
-    "url": "https://example.com",
-    "urlWS": "wss://ws.example.com",
+    "url": "http://localhost:3000",
+    "urlWS": "ws://localhost:3001",
     "nodes": ["http://[::1]:7076"],
     "nodesWS": ["ws://[::1]:7078"],
     "workers": ["https://[::1]:7076"],
@@ -13,5 +13,6 @@
         "ip": 5,
         "email": 3
     },
+    "blockExplorer": "https://nanocrawler.cc/explorer/block/",
     "contact": "contact@example.com"
 }

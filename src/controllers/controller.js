@@ -53,6 +53,8 @@ exports.index = (req, res) => {
     config: {
       rootUrl: CONFIG.url,
       urlWS: CONFIG.urlWS,
+      blockExplorer: CONFIG.blockExplorer[CONFIG.blockExplorer.length - 1] == '/' ? CONFIG.blockExplorer : CONFIG.blockExplorer + '/',
+      contact: CONFIG.contact,
       faucet: {
         account: FAUCET_ACCOUNT
       }
@@ -66,8 +68,7 @@ exports.index = (req, res) => {
         siteKey: RECAPTCHA_V3_SITE_KEY
       }
     },
-    theme: config.theme,
-    contact: CONFIG.contact
+    theme: config.theme
   })
 }
 
@@ -195,7 +196,8 @@ exports.checkbox = (req, res) => {
   let config = {
     rootUrl: parseURL(CONFIG.url),
     theme: "light",
-    contact: CONFIG.contact
+    contact: CONFIG.contact,
+    blockExplorer: CONFIG.blockExplorer
   }
   if (req.query.theme != undefined) {
     if (req.query.theme.toLowerCase() == "light" || req.query.theme.toLowerCase() == "dark") {
