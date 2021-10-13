@@ -255,7 +255,7 @@ async function sync() {
                 info.weight = res.weight
                 updateWalletInfo(info)
 
-                syncHistory(info.frontier)
+                syncHistory()
                     .then(() => {
                         resolve()
                         receivePendings()

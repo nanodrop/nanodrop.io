@@ -67,7 +67,7 @@ function updateWalletHistory(data){
             if (block.subtype == "send") totalDrops++
         })        
     } else { // save only new blocks
-        if (walletHistory[walletHistory.length - 1].hash != data[data.length - 1].previous) { // if previous is wrong, return false
+        if (walletHistory[walletHistory.length - 1].hash != data[0].previous) { // if previous is wrong, return false
             return false
         } else {
             walletHistory.push(...data)
