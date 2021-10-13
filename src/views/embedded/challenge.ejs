@@ -5,24 +5,37 @@
     <meta charset="UTF-8">
     <title>NanoDrop - Challenge</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            margin: 0;
+        }
+        .bg {
+            background: #0e111f;
+            background-image: url(/assets/loading.gif);
+            background-size: 50%;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-position: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            opacity: 0.75;
+        }
+
+        @media only screen and (max-width: 720px) {
+            .bg {
+                background-size: 100%;
+            }
+        }
+    </style>
 </head>
 
 <body>
-    <div class="bg" style="
-        background: #0e111f;
-        background-image: url(/assets/loading.gif);
-        background-size: 50%;
-        background-repeat: no-repeat;
-        background-attachment: fixed;
-        background-position: center;
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        opacity: 0.75">
+    <div class="bg">
+        <div id="g-recaptcha"></div>
     </div>
-    <div id="g-recaptcha" style="display: none;"></div>
 
 
     <script>
@@ -53,7 +66,7 @@
         }
 
         function errorRecaptcha(err) {
-            if (typeof(err) === 'undefined') err = "google recaptcha error"
+            if (typeof (err) === 'undefined') err = "google recaptcha error"
             console.error(err)
             window.top.postMessage({ target: "checkbox", from: "challenge", success: false, error: err }, '*')
         }
@@ -123,7 +136,7 @@
                 from: "challenge",
                 loaded: "challenge"
             }, '*')
-        
+
         }
 
     </script>
