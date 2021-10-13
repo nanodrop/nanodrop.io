@@ -16,6 +16,7 @@ const config = require(path.join(__dirname, '../../../config/config.json'))
 let info = { ...walletInfo }
 
 const MIN_AMOUNT = toRaws(config.minAmount)
+const WAIT_RECEIVE_PENDINGS = false
 
 let myWallet = {}
 function deriveWallet() {
@@ -145,92 +146,103 @@ function send(to, amount) {
     })
 }
 
+//Reads the entire history to allow extra information: total_received, total_sent, pending_valid
+function balance_history(account, history) {
+    let amount, pendingBlocks = {}, pending_valid = 0, total_received = "0", total_sent = "0"
+    return new Promise((resolve, reject) => {
+        rpc.pending_blocks(account, MIN_AMOUNT)
+            .then((pendings) => {
+
+                // Get only valid pending balance (all-tx-amount => MIN_AMOUNT)
+                for (let blockHash in pendings) {
+                    amount = pendings[blockHash]
+                    pending_valid = TunedBigNumber(pending_valid).plus(amount).toString(10)
+                    pendingBlocks[blockHash] = amount
+                }
+
+                if (history != "") {
+                    history.forEach((block) => {
+                        if (block.subtype == "receive") total_received = TunedBigNumber(total_received).plus(block.amount).toString(10)
+                        if (block.subtype == "send") total_sent = TunedBigNumber(total_sent).plus(block.amount).toString(10)
+                    })
+                    resolve({ balance: history[0].balance, pending_valid: pending_valid, pending_blocks: pendingBlocks, total_received: total_received, total_sent: total_sent })
+                } else {
+                    // Unopened Account
+                    resolve({ balance: 0, total_received: total_received, total_sent: total_sent, pending_valid: pending_valid, pending_blocks: pendingBlocks})
+                }
+            })
+            .catch(reject)
+    })
+}
+
 function syncHistory() {
     return new Promise((resolve, reject) => {
         if (walletHistory.length) { // start from previous block saved
             let historyPrevious = walletHistory[walletHistory.length - 1].hash
             if (historyPrevious != info.frontier) {
-                console.info("Updating wallet history")
+                console.info("Updating wallet history from previous")
                 rpc.account_history(myWallet.account, {
                     raw: true,
                     head: historyPrevious,
                     offset: 1,
                     reverse: true
                 })
-                    .then((history) => {
-                        if (history.length) {
-                            if (updateWalletHistory(history)) {
-                                resolve()
-                            } else {
-                                reject("history saving error")
-                            }
-                        } else {
-                            resolve()
-                        }
-                    })
-                    .catch((err) => reject(err))
+                    .then((history) => updateWalletHistory(history) ? resolve(history) : reject("history saving error"))
+                    .catch(reject)
             } else {
-                resolve()
+                resolve(walletHistory)
             }
         } else { // start from scratch
-            console.info("Updating wallet history")
+            console.info("Updating wallet history from scratch")
             rpc.account_history(myWallet.account, {
                 raw: true,
                 reverse: true
             })
                 .then((history) => {
                     if (history.length) {
-                        if (updateWalletHistory(history)) {
-                            resolve()
-                        } else {
-                            reject("history saving error")
-                        }
+                        updateWalletHistory(history) ? resolve(history) : reject("history saving error")
                     } else {
-                        resolve()
+                        resolve([])
                     }
                 })
-                .catch((err) => reject(err))
+                .catch(reject)
         }
     })
 }
 
 // If there is pending balance,
 // receives tx with amounts greater than minimum
-function receivePendings() {
-    if (TunedBigNumber(info.pending_valid).isGreaterThanOrEqualTo(MIN_AMOUNT)) {
-        rpc.pending_blocks(myWallet.account, MIN_AMOUNT)
-            .then(async function (blocks) {
-                let received = 0
-                for (let hash in blocks) {
-                    let amount = blocks[hash]
-                    await receive(hash, amount, true)
-                        .then((res) => {
-                            received++
-                            info.pending_valid = TunedBigNumber(info.pending_valid).minus(amount)
-                            console.info("Received " + toMegaNano(amount) + " Nano! Hash: " + res.hash)
+function receivePendings(blocks) {
+    return new Promise(async (resolve) => {
+        let result = {totalReceived: 0, sucess: [], fail: []}
+        for (let hash in blocks) {
+            let amount = blocks[hash]
+            await receive(hash, amount, true)
+                .then((res) => {
+                    result.totalReceived = TunedBigNumber(result.totalReceived).plus(amount)
+                    result.sucess.push({hash: hash, amount: amount})
+                    info.pending_valid = TunedBigNumber(info.pending_valid).minus(amount)
+                    console.info("Received " + toMegaNano(amount) + " Nano! Hash: " + res.hash)
 
-                            //pre cache next work, if exists more pending blocks use DIFFICULTY_RECEIVE
-                            let nextPoWDiff = "all"
-                            if (Object.keys(blocks).length > received) {
-                                nextPoWDiff = "receive"
-                            }
-                            getWork(res.hash, nextPoWDiff)
-                                .then((res) => {
-                                    console.info("Next work pre-cached!")
-                                }).catch((err) => {
-                                    console.error(err)
-                                })
+                    //pre cache next work, if exists more pending blocks use DIFFICULTY_RECEIVE
+                    let nextPoWDiff = "all"
+                    if (Object.keys(blocks).length > (Object.keys(result.sucess).length + Object.keys(result.fail).length)) {
+                        nextPoWDiff = "receive"
+                    }
+                    getWork(res.hash, nextPoWDiff)
+                        .then((res) => {
+                            console.info("Next work pre-cached!")
+                        }).catch((err) => {
+                            console.error(err)
                         })
-                        .catch(async function (err) {
-                            console.log("Error receiving: " + err)
-                            await sleep(5000)
-                        })
-                }
-            })
-            .catch((err) => {
-                console.log("Error receiving: " + err)
-            })
-    }
+                })
+                .catch(async function (err) {
+                    console.error("Error receiving: " + err)
+                    result.fail.push({hash: hash, amount: amount})
+                })
+        }
+        resolve(result)
+    })
 }
 
 async function sync() {
@@ -244,11 +256,8 @@ async function sync() {
                 // Save wallet state
                 info.balance = res.balance
                 info.pending = res.pending
-                info.pending_valid = res.pending_valid
                 info.frontier = res.frontier
                 info.representative = res.representative
-                info.total_received = res.total_received
-                info.total_sent = res.total_sent
                 info.open_block = res.open_block
                 info.modified_timestamp = res.modified_timestamp
                 info.block_count = res.block_count
@@ -256,9 +265,35 @@ async function sync() {
                 updateWalletInfo(info)
 
                 syncHistory()
-                    .then(() => {
-                        resolve()
-                        receivePendings()
+                    .then((history) => {
+                        if (history.length) {
+
+                            // Get total_received, total_sent, pending_valid
+                            balance_history(myWallet.account, history)
+                                .then((res) => {
+
+                                    info.total_received = res.total_received
+                                    info.total_sent = res.total_sent
+                                    info.pending_valid = res.pending_valid
+                                    updateWalletInfo(info)
+
+                                    // Receive pendings
+                                    if (WAIT_RECEIVE_PENDINGS){
+                                        receivePendings(res.pending_blocks)
+                                        .then(() => resolve())
+                                    } else {
+                                        receivePendings(res.pending_blocks)
+                                        resolve()
+                                    }
+
+                                })
+                                .catch(reject)
+                        } else {
+                            info.total_received = 0
+                            info.total_sent = 0
+                            info.pending_valid = 0
+                            resolve()
+                        }
                     })
                     .catch(reject)
             })
@@ -285,10 +320,10 @@ function selfReceive() {
             // Receive funds
             receive(hash, amount)
                 .then((response) => {
-                    console.log("Received " + toMegaNano(amount) + " Nano. Hash: " + response.hash)
+                    console.error("Received " + toMegaNano(amount) + " Nano. Hash: " + response.hash)
                 })
                 .catch((err) => {
-                    console.log("Fail receiving: " + hash)
+                    console.error("Fail receiving: " + hash)
                     console.error(err)
                 })
         }

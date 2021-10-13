@@ -126,42 +126,6 @@ const postRPC = (data, nodeAddresses = nodes) => {
     })
 }
 
-//Reads the entire history to allow extra information: total_received, total_sent, pending_valid
-function balance_history(account) {
-    let block, amount, pending_valid = 0, total_received = "0", total_sent = "0"
-    return new Promise((resolve, reject) => {
-        pending_blocks(account, MIN_AMOUNT)
-            .then((pendings) => {
-
-                // Get only valid pending balance (all-tx-amount => MIN_AMOUNT)
-                for (let blockHash in pendings) {
-                    amount = pendings[blockHash]
-                    pending_valid = TunedBigNumber(pending_valid).plus(amount).toString(10)
-                }
-
-                account_history(account, { "raw": true })
-                    .then((history) => {
-                        if (history != "") {
-                            try {
-                                for (let i in history) {
-                                    block = history[i]
-                                    if (block.subtype == "receive") total_received = TunedBigNumber(total_received).plus(block.amount).toString(10)
-                                    if (block.subtype == "send") total_sent = TunedBigNumber(total_sent).plus(block.amount).toString(10)
-                                }
-                                resolve({ balance: history[0].balance, pending_valid: pending_valid, total_received: total_received, total_sent: total_sent })
-                            } catch (err) {
-                                reject(err)
-                            }
-                        } else {
-                            // Unopened Account
-                            resolve({ balance: 0, total_received: total_received, total_sent: total_sent, pending_valid: pending_valid, })
-                        }
-                    }).catch(reject)
-            })
-            .catch(reject)
-    })
-}
-
 function account_info(account) {
     return new Promise((resolve, reject) => {
         const data = {
@@ -175,7 +139,7 @@ function account_info(account) {
         postRPC(data)
             .then((res) => {
                 try {
-                    info = {
+                    resolve({
                         account: account,
                         frontier: res.frontier,
                         open_block: res.open_block,
@@ -186,18 +150,7 @@ function account_info(account) {
                         representative: res.representative,
                         weight: res.weight,
                         pending: res.pending
-                    }
-
-                    // Get total_received, total_sent, pending_valid
-                    balance_history(account)
-                        .then((res) => {
-                            info.total_received = res.total_received
-                            info.total_sent = res.total_sent
-                            info.pending_valid = res.pending_valid
-                            resolve(info)
-                        })
-                        .catch(reject)
-
+                    })
                 } catch (err) {
                     reject(err)
                 }
