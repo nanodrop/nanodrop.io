@@ -109,10 +109,7 @@ exports.ticket = function (req, res) {
     account = json.account
   }
 
-  const ip = req.headers['x-forwarded-for'] ||
-    req.connection.remoteAddress ||
-    req.socket.remoteAddress ||
-    (req.connection.socket ? req.connection.socket.remoteAddress : null);
+  const ip = req.headers['x-forwarded-for']
 
   if (json.action == "create") {
     const amount = api.dropAmount()
@@ -144,10 +141,7 @@ exports.drop = function (req, res) {
     return
   }
 
-  json.ip = req.headers['x-forwarded-for'] ||
-    req.connection.remoteAddress ||
-    req.socket.remoteAddress ||
-    (req.connection.socket ? req.connection.socket.remoteAddress : null);
+  json.ip = req.headers['x-forwarded-for']
 
   // Checks if the inputs are present and are valid
   if (!("account" in json)) return res.status(400).json({ success: false, error: "account missing" })
