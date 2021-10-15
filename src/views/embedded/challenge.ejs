@@ -9,6 +9,7 @@
         body {
             margin: 0;
         }
+
         .bg {
             background: #0e111f;
             background-image: url(/assets/loading.gif);
@@ -30,13 +31,6 @@
             }
         }
     </style>
-</head>
-
-<body>
-    <div class="bg">
-        <div id="g-recaptcha"></div>
-    </div>
-
 
     <script>
         const google_reCaptcha = {
@@ -49,17 +43,8 @@
         }
 
         let oAuth = { token: "" }
-        let submited = false
-
-        function onSubmit(recaptchaV3_token) {
-            submited = true
-            try {
-                const recaptchaV2_token = grecaptcha.getResponse(recaptcha_v2_widget)
-                window.top.postMessage({ target: "checkbox", from: "challenge", success: true, recaptchaV2_token: recaptchaV2_token, recaptchaV3_token: recaptchaV3_token, oAuth_token: oAuth.token }, '*')
-            } catch (err) {
-                window.top.postMessage({ target: "checkbox", from: "challenge", success: false, error: err }, '*')
-            }
-        }
+        let submited = false;
+        let recaptcha_v2_widget, recaptcha_v3_widget;
 
         function expiredRecaptcha() {
             if (!submited) window.top.postMessage({ target: "checkbox", from: "challenge", success: false, error: "expired recaptcha" }, '*')
@@ -71,13 +56,19 @@
             window.top.postMessage({ target: "checkbox", from: "challenge", success: false, error: err }, '*')
         }
 
-        function execV3() {
-            window.recaptchaSolved = true
-            grecaptcha.execute(recaptcha_v3_widget)
-        }
+        function onloadCallback() {
 
-        let recaptcha_v2_widget;
-        var onloadCallback = function () {
+
+            recaptcha_v3_widget = grecaptcha.render({
+                'sitekey': google_reCaptcha.v3.siteKey,
+                'callback': onSubmit,
+                'size': 'invisible'
+            });
+
+            function execV3() {
+                window.recaptchaSolved = true
+                grecaptcha.execute(recaptcha_v3_widget)
+            }
 
             // Renders the HTML element with id 'example1' as a reCAPTCHA widget.
             // The id of the reCAPTCHA widget is assigned to 'widgetId1'.
@@ -89,11 +80,16 @@
                 'callback': execV3
             });
 
-            recaptcha_v3_widget = grecaptcha.render({
-                'sitekey': google_reCaptcha.v3.siteKey,
-                'callback': onSubmit,
-                'size': 'invisible'
-            });
+            function onSubmit(recaptchaV3_token) {
+                submited = true
+                grecaptcha.reset();
+                try {
+                    const recaptchaV2_token = grecaptcha.getResponse(recaptcha_v2_widget)
+                    window.top.postMessage({ target: "checkbox", from: "challenge", success: true, recaptchaV2_token: recaptchaV2_token, recaptchaV3_token: recaptchaV3_token, oAuth_token: oAuth.token }, '*')
+                } catch (err) {
+                    window.top.postMessage({ target: "checkbox", from: "challenge", success: false, error: err }, '*')
+                }
+            }
 
             grecaptcha.execute(recaptcha_v2_widget)
             if (!window.recaptchaCloseListener_loaded) recaptchaCloseListener()
@@ -140,6 +136,13 @@
         }
 
     </script>
+
+</head>
+
+<body>
+    <div class="bg">
+        <div id="g-recaptcha"></div>
+    </div>
 
     <script src="https://www.google.com/recaptcha/api.js?onload=onloadCallback&render=explicit" async defer></script>
 

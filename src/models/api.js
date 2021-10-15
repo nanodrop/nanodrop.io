@@ -29,15 +29,14 @@ function dropAmount(balance = wallet.info.balance) {
 }
 
 function info() {
-    let data_info = {...wallet.info}
-    data_info.drops = data.dropsCount({total: "sent"}).sent
+    let data_info = { ...wallet.info }
+    data_info.drops = data.dropsCount({ total: "sent" }).sent
     data_info.amount = dropAmount(data_info.balance)
     if (data_info.total_received == '0' || data_info.total_sent == '0') {
         data_info.total_sent_percentage = 0
     } else {
         data_info.total_sent_percentage = TunedBigNumber(100).dividedBy(TunedBigNumber(data_info.total_received).dividedBy(data_info.total_sent)).toFixed(2).toString(10)
     }
-    console.log(data_info)
     return data_info
 }
 
@@ -90,7 +89,6 @@ function drop(req, callback) {
             });
 
     } else {
-
         // The first request checks if the ticket contains a valid amount and expiration,
         // checks if the recaptcha v2 has been resolved
         // and if the recaptcha v3 gave a good score to the user
@@ -111,18 +109,22 @@ function drop(req, callback) {
                     const isProxy = parseIp.length > 1 || ip_info.proxy == true || (ip_info.api == "ip-api.com" && ip_info.proxy == "unknown")
 
                     if (isProxy) {
-                        return callback(400, { success: false, error: "proxy detected", ticket: ticket })
+                        const amount = hexToRaws(req.ticket.split('-')[0].padStart(32, '0'))
+                        createTicket(amount, req.ip, req.account)
+                            .then((newTicket) => callback(400, { success: false, error: "proxy detected", ticket: newTicket }))
+                            .catch((err) => callback(400, { success: false, error: err }))
                     } else {
                         sendSomeNano(req.account, amount)
                     }
-
                 }).catch(err => {
-                    if (err.includes("low score")) {
+                    console.error(err)
+                    if (typeof (err) === "string" && err.includes("low score")) {
                         const amount = hexToRaws(req.ticket.split('-')[0].padStart(32, '0'))
-                        const ticket = createTicket(amount, req.ip, req.account)
-                        return callback(400, { success: false, error: err, ticket: ticket })
+                        createTicket(amount, req.ip, req.account)
+                            .then((newTicket) => callback(400, { success: false, error: err, ticket: newTicket }))
+                            .catch((err) => callback(400, { success: false, error: err }))
                     } else {
-                        return callback(400, { success: false, error: err })
+                        callback(400, { success: false, error: err })
                     }
                 })
         }).catch(err => {
