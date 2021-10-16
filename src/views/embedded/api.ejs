@@ -122,14 +122,7 @@ const nanodrop = {
 
 //Sometimes we need to wait for a response before deleting the iframe
 function resetIframe(id){
-    const iframe = document.getElementById(id)
-    if (typeof(iframe) != 'undefined' && iframe != null){
-        iframe.style.display = "none"
-        iframe.id += "_old"
-        setTimeout(function () {
-            iframe.remove()
-        }, 60000);
-    }
+    document.getElementById(id).remove()
 }
 
 function isNanoAddress(address) {
@@ -156,17 +149,15 @@ function listenMessages(){
                 document.getElementById('nanoDropCheckbox').contentWindow.postMessage(e.data, '*')
                 
                 if (e.data.from == "challenge") {
-                    if ("success" in e.data && e.data.success == true) {
+                    if ("success" in e.data && e.data.success === true) {
                         resetIframe("nanoDrop_challenge")
-                    } else if ("success" in e.data && e.data.success == false) {
+                    } else if ("success" in e.data && e.data.success === false) {
                         resetIframe("nanoDrop_challenge")
                     }
                 } else if (e.data.from == "oauth") {
-                    if ("loaded" in e.data && e.data.loaded == "oauth") {
-                        //
-                    } else if ("success" in e.data && e.data.success == true) {
+                    if ("success" in e.data && e.data.success === true) {
                         resetIframe("nanoDrop_oAuth")
-                    } else if ("success" in e.data && e.data.success == false){
+                    } else if ("success" in e.data && e.data.success === false){
                         resetIframe("nanoDrop_oAuth")
                     }
                 }
@@ -179,9 +170,9 @@ function listenMessages(){
                     }
                 } else if("loaded" in e.data && e.data.loaded == "checkbox") {
                     nanodrop.rendered = true, rendered = true
-                } else if ("loaded" in e.data && e.data.loaded == false){
+                } else if ("loaded" in e.data && e.data.loaded === false){
                     nanodrop.rendered = false
-                } else if ("success" in e.data && e.data.success == true) {
+                } else if ("success" in e.data && e.data.success === true) {
                     if (config.onsuccessCallback !== null && config.onsuccessCallback != "") {
                         if (window[config.onsuccessCallback] == undefined) {
                             alert("onsuccessCallback '" + config.onsuccessCallback + "' does not exist")
@@ -193,10 +184,9 @@ function listenMessages(){
                             }
                         }
                     }
-                    resetIframe("nanoDrop_oAuth")
                 } else if ("success" in e.data && e.data.success == false){
                     if (config.onerrorCallback !== null && config.onerrorCallback != "") {
-                        if (window[config.onerrorCallback] == undefined) {
+                        if (window[config.onerrorCallback] === undefined) {
                             alert("onerrorCallback '" + config.onerrorCallback + "' does not exist")
                         } else {
                             if (typeof(window[config.onerrorCallback]) === "function"){
@@ -206,7 +196,6 @@ function listenMessages(){
                             }
                         }
                     }
-                    resetIframe("nanoDrop_oAuth")
                 }
             }
         }

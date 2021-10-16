@@ -11,7 +11,7 @@ function ip2int(ip) {
 }
 
 function now(){
-    return parseInt(Date.now() / 1000)
+    return Math.round(Date.now() / 1000)
 }
 
 //Creates a signed ticket to guarantee the validity of the user's request.

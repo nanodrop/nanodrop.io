@@ -42,32 +42,54 @@
             }
         }
 
-        let oAuth = { token: "" }
-        let submited = false;
-        let recaptcha_v2_widget, recaptcha_v3_widget;
+        let submited = false, recaptcha_v2_widget, recaptcha_v3_widget, recaptcha_v2_token
 
         function expiredRecaptcha() {
-            if (!submited) window.top.postMessage({ target: "checkbox", from: "challenge", success: false, error: "expired recaptcha" }, '*')
+            if (!submited) window.top.postMessage({
+                target: "checkbox",
+                from: "challenge",
+                success: false,
+                error: "expired recaptcha"
+            }, '*')
         }
 
         function errorRecaptcha(err) {
             if (typeof (err) === 'undefined') err = "google recaptcha error"
             console.error(err)
-            window.top.postMessage({ target: "checkbox", from: "challenge", success: false, error: err }, '*')
+            window.top.postMessage({
+                target: "checkbox",
+                from: "challenge",
+                success: false,
+                error: err
+            }, '*')
         }
 
         function onloadCallback() {
 
+            function execV3(v2_token = undefined) {
 
-            recaptcha_v3_widget = grecaptcha.render({
-                'sitekey': google_reCaptcha.v3.siteKey,
-                'callback': onSubmit,
-                'size': 'invisible'
-            });
+                recaptcha_v2_token = v2_token
 
-            function execV3() {
+                recaptcha_v3_widget = grecaptcha.render({
+                    'sitekey': google_reCaptcha.v3.siteKey,
+                    'callback': onSubmit,
+                    'size': 'invisible'
+                });
+
+
                 window.recaptchaSolved = true
                 grecaptcha.execute(recaptcha_v3_widget)
+            }
+
+            function onSubmit(recaptchaV3_token) {
+                submited = true
+                window.top.postMessage({
+                    target: "checkbox",
+                    from: "challenge",
+                    success: true,
+                    recaptchaV2_token: recaptcha_v2_token,
+                    recaptchaV3_token: recaptchaV3_token
+                }, '*')
             }
 
             // Renders the HTML element with id 'example1' as a reCAPTCHA widget.
@@ -80,18 +102,8 @@
                 'callback': execV3
             });
 
-            function onSubmit(recaptchaV3_token) {
-                submited = true
-                grecaptcha.reset();
-                try {
-                    const recaptchaV2_token = grecaptcha.getResponse(recaptcha_v2_widget)
-                    window.top.postMessage({ target: "checkbox", from: "challenge", success: true, recaptchaV2_token: recaptchaV2_token, recaptchaV3_token: recaptchaV3_token, oAuth_token: oAuth.token }, '*')
-                } catch (err) {
-                    window.top.postMessage({ target: "checkbox", from: "challenge", success: false, error: err }, '*')
-                }
-            }
-
             grecaptcha.execute(recaptcha_v2_widget)
+
             if (!window.recaptchaCloseListener_loaded) recaptchaCloseListener()
         };
 
@@ -109,7 +121,10 @@
                 // when the opacity has been changed to 0 we know that
                 // the window has been closed
                 new MutationObserver(x => recaptchaWindow.style.opacity == 0 && recatpchaOnClose())
-                    .observe(recaptchaWindow, { attributes: true, attributeFilter: ['style'] })
+                    .observe(recaptchaWindow, {
+                        attributes: true,
+                        attributeFilter: ['style']
+                    })
 
             } catch (err) {
                 setTimeout(function () {
@@ -121,7 +136,12 @@
         function recatpchaOnClose() {
             if (!window.recaptchaSolved) {
                 console.warn('recaptcha window has been closed')
-                window.top.postMessage({ target: "checkbox", from: "challenge", success: false, error: "recaptcha window has been closed" }, '*')
+                window.top.postMessage({
+                    target: "checkbox",
+                    from: "challenge",
+                    success: false,
+                    error: "recaptcha window has been closed"
+                }, '*')
             }
         }
 
@@ -134,7 +154,6 @@
             }, '*')
 
         }
-
     </script>
 
 </head>

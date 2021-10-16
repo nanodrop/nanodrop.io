@@ -125,9 +125,7 @@
 
     function msgListener() {
         addListener(function (e) {
-            if ("loaded" in e.data && e.data.loaded == "challenge") {
-                console.info("recaptcha challenge loaded")
-            } else if (e.data.from == "challenge") {
+            if (e.data.from == "challenge") {
                 if ("success" in e.data && e.data.success == true) {
                     dropMe(e.data)
                 } else if ("success" in e.data && e.data.success == false) {
@@ -215,6 +213,9 @@
                             checkboxError(res.error)
                             window.top.postMessage({ from: "checkbox", success: false, error: res.error }, '*')
                         }
+                    } else if ("error" in res) {
+                        checkboxError(JSON.stringify(res.error).slice(0, 40))
+                        window.top.postMessage({ from: "checkbox", success: false, error: res.error }, '*')
                     } else {
                         checkboxError("Invalid response from server")
                         window.top.postMessage({ from: "checkbox", success: false, error: "Invalid response from server" }, '*')
@@ -231,9 +232,11 @@
         }
     }
 
+    let challengeLoading = false
     function enableCheckbox() {
-        document.getElementById("nd-anchor-container").querySelector(".nd-anchor-content").addEventListener("click", function (e) {
-            if (e.isTrusted) {
+        const recaptcha_content = document.getElementById("nd-anchor-container").querySelector(".nd-anchor-content")
+        recaptcha_content.addEventListener("click", function (e) {
+            if (e.isTrusted && !challengeLoading) {
                 checkboxReset()
                 playSound("pending")
                 if (account === null) {
@@ -242,9 +245,13 @@
                         checkboxReset()
                     }, 5000)
                 } else {
+                    challengeLoading = true
                     checkboxLoader()
                     setTimeout(function () {
                         window.top.postMessage({ from: "checkbox", action: "challenge" }, '*')
+                        addListener((e) => {
+                            if ("loaded" in e.data && e.data.loaded == "challenge") challengeLoading = false
+                        })
                     }, 200)
                 }
             }
