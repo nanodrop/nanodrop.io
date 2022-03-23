@@ -1,9 +1,11 @@
 const { checkNanoAddress } = require("../models/nano-wallet/check")
 const ipFromReq = require('./utils/ipFromReq');
 const api = require('../models/api')
+const { Op } = require('sequelize');
 const DropsTable = require('../models/database/drops')
 
 const Drops = new DropsTable()
+const CONFIG = require("../../config/config.json")
 const whitelist = require("../../config/whitelist.json")
 
 async function usageCounter(data, period) {
