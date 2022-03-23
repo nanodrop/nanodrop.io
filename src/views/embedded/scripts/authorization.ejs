@@ -3,17 +3,12 @@
 
         const hostnameFromUrl = (url) => new URL(url).hostname;
 
-        const url = (window.location != window.parent.location)
-            ? document.referrer
-            : document.location.href;
-
         // Can only be loaded as iframe
         if (window.location.href == document.referrer) return false
 
-        console.log("referrer:", document.referrer)
-        console.log("location.href:", document.location.href)
+        const authorized = "<%= config.authorizedDomain %>"
+        console.log(authorized, typeof(authorized))
 
-        // Check if parent host has permission
-        return hostnameFromUrl(document.referrer) != hostnameFromUrl("<%= config.rootUrl %>") ? false : true
+        return authorized
     }
 </script>
