@@ -1,18 +1,28 @@
 {
     "url": "http://localhost:3000",
-    "urlWS": "ws://localhost:3001",
-    "nodes": ["http://[::1]:7076"],
-    "nodesWS": ["ws://[::1]:7078"],
-    "workers": ["https://[::1]:7076"],
+    "url_websocket": "ws://localhost:3001",
+    "node_rpc": ["http://[::1]:7076"],
+    "node_websocket": ["ws://[::1]:7078"],
+    "nano_worker": ["https://[::1]:7076"],
     "representative": "nano_3kc8wwut3u8g1kwa6x4drkzu346bdbyqzsn14tmabrpeobn8igksfqkzajbb",
     "percentage": 0.001,
-    "minAmount": "0.000001",
-    "maxAmount": "0.01",
+    "min_amount": "0.000001",
+    "max_amount": "0.01",
     "limits": {
-        "account": 1,
-        "ip": 5,
-        "email": 3
+        "account": {
+            "period": 604800,
+            "times": 1
+        },
+        "ip": {
+            "period": 604800,
+            "times": 5
+        },
+        "email": {
+            "period": 604800,
+            "times": 3
+        }
     },
-    "blockExplorer": "https://nanocrawler.cc/explorer/block/",
+    "enable_analytics": true,
+    "block_explorer": "https://nanolooker.com/block/",
     "contact": "contact@example.com"
 }
