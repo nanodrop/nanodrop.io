@@ -1,6 +1,6 @@
 const WebSocket = require('ws')
 
-const { nodesWS } = require("../../config/config.json")
+const { node_websocket } = require("../../config/config.json")
 
 const DEBUG = true
 let SOCKET = false
@@ -20,14 +20,13 @@ function new_websocket(url, ready_callback, message_callback) {
         if (DEBUG) console.error(e.error);
     }
     socket.onmessage = function (msg) {
-        //console.log('New message from: ' + url);
         if (message_callback !== undefined) message_callback(msg);
     }
     return socket;
 }
 
 function start_websockets(params, callback) {
-    new_websocket(nodesWS, function (socket) {
+    new_websocket(node_websocket, function (socket) {
 
         SOCKET = socket
 
@@ -47,7 +46,7 @@ function start_websockets(params, callback) {
 async function keepAlive() {
     if (SOCKET === false) return
     SOCKET.send(JSON.stringify({ "action": "ping" }))
-    setTimeout(keepAlive, 60000)
+    setTimeout(keepAlive, 30000)
 }
 
 function handle_block_dump(data, callback) {

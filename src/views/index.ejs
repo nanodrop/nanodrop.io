@@ -12,9 +12,9 @@
 
                 <%- include("static/about.ejs") %>
 
-                <%- include("static/charts.ejs") %>
+                 <%- include("static/charts.ejs") %>
 
-                    <%- include("static/paytable.ejs") %>
+                    <%- include("static/paytable.ejs") %> 
 
                         <%- include("static/dev.ejs") %>
 
@@ -34,8 +34,8 @@
                                         }
                                         const CONFIG = {
                                             rootUrl: "<%- config.rootUrl %>",
-                                            urlWS: "<%- config.urlWS %>",
-                                            blockExplorer: "<%- config.blockExplorer %>",
+                                            url_websocket: "<%- config.url_websocket %>",
+                                            block_explorer: "<%- config.block_explorer %>",
                                             faucet: {
                                                 account: "<%- config.faucet.account %>"
                                             }

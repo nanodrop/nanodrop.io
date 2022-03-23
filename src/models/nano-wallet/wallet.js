@@ -8,14 +8,14 @@ const rpc = require("./rpc");
 const { checkKey, checkIndex } = require('./check');
 const { toMegaNano, toRaws, TunedBigNumber } = require('./convert')
 const { accounts_monitor } = require('../nano_websockets')
-const { updateWalletInfo, walletInfo, walletHistory, updateWalletHistory } = require('../data')
+const { updateWalletInfo, walletInfo, walletHistory, pushToWalletHistory } = require('../cache')
 
 const { sleep, CustomError } = require('../utils.js')
 
 const config = require(path.join(__dirname, '../../../config/config.json'))
 let info = { ...walletInfo }
 
-const MIN_AMOUNT = toRaws(config.minAmount)
+const MIN_AMOUNT = toRaws(config.min_amount)
 const WAIT_RECEIVE_PENDINGS = false
 
 let myWallet = {}
@@ -75,7 +75,7 @@ function receive(blockHash, amount, syncing = false) {
 
                         // Get more info from node (like local_timestamp) and save block in history
                         rpc.block_info(receiveBlock.hash)
-                            .then((res) => updateWalletHistory([res]))
+                            .then((res) => pushToWalletHistory([res]))
                             .catch((err) => console.error(err))
 
                         if (!syncing) {
@@ -123,7 +123,7 @@ function send(to, amount) {
 
                             // Get more info from node (like local_timestamp) and save block in history
                             rpc.block_info(sendBlock.hash)
-                                .then((res) => updateWalletHistory([res]))
+                                .then((res) => pushToWalletHistory([res]))
                                 .catch((err) => console.error(err))
 
                             // Cache PoW
@@ -185,9 +185,10 @@ function syncHistory() {
                     raw: true,
                     head: historyPrevious,
                     offset: 1,
+                    count: 1000,
                     reverse: true
                 })
-                    .then((history) => updateWalletHistory(history) ? resolve(history) : reject("history saving error"))
+                    .then((history) => pushToWalletHistory(history) && resolve(history))
                     .catch(reject)
             } else {
                 resolve(walletHistory)
@@ -196,11 +197,13 @@ function syncHistory() {
             console.info("Updating wallet history from scratch")
             rpc.account_history(myWallet.account, {
                 raw: true,
-                reverse: true
+                reverse: true,
+                count: 1000
             })
                 .then((history) => {
                     if (history.length) {
-                        updateWalletHistory(history) ? resolve(history) : reject("history saving error")
+                        pushToWalletHistory(history)
+                        resolve(history)
                     } else {
                         resolve([])
                     }

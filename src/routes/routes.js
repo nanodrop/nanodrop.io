@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
-
 const controller = require('../controllers/controller')
+const drop = require("../controllers/drop")
 
 router.get('/', controller.index)
 
@@ -13,7 +13,7 @@ router.delete('/', controller.notAllowed)
 
 router.get('/api/faucet', controller.faucet)
 
-router.post('/api/drop', controller.drop)
+router.post('/api/drop', drop)
 
 router.post('/api/ticket', controller.ticket)
 

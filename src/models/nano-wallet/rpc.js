@@ -1,28 +1,28 @@
 const axios = require("axios")
-const { nodes, workers, minAmount } = require("../../../config/config.json")
+const { node_rpc, nano_worker, min_amount } = require("../../../config/config.json")
 const { BASE_DIFFICULTY, BASE_DIFFICULTY_RECEIVE, work_validate } = require('./work')
 const { TunedBigNumber, toRaws } = require('./convert')
 
-const MIN_AMOUNT = toRaws(minAmount)
-const TIMEOUT = 1000 * 5 // 5 seconds
+const MIN_AMOUNT = toRaws(min_amount)
+const TIMEOUT = 1000 * 60 // 5 seconds
 const FALLBACK_TRIES = 3
 const FALLBACK_SLEEP = 1000 * 5 // 5 seconds
 
 let node_counter = 0
 // If there is one more address after the current one, return it. Otherwise back to the first (0)
 function nextNode() {
-    (node_counter + 1) > (nodes.length - 1) ? node_counter = 0 : node_counter++
+    (node_counter + 1) > (node_rpc.length - 1) ? node_counter = 0 : node_counter++
 }
 
 /*
-    With a fallback we rely on alternative nodes when the first one has some error such as: 
+    With a fallback we rely on alternative node_rpc when the first one has some error such as: 
         - Not responding
         - Returns a server error
         - Returns an invalid format response.
     As the method Promise.any is only supported in node.js >= v15.0, so let's create an alternative function
     But instead of an array, we use an object to identify the URL of each promise.
 */
-const rpcFallback = (data, urls = nodes, count = 1) => {
+const rpcFallback = (data, urls = node_rpc, count = 1) => {
     return new Promise((resolve, reject) => {
 
         const sleep = (ms) => {
@@ -63,7 +63,7 @@ const rpcFallback = (data, urls = nodes, count = 1) => {
     })
 }
 
-const postRPC = (data, nodeAddresses = nodes) => {
+const postRPC = (data, nodeAddresses = node_rpc) => {
     return new Promise((resolve, reject) => {
 
         // By defautl, postRPC receive a list of rpc node addresses.
@@ -221,6 +221,7 @@ function account_history(account, options = false) {
             if (options.head) data.head = options.head
             if (options.offset) data.offset = options.offset
             if (options.reverse) data.reverse = options.reverse
+            if (options.count) data.count = options.count
         }
         postRPC(data)
             .then((res) => {
@@ -288,6 +289,8 @@ function block_info(hash) {
                         block.hash = hash
                         block.local_timestamp = res.local_timestamp
                         block.subtype = res.subtype
+                        block.height = res.height
+                        block.confirmed = res.confirmed
                         resolve(block)
                     } catch (err) {
                         reject(err)
@@ -306,7 +309,7 @@ function work_generate(hash, difficulty = BASE_DIFFICULTY) {
             hash: hash,
             difficulty: difficulty
         }
-        postRPC(data, workers)
+        postRPC(data, nano_worker)
             .then(resolve)
             .catch(reject)
     })

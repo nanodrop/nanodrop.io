@@ -127,12 +127,24 @@
         color: #555;
     }
 
+    .dark table th {
+        background: #202226;
+        color: #eee;
+    }
+    
     table tr:nth-child(even) {
         background-color: aliceblue;
+    }
+    .dark table tr:nth-child(even) {
+        background-color: #202226;
     }
 
     .table-striped>tbody>tr:nth-of-type(odd) {
         background-color: #fff;
+    }
+
+    .dark .table-striped>tbody>tr:nth-of-type(odd) {
+        background-color: #34323D;
     }
 
     th {
@@ -165,6 +177,12 @@
 
     .tb_search {
         width: 180px;
+    }
+
+    .dark .tb_search input {
+        background-color: #34323D;
+        color: #fff;
+        border-color: #777;
     }
 
     .pagination-container {

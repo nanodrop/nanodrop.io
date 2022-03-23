@@ -2,7 +2,7 @@
 function new_websocket(url, ready_callback, message_callback) {
     let socket = new WebSocket(url);
     socket.onopen = function () {
-        console.log('WebSocket is now open');
+        console.info('WebSocket is now open');
         if (ready_callback !== undefined) ready_callback(this);
     }
     socket.onerror = function (e) {
@@ -10,7 +10,7 @@ function new_websocket(url, ready_callback, message_callback) {
         console.error(e);
     }
     socket.onmessage = function (response) {
-        console.log('New message from: ' + url);
+        console.info('New message from: ' + url);
         if (message_callback !== undefined) message_callback(response);
     }
 
@@ -33,8 +33,7 @@ function start_websockets(url, callback) {
         // onmessage
         let data = JSON.parse(response.data);
         if (data.topic != 'confirmation' && data.topic != 'pending') {
-            console.log("different topic: ")
-            console.log(data)
+            console.warn("different topic:", data.topic)
             return
         };
         handle_block_dump(data, callback);
@@ -48,7 +47,7 @@ function handle_block_dump(data, callback) {
         const message = data.message
         fdata = {
             topic: data.topic,
-            dtg: new Date(parseInt(data.time)),
+            timestamp: data.time,
             account: message.account,
             block: message.block,
             hash: message.hash,

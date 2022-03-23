@@ -6,16 +6,21 @@ const { oAuthVerify } = require('./google/oauth')
 const rpc = require('./nano-wallet/rpc')
 
 const wallet = require("./nano-wallet/wallet")
-const data = require("./data.js")
+const data = require("./cache.js")
 
 const { hexToRaws } = require("./nano-wallet/nano-keys")
 
 const { createTicket, checkTicket } = require("./tickets")
 
-const CONFIG = require('../../config/config.json')
+const CONFIG = require('../../config/config.json');
+const DropsTable = require('./database/drops');
+const ipFromReq = require('../controllers/utils/ipFromReq');
+const { ipInfo } = require('./analytics');
 
-const MIN_AMOUNT = toRaws(CONFIG.minAmount)
-const MAX_AMOUNT = toRaws(CONFIG.maxAmount)
+const Drops = new DropsTable()
+
+const MIN_AMOUNT = toRaws(CONFIG.min_amount)
+const MAX_AMOUNT = toRaws(CONFIG.max_amount)
 const DROP_PERCENTAGE = TunedBigNumber(CONFIG.percentage).dividedBy(100).toString(10)
 
 //Returns a percentage of the balance, rounded down.
@@ -30,7 +35,7 @@ function dropAmount(balance = wallet.info.balance) {
 
 function info() {
     let data_info = { ...wallet.info }
-    data_info.drops = data.dropsCount({ total: "sent" }).sent
+    data_info.drops = 100000 //data.dropsCount({ total: "sent" }).sent
     data_info.amount = dropAmount(data_info.balance)
     if (data_info.total_received == '0' || data_info.total_sent == '0') {
         data_info.total_sent_percentage = 0
@@ -40,49 +45,70 @@ function info() {
     return data_info
 }
 
-function drop(req, callback) {
+function drop(reqData, callback) {
+
+    // Save Drop Info
+    function logDrop(account, amount, hash) {
+        const dropData = {
+            account,
+            amount,
+            hash,
+            timestamp: Date.now()
+        }
+
+        // When using some proxies, we have this format: "[PROXY_IP], [USER_IP]"
+        const parseIp = reqData.ip.split(", ")
+        const realIP = parseIp[parseIp.length - 1]
+        const firstIP = parseIp[0] // may be a proxy
+
+        // Store the user IP, 
+        dropData.ip = realIP
+
+        // Check Proxy
+        const usingProxy = parseIp.length > 1 || (CONFIG.enable_analytics && data.ipInfo(firstIP).proxy === true)
+        dropData.is_proxy = CONFIG.enable_analytics && data.ipInfo(realIP).proxy === true
+
+        // If using proxy, we need to store the proxy ip
+        if (usingProxy) dropData.proxy_ip = firstIP
+                
+        // If using oAuth, we need to store the email
+        if ("oauth_token" in reqData) dropData.proxy = reqData.email
+
+        // If Analytics is enabled, store the IP country code
+        if (CONFIG.enable_analytics) dropData.country = data.ipInfo(realIP).countryCode
+
+        if (typeof dropData.country != 'string' || dropData.country.length != 3) dropData.country = "UNK"
+
+        Drops.create(dropData)
+            .catch(console.error)
+    }
 
     //function to send the amount to the user after all data has been validated
-    function sendSomeNano(account, amount) {
+    function sendNano(account, amount) {
         wallet.send(account, amount)
             .then((res) => {
                 console.info("Sent! Block: " + res.hash)
-
-                // When using some proxies, we have this format: "[PROXY_IP], [USER_IP]"
-                const parseIp = req.ip.split(", ")
-                parseIp.forEach((ip) => data.updateIPList(req.ip))
-
-                const ip1 = parseIp[0]
-                if (parseIp.length > 1) {
-                    const realIP = parseIp[parseIp.length - 1]
-                    data.updateProxiesUsage(parseIp[0], realIP)
-                    data.updateCountriesDrops(ip1, realIP)
-                } else {
-                    data.updateCountriesDrops(ip1)
-                }
-
-                data.updateNanoAccountsList(req.account)
-                if ("oauth_token" in req) data.updateEmailsList(req.email)
-
                 callback(200, { success: true, hash: res.hash, amount: res.amount })
-            }).catch((err) => {
+                logDrop(account, amount, res.hash)
+            })
+            .catch((err) => {
                 console.error(err)
                 callback(400, { success: false, error: err })
             })
     }
 
-    const amountHex = req.ticket.split('-')[0].padStart(32, '0')
+    const amountHex = reqData.ticket.split('-')[0].padStart(32, '0')
     const amount = hexToRaws(amountHex)
 
     // oauth_token is used when the recaptcha v3 score is low.
     // So it's always a second request and contains:
     // the ticket with signed account, amount and expiration to be validated
-    if ("oauth_token" in req) {
-        const check = checkTicket(req.ticket, req.account, req.ip, true)
+    if ("oauth_token" in reqData) {
+        const check = checkTicket(reqData.ticket, reqData.account, reqData.ip, true)
         if (check != "valid") return callback(400, { success: false, error: check })
-        oAuthVerify(req.oauth_token, req.email)
+        oAuthVerify(reqData.oauth_token, reqData.email)
             .then((res) => {
-                sendSomeNano(req.account, amount)
+                sendNano(reqData.account, amount)
             })
             .catch((err) => {
                 return callback(400, { success: false, error: err })
@@ -93,34 +119,38 @@ function drop(req, callback) {
         // checks if the recaptcha v2 has been resolved
         // and if the recaptcha v3 gave a good score to the user
 
-        if (!("recaptchaV2_token" in req)) return callback(400, { error: "recaptchaV2_token missing" })
-        if (!("recaptchaV3_token" in req)) return callback(400, { error: "recaptchaV3_token missing" })
+        if (!("recaptchaV2_token" in reqData)) return callback(400, { error: "recaptchaV2_token missing" })
+        if (!("recaptchaV3_token" in reqData)) return callback(400, { error: "recaptchaV3_token missing" })
 
-        const check = checkTicket(req.ticket, req.account, req.ip, false)
+        const check = checkTicket(reqData.ticket, reqData.account, reqData.ip, false)
         if (check != "valid") return callback(400, { success: false, error: check })
 
-        reCaptchaV2(req.recaptchaV2_token).then(res => {
-            reCaptchaV3(req.recaptchaV3_token)
+        reCaptchaV2(reqData.recaptchaV2_token).then(res => {
+            reCaptchaV3(reqData.recaptchaV3_token)
                 .then(res => {
 
                     // Anti-proxy extra barrier
-                    const parseIp = req.ip.split(", ")
-                    const ip_info = data.ipInfo(parseIp[0])
-                    const isProxy = parseIp.length > 1 || ip_info.proxy == true || (ip_info.api == "ip-api.com" && ip_info.proxy == "unknown")
+                    const parseIp = reqData.ip.split(", ")
+                    let isProxy = parseIp.length > 1
+
+                    if (CONFIG.enable_analytics) {
+                        const ip_info = data.ipInfo(parseIp[0])
+                        isProxy = ip_info.proxy === true || (ip_info.api == "ip-api.com" && ip_info.proxy == "unknown")
+                    }
 
                     if (isProxy) {
-                        const amount = hexToRaws(req.ticket.split('-')[0].padStart(32, '0'))
-                        createTicket(amount, req.ip, req.account)
+                        const amount = hexToRaws(reqData.ticket.split('-')[0].padStart(32, '0'))
+                        createTicket(amount, reqData.ip, reqData.account)
                             .then((newTicket) => callback(400, { success: false, error: "proxy detected", ticket: newTicket }))
                             .catch((err) => callback(400, { success: false, error: err }))
                     } else {
-                        sendSomeNano(req.account, amount)
+                        sendNano(reqData.account, amount)
                     }
                 }).catch(err => {
                     console.error(err)
                     if (typeof (err) === "string" && err.includes("low score")) {
-                        const amount = hexToRaws(req.ticket.split('-')[0].padStart(32, '0'))
-                        createTicket(amount, req.ip, req.account)
+                        const amount = hexToRaws(reqData.ticket.split('-')[0].padStart(32, '0'))
+                        createTicket(amount, reqData.ip, reqData.account)
                             .then((newTicket) => callback(400, { success: false, error: err, ticket: newTicket }))
                             .catch((err) => callback(400, { success: false, error: err }))
                     } else {

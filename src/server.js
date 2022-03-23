@@ -8,14 +8,15 @@ const path = require('path')
 const WebSocket = require('ws')
 const { accounts_monitor } = require('./models/nano_websockets')
 const { deriveWallet } = require('./models/nano-wallet/wallet.js')
+const http = require('http');
 
 const FAUCET_ACCOUNT = deriveWallet().account
 const SESSION_SECRET = process.env.SESSION_SECRET
 
-const http_port = 3000
+const http_port = process.env.PORT || 3000
 const ws_port = 3001
 
-const startServer = function () {
+const startHTTPServer = function () {
 
   const app = express()
 
@@ -44,27 +45,32 @@ const startServer = function () {
 
   const routes = require('./routes/routes');
   app.use("/", routes)
+  
+  const server = http.createServer(app);
 
-  app.listen(http_port, () => {
-    console.log(`Server listening at: http://localhost:${http_port}`)
-  })
+  return server
+
 }
 
 // WebSockets Repeater
-const startWSServer = function () {
-  const server = new WebSocket.Server({
-    port: ws_port
-  });
+const startWSServer = function (server) {
+  const wsServer = new WebSocket.Server({ clientTracking: false, noServer: true });
 
   let sockets = [];
 
-  server.on('listening', () => {
-    console.log(`Websocket listening at: http://localhost:${ws_port}`)
+  wsServer.on('listening', () => {
+    console.log(`Websocket listening`)
+  });
+
+  server.on('upgrade', function (request, socket, head) {
+    wsServer.handleUpgrade(request, socket, head, function (ws) {
+      wsServer.emit('connection', ws, request);
+      });
   });
 
 
   // Detect new websocket connections
-  server.on('connection', function (socket) {
+  wsServer.on('connection', function (socket) {
 
     console.log("connection websocket detected")
     sockets.push(socket);
@@ -79,6 +85,7 @@ const startWSServer = function () {
         if ("topic" in data && data.topic == "confirmation") {
 
           // Start monitoring and repeat msgs for client
+          console.log('Subscribed to:', FAUCET_ACCOUNT)
           accounts_monitor([FAUCET_ACCOUNT], function (res) {
             socket.send(JSON.stringify(res))
           })
@@ -106,4 +113,4 @@ const startWSServer = function () {
   });
 }
 
-module.exports = { startServer, startWSServer }
+module.exports = { startHTTPServer, startWSServer }

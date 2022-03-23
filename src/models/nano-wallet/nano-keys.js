@@ -19,6 +19,13 @@ function signBlock(hash, secretKey)  {
   return byteArrayToHex(signatureBytes)
 }
 
+function verifySignature(hash, signature, publicKey)  {
+  const blockHashBytes = hexToByteArray(hash)
+  const signatureBytes = hexToByteArray(signature)
+  const publicKeyBytes = hexToByteArray(publicKey)
+  return nacl.sign.detached.verify(blockHashBytes, signatureBytes, publicKeyBytes )
+}
+
 function deriveAddress(publicKey, prefix = "nano_") {
   if (!checkKey(publicKey)) throw new Error('Public key is not valid')
   const publicKeyBytes = hexToByteArray(publicKey)
@@ -125,6 +132,7 @@ module.exports = {
   deriveAddress,
   derivePublicKey,
   signBlock,
+  verifySignature,
   hexToByteArray,
   byteArrayToHex,
   rawsToHex,

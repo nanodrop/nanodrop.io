@@ -88,7 +88,7 @@ cp local.env .env
 
 Now edit the ```.env``` file and put in the sensitive data (SEED, API keys). In the "index" it is recommended to leave 0
 
-Edit the ```config/config.json``` file and put in the rpc, websockets and worker addresses. You can also edit the "representative" and the "minAmount" - minimum amount Nano (in raws) that can be received; by default 0.000001 Nano
+Edit the ```config/config.json``` file and put in the rpc, websockets and worker addresses. You can also edit the "representative" and the "min_amount" - minimum amount Nano (in raws) that can be received; by default 0.000001 Nano
 
 ### Running in dev mode:
 

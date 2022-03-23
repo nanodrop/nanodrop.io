@@ -1,56 +1,72 @@
 const MAX_DECIMALS = 8
 
-try {
+function loadPayTableList() {
 
-    function loadPayTableList() {
+    function addDrop(type, amount, account, hash, timestamp) {
+        const blockCell = document.createElement("tr")
+        blockCell.id = `tr-${hash}`
+        blockCell.innerHTML = '\
+                <td class="type">' + type + '</td> \
+                <td class="amount">' + (type == "change" ? '---' : friendlyAmount(amount, MAX_DECIMALS, true)) + '</td> \
+                <td class="account tAccount">' + account + '</td> \
+                <td class="block"><a href="' + CONFIG.block_explorer + hash + '" target="_blank">Explorer</a></td> \
+                <td class="time">' + timeDifference(Date.now(), timestamp) + '</td>'
+        document.querySelector("#payTable tbody").prepend(blockCell)
+        setInterval(() => {
+            document.getElementById(`tr-${hash}`).querySelector(".time").innerText = timeDifference(Date.now(), timestamp)
+        }, 15000)
+    }
 
-        function addPayItem(type, amount, account, hash, timestamp) {
-            const blockCell = document.createElement("tr")
-            blockCell.innerHTML = '\
-                    <td class="type">' + type + '</td> \
-                    <td class="amount">' + ( type == "change" ? '---' : friendlyAmount(amount, MAX_DECIMALS, true)) + '</td> \
-                    <td class="account tAccount">' + account + '</td> \
-                    <td class="block"><a href="' + CONFIG.blockExplorer + hash + '" target="_blank">Explorer</a></td> \
-                    <td class="time">' + timeDifference(Date.now(), timestamp * 1000) + '</td>'
-            document.querySelector("#payTable tbody").prepend(blockCell)
-        }
+    function listen_websockets() {
+        start_websockets(CONFIG.url_websocket, function (res) {
+            if (res.block.link_as_account != CONFIG.faucet.account) {
+                addDrop(res.block.subtype, res.amount, res.block.link_as_account, res.hash, res.timestamp)
+            }
+        })
+    }
 
-        function listen_websockets() {
-            start_websockets(CONFIG.urlWS, function (res) {
-                if (res.block.link_as_account != config.faucet.account) {
-                    addPayItem(res.block.subtype, res.amount, res.block.link_as_account, res.hash)
+    getJson("/api/history?last=1000")
+        .then((blocks) => {
+            blocks.forEach((block) => {
+                if (block.subtype == "change") {
+                    addDrop(block.subtype, '---', block.representative, block.hash, block.local_timestamp * 1000)
+                } else {
+                    addDrop(block.subtype, block.amount, block.account, block.hash, block.local_timestamp * 1000)
                 }
             })
+            getPagination('#payTable');
+            $('#maxRows').trigger('change');
+            listen_websockets()
+        }).catch((err) => {
+            console.error("/api/history Error: " + formatError(err.error))
+        })
+}
+
+function loadDropsInfo() {
+
+    getJson("/api/info")
+        .then((info) => {
+            setPaidFunds(info.total_sent_percentage)
+            setDropsCounter(info.drops)
+        }).catch((err) => {
+            console.error(err)
+            console.error("/api/info Error: " + formatError(err.error))
+        })
+}
+
+function awaitNanoDrop() {
+    return new Promise(async function (resolve, reject) {
+        for (let i = 0; i < 300; i++) {
+            if (typeof (nanodrop) == "object" && "rendered" in nanodrop && nanodrop.rendered === true) {
+                return resolve(true)
+            }
+            await sleep(200)
         }
+        reject("timeout")
+    })
+}
 
-        getJson("/api/history?period=all")
-            .then((blocks) => {
-                blocks.forEach((block) => {
-                    if (block.subtype == "change" ) {
-                        addPayItem(block.subtype, '---', block.representative, block.hash, block.local_timestamp)
-                    } else {
-                        addPayItem(block.subtype, block.amount, block.account, block.hash, block.local_timestamp)
-                    }
-                })
-                getPagination('#payTable');
-                $('#maxRows').trigger('change');
-                listen_websockets()
-            }).catch((err) => {
-                console.log(err)
-                console.error("/api/history Error: " + formatError(err.error))
-            })
-    }
-
-    function loadDropsInfo() {
-
-        getJson("/api/info")
-            .then((info) => {
-                setPaidFunds(info.total_sent_percentage)
-                setDropsCounter(info.drops)
-            }).catch((err) => {
-                console.error("/api/info Error: " + formatError(err.error))
-            })
-    }
+try {
 
     loadPayTableList()
     loadDropsInfo()
@@ -62,19 +78,6 @@ try {
         document.execCommand("copy")
         $(".message").text("link copied")
     })
-
-    function awaitNanoDrop() {
-        console.log("awaiting nanodrop")
-        return new Promise(async function (resolve, reject) {
-            for (let i = 0; i < 300; i++) {
-                if (typeof (nanodrop) == "object" && "rendered" in nanodrop && nanodrop.rendered === true) {
-                    return resolve(true)
-                }
-                await sleep(200)
-            }
-            reject("timeout")
-        })
-    }
 
     $(document).ready(function () {
 
@@ -108,6 +111,8 @@ try {
         // Auto detect saved theme
         if ($("body").hasClass("dark")) {
             changeTheme("dark")
+        } else {
+            loadDropsMap()
         }
 
         // Detect Dark Mode
@@ -143,9 +148,6 @@ try {
         })
 
         loadWeekly()
-
-        loadDropsMap()
-
     })
 
 } catch (err) {

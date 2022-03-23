@@ -1,15 +1,14 @@
 require('dotenv/config')
 const api = require('../models/api')
 const rpc = require("../models/nano-wallet/rpc.js")
-const { lastWeek } = require("../models/analytics.js")
+const { lastWeek, dropsByCountry } = require("../models/analytics.js")
 const { createQRCode } = require('../models/qr_code');
 const { toMegaNano } = require("../models/nano-wallet/convert")
-const { checkNanoAddress } = require("../models/nano-wallet/check")
-const { dropsCount, walletHistory, countries_drops } = require("../models/data")
-const whitelist = require("../../config/whitelist.json")
+const { walletHistory } = require("../models/cache")
 const CONFIG = require("../../config/config.json")
 const { parseURL } = require("../models/utils")
-const { deriveWallet } = require('../models/nano-wallet/wallet.js')
+const { deriveWallet } = require('../models/nano-wallet/wallet.js');
+const ipFromReq = require('./utils/ipFromReq');
 
 const FAUCET_ACCOUNT = deriveWallet().account
 
@@ -33,7 +32,7 @@ exports.index = (req, res) => {
       config.theme = req.query.theme.toLowerCase()
       session.theme = config.theme
       if (req.query.onlySet != undefined) {
-        res.status(200).json({success: true})
+        res.status(200).json({ success: true })
         return
       }
     } else {
@@ -52,8 +51,8 @@ exports.index = (req, res) => {
   res.render('index', {
     config: {
       rootUrl: CONFIG.url,
-      urlWS: CONFIG.urlWS,
-      blockExplorer: CONFIG.blockExplorer[CONFIG.blockExplorer.length - 1] == '/' ? CONFIG.blockExplorer : CONFIG.blockExplorer + '/',
+      url_websocket: CONFIG.url_websocket,
+      block_explorer: CONFIG.block_explorer[CONFIG.block_explorer.length - 1] == '/' ? CONFIG.block_explorer : CONFIG.block_explorer + '/',
       contact: CONFIG.contact,
       faucet: {
         account: FAUCET_ACCOUNT
@@ -109,7 +108,7 @@ exports.ticket = function (req, res) {
     account = json.account
   }
 
-  const ip = req.headers['x-forwarded-for']
+  const ip = ipFromReq(req)
 
   if (json.action == "create") {
     const amount = api.dropAmount()
@@ -128,48 +127,6 @@ exports.ticket = function (req, res) {
       })
   }
 
-}
-
-exports.drop = function (req, res) {
-  let json = {}
-  try {
-    json = JSON.parse(req.body)
-  } catch (e) {
-    res.status(400).json({
-      error: "Unable to parse JSON"
-    });
-    return
-  }
-
-  json.ip = req.headers['x-forwarded-for']
-
-  // Checks if the inputs are present and are valid
-  if (!("account" in json)) return res.status(400).json({ success: false, error: "account missing" })
-  if (!checkNanoAddress(json.account)) return res.status(400).json({ success: false, error: "nano account invalid" })
-  if (!("ticket" in json)) return res.status(400).json({ success: false, error: "ticket missing" })
-
-
-  // Apply Drops Limits
-  let dropData = {}
-
-  // Exclude values present in whitelist
-  if (!whitelist.accounts.includes(json.account)) dropData.account = json.account
-  if (!whitelist.ip.includes(json.ip)) dropData.ip = json.ip
-  if ("oauth_token" in json) {
-    if (!("email" in json)) return res.status(400).json({ success: false, error: "email missing" })
-    if (!whitelist.emails.includes(json.email)) dropData.email = json.email
-  }
-
-  if (Object.keys(dropData)) {
-    const dropsHistory = dropsCount(dropData)
-    if (dropsHistory.account >= CONFIG.limits.account) return res.status(400).json({ success: false, error: "limit reached for this account, sorry" })
-    if (dropsHistory.ip >= CONFIG.limits.ip) return res.status(400).json({ success: false, error: "limit reached for this ip, sorry" })
-    if (dropsHistory.email >= CONFIG.limits.email) return res.status(400).json({ success: false, error: "limit reached for this email, sorry" })
-  }
-
-  api.drop(json, function (code, response) {
-    res.status(code).json(response)
-  })
 }
 
 exports.challenge = (req, res) => {
@@ -191,7 +148,7 @@ exports.checkbox = (req, res) => {
     rootUrl: parseURL(CONFIG.url),
     theme: "light",
     contact: CONFIG.contact,
-    blockExplorer: CONFIG.blockExplorer
+    block_explorer: CONFIG.block_explorer
   }
   if (req.query.theme != undefined) {
     if (req.query.theme.toLowerCase() == "light" || req.query.theme.toLowerCase() == "dark") {
@@ -273,29 +230,31 @@ exports.info = function (req, res) {
 exports.history = function (req, res) {
 
   // Set available configs query
-  if (req.query.period != undefined) {
-    if (req.query.period.toLowerCase() == "all") {
-      res.status(200).json(walletHistory)
+  if (req.query.last != undefined) {
+    if (!isNaN(req.query.last)) {
+      const last = Number(req.query.last)
+      if (last == 1000) {
+        res.status(200).json(walletHistory())
+      } else {
+        rpc.account_history(myWallet.account, {
+          raw: true,
+          count: 1000,
+          offset: last,
+          reverse: true
+        })
+          .then((history) => res.status(200).json(history))
+          .catch((error) => res.status(400).json({ error }))
+      }
+    } else {
+
     }
   } else if (req.query.drops != undefined) {
     if (req.query.drops.toLowerCase() == "bycountry") {
-      let dropsByCountry = {}
-
-      // Get only the size of the IP list, ensuring user privacy
-      for (let countryCode in countries_drops) {
-        dropsByCountry[countryCode] = {
-          "drops": countries_drops[countryCode].drops,
-          "users": countries_drops[countryCode].users.length,
-          "proxyServers": countries_drops[countryCode].proxyServers.length,
-          "proxyUsers": {
-              natives: countries_drops[countryCode].proxyUsers.natives.length,
-              foreigners: countries_drops[countryCode].proxyUsers.foreigners.length
-          }
-        }
-      }
-      res.status(200).json(dropsByCountry)
+      dropsByCountry()
+        .then((data) => res.status(200).json(data))
+        .catch((error) => res.status(200).json({ error }))
     } else if (req.query.drops.toLowerCase() == "weekly") {
-      res.status(200).json(lastWeek())
+      lastWeek().then((data) => res.status(200).json(data))
     } else {
       res.status(400).json({
         error: "invalid query"
@@ -303,7 +262,7 @@ exports.history = function (req, res) {
     }
   } else {
     res.status(400).json({
-      error: "invalid period"
+      error: "invalid param"
     })
   }
 }
