@@ -205,6 +205,8 @@ function listenMessages(){
 //auto init
 window.onload=function (){
 
+    window.dispatchEvent(new CustomEvent("nanodropOnload", {detail: nanodrop}))
+
     window.isTop = true;
 
     listenMessages()
