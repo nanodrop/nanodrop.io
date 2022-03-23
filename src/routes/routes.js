@@ -13,6 +13,8 @@ router.delete('/', controller.notAllowed)
 
 router.get('/api/faucet', controller.faucet)
 
+router.get('/api/countries', controller.countries)
+
 router.post('/api/drop', drop)
 
 router.post('/api/ticket', controller.ticket)

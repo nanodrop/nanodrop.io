@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<%- include("../static/head.ejs") %>
+
+    <body cz-shortcut-listen="true" style="zoom: 1; overflow: hidden;" class="">
+        <div id="container">
+
+            <div class="countries_container">
+                <div class="countries_ranking">
+                    <div class="country countries_header"><span class="ranking_position">Nº</span><span
+                            class="country_name">Countries</span><span class="users">Drops</span></div>
+                    <div class="" id="countries_ranking_body"></div>
+                </div>
+
+                <div class="map_container">
+                    <div class="country_new_drop">
+                        <div class="inner-box" id="country_new_drop_alert" style="display: none;">
+                            <div class="content">
+                                <img src="/assets/logo.png" class="alert-icon">
+                                <label>
+                                    New Drop from <span class="countryName"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="svgMapDrops"></div>
+                </div>
+            </div>
+        </div>
+
+    </body>
+
+    <script src="/js/utils.js"></script>
+    <script src="/js/analytics/map.js"></script>
+    <script>
+        loadDropsMap()
+    </script>
+
+</html>

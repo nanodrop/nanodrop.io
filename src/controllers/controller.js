@@ -87,6 +87,13 @@ exports.faucet = (req, res) => {
   })
 }
 
+exports.countries = (req, res) => {
+  res.render('embedded/countries', {
+    theme: 'light',
+    google_gtag_analytics: GTAG_ANALYTICS
+  })
+}
+
 exports.ticket = function (req, res) {
   let json = {}
   try {
