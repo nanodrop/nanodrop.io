@@ -1,7 +1,6 @@
 "use strict";
 
 const url = window.location;
-const baseUrl = url.protocol + "//" + url.host + "/"
 
 let renderEl = null
 const config = {
@@ -10,6 +9,7 @@ const config = {
     theme: "<%- config.theme %>",
     width: "<%- config.width %>",
     height: "<%- config.height %>",
+    rootUrl: "<%- config.rootUrl %>",
     onloadCallback: "<%- config.onloadCallback %>",
     onsuccessCallback: "<%- config.onsuccessCallback %>",
     onerrorCallback: "<%- config.onerrorCallback %>"
@@ -78,7 +78,7 @@ const nanodrop = {
 
             // Loads checkbox iframe 
             renderEl.innerHTML = ' \
-            <iframe id="nanoDropCheckbox" src="' + baseUrl + 'api/checkbox' + params + '" \
+            <iframe id="nanoDropCheckbox" src="' + config.rootUrl + '/api/checkbox' + params + '" \
                 width="' + config.width + '" height="' + config.height + '" \
                 style="position: relative; border: 0"> \
             </iframe>'
