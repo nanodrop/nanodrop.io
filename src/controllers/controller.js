@@ -6,6 +6,7 @@ const { createQRCode } = require('../models/qr_code');
 const { toMegaNano } = require("../models/nano-wallet/convert")
 const { walletHistory } = require("../models/cache")
 const CONFIG = require("../../config/config.json")
+const WHITELIST = require("../../config/whitelist.json")
 const { parseURL } = require("../models/utils")
 const { deriveWallet } = require('../models/nano-wallet/wallet.js');
 const ipFromReq = require('./utils/ipFromReq');
@@ -153,6 +154,7 @@ exports.checkbox = (req, res) => {
   // Set default config
   let config = {
     rootUrl: parseURL(CONFIG.url),
+    authorizedDomain: true,
     theme: "light",
     contact: CONFIG.contact,
     block_explorer: CONFIG.block_explorer
