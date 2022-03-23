@@ -2,6 +2,8 @@ const { exit } = require('process')
 const wallet = require('./models/nano-wallet/wallet.js')
 const { startHTTPServer, startWSServer } = require('./server')
 
+const http_port = process.env.PORT || 3000
+
 function formatError(err) {
     console.error(err)
     if (typeof (err) == "object") return JSON.stringify(err)
@@ -43,10 +45,9 @@ async function init() {
         wallet.selfReceive()
         const server = startHTTPServer()
         startWSServer(server)
-        server.listen(3000, function () {
-            console.log('Listening on http://localhost:3000');
-          });
-
+        server.listen(http_port, function () {
+            console.log(`Listening on http://localhost:${http_port}`);
+        });
 
     } catch (err) {
         console.error("Error: " + err)
