@@ -202,9 +202,7 @@ function listenMessages(){
     }
 }
 
-//auto init
-window.onload=function (){
-
+function init () {
     window.dispatchEvent(new CustomEvent("nanodropOnload", {detail: { nanodrop } }))
 
     window.isTop = true;
@@ -251,6 +249,13 @@ window.onload=function (){
                 })
         }
     }
-
 }
 
+//auto init after document is ready
+if (document.readyState === "complete") {
+    init()
+} else {
+    window.onload=function (){
+        init()
+    }    
+}
