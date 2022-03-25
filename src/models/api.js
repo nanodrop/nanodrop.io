@@ -77,7 +77,7 @@ function drop(reqData, callback) {
         // If Analytics is enabled, store the IP country code
         if (CONFIG.enable_analytics) dropData.country = data.ipInfo(realIP).countryCode
 
-        if (typeof dropData.country != 'string' || dropData.country.length != 3) dropData.country = "UNK"
+        if (typeof dropData.country != 'string' || dropData.country.length != 2) dropData.country = "00"
 
         Drops.create(dropData)
             .catch(console.error)
