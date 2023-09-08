@@ -1,6 +1,7 @@
 'use client'
 
 import AddressInput from "@/components/AddressInput";
+import CheckBox from "@/components/Checkbox";
 import Hero from "@/components/Hero";
 import { useState } from "react";
 
@@ -16,8 +17,12 @@ export default function Home() {
             onInvalidAddress={() => setNanoAddress(null)}
             onSubmit={console.log}
           />
+          <div className="w-full flex justify-center mt-2 sm:mt-4">
+            <CheckBox nanoAddress={nanoAddress || undefined} />
+          </div>
         </div>
       </section>
+      {/* <LinksSection /> */}
     </>
   );
 }
