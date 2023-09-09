@@ -156,7 +156,7 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 		>
 			<div
 				id="nd-anchor-container"
-				className="group w-fit max-w-full flex space-x-3 p-3 rounded hover:shadow cursor-pointer h-16 border border-slate-200 bg-sky-50 nd-anchor-light"
+				className="group w-fit max-w-full flex space-x-3 p-3 rounded hover:shadow cursor-pointer h-16 border border-slate-200 bg-[aliceblue] nd-anchor-light"
 			>
 				<div
 					id="nd-anchor-content"
@@ -175,7 +175,7 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 								(isSent && <CheckMark />) || (
 									<div
 										id="recaptcha-checkbox-border"
-										className="w-6 h-6 border-2 border-[#c1c1c1] rounded group-hover:border-nano bg-white"
+										className="w-6 h-6 border-2 border-[#c1c1c1] text-slate-700 rounded group-hover:border-nano bg-white"
 										role="presentation"
 									/>
 								)}

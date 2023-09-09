@@ -29,14 +29,6 @@ body {
 	height: 94px;
 }
 
-.nd-anchor-light {
-	border: 1px solid #e3e3e3;
-	background: #f9f9f9;
-	background: #eee;
-	background-color: aliceblue;
-	color: #000;
-}
-
 .nd-inline-block {
 	display: inline-block;
 	height: 100%;
@@ -76,10 +68,8 @@ body {
 	border: 2px solid #ff0000;
 }
 
-.recaptcha-checkbox-clearOutline.recaptcha-checkbox-focused
-	.recaptcha-checkbox-border,
-.recaptcha-checkbox-clearOutline.recaptcha-checkbox-focused
-	.recaptcha-checkbox-spinner-gif {
+.recaptcha-checkbox-clearOutline.recaptcha-checkbox-focused .recaptcha-checkbox-border,
+.recaptcha-checkbox-clearOutline.recaptcha-checkbox-focused .recaptcha-checkbox-spinner-gif {
 	border: 2px solid #c1c1c1;
 }
 
@@ -150,10 +140,6 @@ body {
 	font-weight: 400;
 	line-height: 17px;
 	cursor: pointer;
-}
-
-.nd-anchor-light .nd-anchor-checkbox-label {
-	color: #36393f;
 }
 
 .nd-anchor-footer {
