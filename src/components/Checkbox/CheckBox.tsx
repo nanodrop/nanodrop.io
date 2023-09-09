@@ -170,15 +170,15 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
               aria-checked="false"
               aria-labelledby="recaptcha-anchor-label"
             >
-              {(isError && <ErrorMark />) || (
+              {(isError && <ErrorMark />) ||
+                (isDropping && <CheckboxSpinner />) ||
+                (isSent && <CheckMark />) || (
                   <div
                     id="recaptcha-checkbox-border"
                     className="w-6 h-6 border-2 border-[#c1c1c1] rounded group-hover:border-nano bg-white"
                     role="presentation"
                   />
-                ) ||
-                (isDropping && <CheckboxSpinner />) ||
-                (isSent && <CheckMark />)}
+                )}
             </div>
           </div>
 
