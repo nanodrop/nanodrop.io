@@ -22,7 +22,7 @@ export default function RootLayout({
 				<div className="min-h-screen flex flex-col">
 					<Appbar />
 					<main className="flex flex-col flex-1 items-center bg-white border-y border-slate-100">
-						<div className="flex flex-col flex-1 justify-center max-w-7xl">
+						<div className="flex flex-col flex-1 justify-center w-full max-w-5xl">
 							{children}
 						</div>
 					</main>

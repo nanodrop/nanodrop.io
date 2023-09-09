@@ -3,6 +3,7 @@
 import AddressInput from '@/components/AddressInput'
 import CheckBox from '@/components/Checkbox'
 import Hero from '@/components/Hero'
+import LinksSection from '@/components/LinksSection'
 import { ArrowSmallRightIcon } from '@heroicons/react/24/solid'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -43,7 +44,7 @@ export default function Home() {
 					</div>
 				</div>
 			</section>
-			{/* <LinksSection /> */}
+			<LinksSection />
 		</>
 	)
 }
