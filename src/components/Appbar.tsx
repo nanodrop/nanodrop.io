@@ -6,7 +6,7 @@ const montserrat = Montserrat({ subsets: ['latin'], weight: 'variable' })
 export default function Appbar() {
 	return (
 		<header className="pt-safe">
-			<div className="w-full flex justify-between items-center border-none border-slate-100 px-4 sm:px-4 bg-[#209CE9] py-2">
+			<div className="w-full flex justify-between items-center border-none border-slate-100 px-4 sm:px-4 bg-nano py-2">
 				<div>
 					<h1
 						className={`flex ${montserrat.className} items-center font-light text-xl sm:text-2xl uppercase text-white`}

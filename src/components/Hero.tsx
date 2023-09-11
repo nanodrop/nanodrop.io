@@ -7,7 +7,7 @@ export default function Hero() {
 	return (
 		<div className="text-center">
 			<h1
-				className={`flex ${montserrat.className} font-light text-4xl sm:text-5xl uppercase text-[#209CE9]`}
+				className={`flex ${montserrat.className} font-light text-4xl sm:text-5xl uppercase text-nano`}
 			>
 				Nano Ӿ Faucet
 			</h1>
