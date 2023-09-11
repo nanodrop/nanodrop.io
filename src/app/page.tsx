@@ -18,29 +18,27 @@ export default function Home() {
 					</div>
 				</div>
 			</section>
-			<section className="flex flex-col flex-1 justify-center items-center py-8 bg-white">
-				<div className="flex flex-col flex-1 max-h-[400px] items-center justify-between">
-					<div className="flex flex-1 flex-col justify-center">
+			<section className="flex flex-col w-full flex-1 justify-center items-center py-8 bg-white">
+				<div className="w-full flex flex-col items-center justify-between gap-8">
+					<div className="flex flex-col justify-center pb-4">
 						<Hero />
 					</div>
-					<div className="flex flex-1 flex-col justify-center gap-8">
-						<div className="w-96 sm:w-[448px] max-w-full px-4 sm:py-8">
-							<AddressInput
-								onValidAddress={setNanoAddress}
-								onInvalidAddress={() => setNanoAddress(null)}
-								onSubmit={console.log}
-							/>
-						</div>
-						<div className="w-full flex justify-center">
-							<CheckBox nanoAddress={nanoAddress || undefined} />
-						</div>
-						<p className="text-xs text-slate-500 text-center">
-							By submitting, you accept the{' '}
-							<Link href="/tos" className="text-sky-500">
-								Terms of Service
-							</Link>
-						</p>
+					<div className="w-full sm:w-[448px] max-w-full px-4">
+						<AddressInput
+							onValidAddress={setNanoAddress}
+							onInvalidAddress={() => setNanoAddress(null)}
+							onSubmit={console.log}
+						/>
 					</div>
+					<div className="w-full flex justify-center">
+						<CheckBox nanoAddress={nanoAddress || undefined} />
+					</div>
+					<p className="text-xs text-slate-500 text-center">
+						By submitting, you accept the{' '}
+						<Link href="/tos" className="text-sky-500">
+							Terms of Service
+						</Link>
+					</p>
 				</div>
 			</section>
 
