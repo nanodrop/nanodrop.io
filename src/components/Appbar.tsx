@@ -1,3 +1,4 @@
+import { SOCIALS } from '@/config'
 import { ButtonBase } from '@mui/material'
 import { Montserrat } from 'next/font/google'
 
@@ -33,10 +34,7 @@ export default function Appbar() {
 						<span>Drop</span>
 					</h1>
 				</div>
-				<ButtonBase
-					className="!rounded-lg"
-					href="https://github.com/nanodrop/nanodrop.io"
-				>
+				<ButtonBase className="!rounded-lg" href={SOCIALS.github}>
 					<div className="flex items-center space-x-2 text-white hover:text-[#1f2328] border border-slate-200 px-2 py-1 rounded-lg h-10">
 						<svg
 							viewBox="0 0 20 20"

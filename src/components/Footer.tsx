@@ -1,3 +1,4 @@
+import { SOCIALS } from '@/config'
 import { EnvelopeIcon } from '@heroicons/react/24/solid'
 import Link from 'next/link'
 
@@ -6,7 +7,7 @@ const navigation = {
 	social: [
 		{
 			name: 'Discord',
-			href: '#',
+			href: SOCIALS.discord,
 			icon: (props: React.SVGProps<SVGSVGElement>) => (
 				<svg
 					viewBox="0 -28.5 256 256"
@@ -26,7 +27,7 @@ const navigation = {
 		},
 		{
 			name: 'GitHub',
-			href: '#',
+			href: SOCIALS.github,
 			icon: (props: React.SVGProps<SVGSVGElement>) => (
 				<svg viewBox="0 0 20 20" version="1.1" {...props}>
 					<g stroke="none" strokeWidth="1" fillRule="evenodd">
@@ -44,7 +45,7 @@ const navigation = {
 		},
 		{
 			name: 'Reddit',
-			href: '#',
+			href: SOCIALS.reddit,
 			icon: (props: React.SVGProps<SVGSVGElement>) => (
 				<svg
 					viewBox="0 0 256 256"
