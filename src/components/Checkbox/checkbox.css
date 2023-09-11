@@ -50,7 +50,7 @@ body {
 
 .recaptcha-checkbox-focused .recaptcha-checkbox-border,
 .recaptcha-checkbox-focused .recaptcha-checkbox-spinner-gif {
-	border: 2px solid #4d90fe;
+	border: 2px solid #209CE9;
 }
 
 .recaptcha-checkbox-active .recaptcha-checkbox-border,
@@ -82,7 +82,7 @@ body {
 
 .recaptcha-checkbox-spinner {
 	background-color: #f9f9f9;
-	border: 5px solid #4d90fe;
+	border: 5px solid #209CE9;
 	border-radius: 32px;
 	border-bottom-color: transparent;
 	border-left-color: transparent;
@@ -197,7 +197,7 @@ body {
 }
 
 .blue-stroke {
-	stroke: #428fde;
+	stroke: #209CE9;
 }
 
 .recaptcha-checkbox-checkmark {
