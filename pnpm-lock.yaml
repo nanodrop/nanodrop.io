@@ -22,6 +22,7 @@ specifiers:
   react-dom: 18.2.0
   swr: ^2.2.2
   tailwindcss: 3.3.3
+  tailwindcss-safe-area: ^0.4.0
   typescript: 5.2.2
 
 dependencies:
@@ -49,6 +50,7 @@ devDependencies:
   eslint-plugin-prettier: 5.0.0_gvuhixlf4l77s4luifatvwkgyu
   prettier: 3.0.3
   prettier-plugin-tailwind: 2.2.12_qjeq5bwuawioc63ow3ocwbatb4
+  tailwindcss-safe-area: 0.4.0
 
 packages:
 
@@ -3025,6 +3027,11 @@ packages:
     resolution: {integrity: sha512-7S0AaDitt+Fjy9m3v0GrQ/KZrCswNDD25SSXX9U/HIB5h9lk0ImSkq/VVcnzu78cRQxR0fFfvHYFdfcqN3dCGA==}
     dependencies:
       find-up: 5.0.0
+    dev: true
+
+  /tailwindcss-safe-area/0.4.0:
+    resolution: {integrity: sha512-V6UFT+LCYJOg9780fcQwA4k0RDCmyjRab7G8fwdeoasT9NOCpmXdCV1q79PSI9AK/KtimTIzGeQfeRH583lH5A==}
+    engines: {node: '>=16'}
     dev: true
 
   /tailwindcss/3.3.3:

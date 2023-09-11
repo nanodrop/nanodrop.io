@@ -34,6 +34,7 @@
 		"eslint-config-prettier": "^9.0.0",
 		"eslint-plugin-prettier": "^5.0.0",
 		"prettier": "^3.0.3",
-		"prettier-plugin-tailwind": "^2.2.12"
+		"prettier-plugin-tailwind": "^2.2.12",
+		"tailwindcss-safe-area": "^0.4.0"
 	}
 }
