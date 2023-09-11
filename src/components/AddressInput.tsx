@@ -34,7 +34,7 @@ export default function AddressInput({
 
 	return (
 		<form
-			className="w-full p-2 flex items-center rounded-md border border-slate-200"
+			className="w-full p-2 flex items-center rounded-md border border-slate-200 bg-slate-50"
 			action={'#'}
 			onSubmit={onSubmit}
 		>

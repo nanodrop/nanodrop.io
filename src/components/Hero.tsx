@@ -1,4 +1,5 @@
 import { Montserrat } from 'next/font/google'
+import Link from 'next/link'
 
 const montserrat = Montserrat({ subsets: ['latin'], weight: 'variable' })
 
@@ -6,14 +7,22 @@ export default function Hero() {
 	return (
 		<div className="text-center">
 			<h1
-				className={`flex ${montserrat.className} font-light sm:font-extralight text-4xl sm:text-5xl uppercase text-[#209CE9]`}
+				className={`flex ${montserrat.className} font-light text-4xl sm:text-5xl uppercase text-[#209CE9]`}
 			>
 				Nano Ӿ Faucet
 			</h1>
 			<h4
-				className={`${montserrat.className} font-light text-sm text-slate-500`}
+				className={`${montserrat.className} font-normal text-sm text-slate-500 mt-4`}
 			>
-				Start with Nano currency!
+				205.343 Drops!{' '}
+				<Link
+					href={
+						'https://www.nanolooker.com/account/nano_3dropio1aj6yttxeqf7wm16u3eofx7kkcff5ytcy9m11zxh3uj6r9k5yussb'
+					}
+					className="text-sky-500"
+				>
+					Explore Transactions
+				</Link>
 			</h4>
 		</div>
 	)
