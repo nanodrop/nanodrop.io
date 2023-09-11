@@ -44,6 +44,7 @@ export default function AddressInput({
 				placeholder="Your Nano address: nano_"
 				inputProps={{ 'aria-label': 'your nano address' }}
 				onChange={handle}
+				className="!text-slate-700"
 			/>
 			<IconButton
 				type="button"
