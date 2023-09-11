@@ -20,6 +20,7 @@ export default function Hero() {
 						'https://www.nanolooker.com/account/nano_3dropio1aj6yttxeqf7wm16u3eofx7kkcff5ytcy9m11zxh3uj6r9k5yussb'
 					}
 					className="text-sky-500"
+					target="_blank"
 				>
 					Explore Transactions
 				</Link>
