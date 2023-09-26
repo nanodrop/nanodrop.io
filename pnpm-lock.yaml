@@ -8,7 +8,9 @@ specifiers:
   '@types/node': 20.5.9
   '@types/react': 18.2.21
   '@types/react-dom': 18.2.7
+  '@types/react-timeago': ^4.1.3
   autoprefixer: 10.4.15
+  clsx: ^2.0.0
   eslint: 8.48.0
   eslint-config-next: 13.5.3
   eslint-config-prettier: ^9.0.0
@@ -20,6 +22,7 @@ specifiers:
   prettier-plugin-tailwind: ^2.2.12
   react: 18.2.0
   react-dom: 18.2.0
+  react-timeago: ^7.2.0
   swr: ^2.2.2
   tailwindcss: 3.3.3
   tailwindcss-safe-area: ^0.4.0
@@ -35,6 +38,7 @@ dependencies:
   '@types/react': 18.2.21
   '@types/react-dom': 18.2.7
   autoprefixer: 10.4.15_postcss@8.4.29
+  clsx: 2.0.0
   eslint: 8.48.0
   eslint-config-next: 13.5.3_w2g2uv42be7wag4oipwkfv43p4
   nanocurrency: 2.5.0
@@ -42,12 +46,14 @@ dependencies:
   postcss: 8.4.29
   react: 18.2.0
   react-dom: 18.2.0_react@18.2.0
+  react-timeago: 7.2.0_react@18.2.0
   swr: 2.2.2_react@18.2.0
   tailwindcss: 3.3.3
   typescript: 5.2.2
   zod: 3.22.2
 
 devDependencies:
+  '@types/react-timeago': 4.1.3
   eslint-config-prettier: 9.0.0_eslint@8.48.0
   eslint-plugin-prettier: 5.0.0_gvuhixlf4l77s4luifatvwkgyu
   prettier: 3.0.3
@@ -649,7 +655,6 @@ packages:
 
   /@types/prop-types/15.7.5:
     resolution: {integrity: sha512-JCB8C6SnDoQf0cNycqd/35A7MjcnK+ZTqE7judS6o7utxUCg6imJg3QK2qzHKszlTjcj2cn+NwMB2i96ubpj7w==}
-    dev: false
 
   /@types/react-dom/18.2.7:
     resolution: {integrity: sha512-GRaAEriuT4zp9N4p1i8BDBYmEyfo+xQ3yHjJU4eiK5NDa1RmUZG+unZABUTK4/Ox/M+GaHwb6Ow8rUITrtjszA==}
@@ -663,6 +668,12 @@ packages:
       '@types/react': 18.2.21
     dev: false
 
+  /@types/react-timeago/4.1.3:
+    resolution: {integrity: sha512-XaaMBzuXLw7lxPPDs/fenlohcf3NDqM5qP4oOL/Meu+Hb1QChW4Igw/SruS1llEqch18RQB3wDTIwvqq4nivvw==}
+    dependencies:
+      '@types/react': 18.2.21
+    dev: true
+
   /@types/react-transition-group/4.4.6:
     resolution: {integrity: sha512-VnCdSxfcm08KjsJVQcfBmhEQAPnLB8G08hAxn39azX1qYBQ/5RVQuoHuKIcfKOdncuaUvEpFKFzEvbtIMsfVew==}
     dependencies:
@@ -675,11 +686,9 @@ packages:
       '@types/prop-types': 15.7.5
       '@types/scheduler': 0.16.3
       csstype: 3.1.2
-    dev: false
 
   /@types/scheduler/0.16.3:
     resolution: {integrity: sha512-5cJ8CB4yAx7BH1oMvdU0Jh9lrEXyPkar6F9G/ERswkCuvP4KQZfZkSjcMbAICCpQTN4OuZn8tz0HiKv9TGZgrQ==}
-    dev: false
 
   /@typescript-eslint/parser/6.6.0_w2g2uv42be7wag4oipwkfv43p4:
     resolution: {integrity: sha512-setq5aJgUwtzGrhW177/i+DMLqBaJbdwGj2CPIVFFLE0NCliy5ujIdLHd2D1ysmlmsjdL2GWW+hR85neEfc12w==}
@@ -1109,7 +1118,6 @@ packages:
 
   /csstype/3.1.2:
     resolution: {integrity: sha512-I7K1Uu0MBPzaFKg4nI5Q7Vs2t+3gWWW648spaF+Rg7pI9ds18Ugn+lvg4SHczUdKlHI5LWBXyqfS8+DufyBsgQ==}
-    dev: false
 
   /damerau-levenshtein/1.0.8:
     resolution: {integrity: sha512-sdQSFB7+llfUcQHUQO3+B8ERRj0Oa4w9POWMI/puGtuf7gFywGmkaLCElnudfTiKZV+NvHqL0ifzdrI8Ro7ESA==}
@@ -2709,6 +2717,14 @@ packages:
 
   /react-is/18.2.0:
     resolution: {integrity: sha512-xWGDIW6x921xtzPkhiULtthJHoJvBbF3q26fzloPCK0hsvxtPVelvftw3zjbHWSkR2km9Z+4uxbDDK/6Zw9B8w==}
+    dev: false
+
+  /react-timeago/7.2.0_react@18.2.0:
+    resolution: {integrity: sha512-2KsBEEs+qRhKx/kekUVNSTIpop3Jwd7SRBm0R4Eiq3mPeswRGSsftY9FpKsE/lXLdURyQFiHeHFrIUxLYskG5g==}
+    peerDependencies:
+      react: ^16.0.0 || ^17.0.0 || ^18.0.0
+    dependencies:
+      react: 18.2.0
     dev: false
 
   /react-transition-group/4.4.5_biqbaboplfbrettd7655fr4n2y:
