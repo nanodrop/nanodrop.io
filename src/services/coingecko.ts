@@ -26,7 +26,7 @@ export const getLatestPrice = async (
 	const response = await fetch(url, {
 		headers: { 'Accept-Encoding': 'gzip,deflate,compress' },
 		next: {
-			revalidate: 10, // 5 minutes
+			revalidate: 10 * 5, // 5 minutes
 			tags: ['xno-price'],
 		},
 	})
