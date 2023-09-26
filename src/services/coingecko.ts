@@ -23,8 +23,6 @@ export const getLatestPrice = async (
 
 	const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coinId.toLowerCase()}&vs_currencies=usd&include_24hr_change=true`
 
-	const before = Date.now()
-
 	const response = await fetch(url, {
 		headers: { 'Accept-Encoding': 'gzip,deflate,compress' },
 		next: {
@@ -36,10 +34,6 @@ export const getLatestPrice = async (
 	if (!response.ok) {
 		throw new Error(`coingecko status error: ${response.statusText}`)
 	}
-
-	const after = Date.now()
-
-	console.log(`Took ${after - before}ms to fetch price`)
 
 	const data = await response.json()
 
