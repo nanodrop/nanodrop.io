@@ -25,9 +25,7 @@ export default function RootLayout({
 				<div className="min-h-screen flex flex-col">
 					<Appbar />
 					<main className="flex flex-col flex-1 items-center bg-slate-100 sm:bg-white">
-						<div className="flex flex-col flex-1 justify-center w-full max-w-5xl">
-							{children}
-						</div>
+						{children}
 					</main>
 					<Footer />
 				</div>

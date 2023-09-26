@@ -14,7 +14,7 @@ export default function Home() {
 	const price = usePrice()
 
 	return (
-		<>
+		<div className="flex flex-col flex-1 justify-center w-full max-w-5xl">
 			<section className="flex flex-col w-full justify-center items-center py-8 bg-white">
 				<div className="whitespace-nowrap py-1 px-2 border border-slate-100 bg-slate-50 rounded text-slate-500 text-sm sm:text-base">
 					1 XNO = {price.error ? price.error : `${price.usd} USD`}
@@ -45,6 +45,6 @@ export default function Home() {
 			</section>
 
 			<LinksSection />
-		</>
+		</div>
 	)
 }
