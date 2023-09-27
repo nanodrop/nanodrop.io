@@ -16,7 +16,7 @@ export default function useListDrops() {
 	console.log(`${API_URL}/drops`)
 
 	const { data, error, isLoading, mutate, isValidating } = useSWR<Drop[]>(
-		`${API_URL}/drops`,
+		`${API_URL}/drops?limit=50`,
 		fetcher,
 	)
 
