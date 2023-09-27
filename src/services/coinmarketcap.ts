@@ -44,8 +44,6 @@ export const getLatestPrice = async (
 
 	const body = await response.json()
 
-	console.log(JSON.stringify(body, null, 3))
-
 	try {
 		const { price, percent_change_24h } = quoteSchema.parse(
 			body?.data?.[coinId]?.quote?.[convert],
