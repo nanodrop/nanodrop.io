@@ -1,17 +1,17 @@
-import { getLatestPrice } from '@/services/coingecko'
+import { getLatestPrice } from '@/services/coinmarketcap'
 
 export const runtime = 'edge'
 
-const COIN_ID = 'nano'
+const COIN_ID = 1567
 
 export async function GET() {
 	try {
-		const { usd, usd_24h_change } = await getLatestPrice(COIN_ID)
+		const { price, percent_change_24h } = await getLatestPrice(COIN_ID)
 		return new Response(
 			JSON.stringify(
 				{
-					usd,
-					usd_24h_change,
+					price,
+					percent_change_24h,
 				},
 				null,
 				2,
