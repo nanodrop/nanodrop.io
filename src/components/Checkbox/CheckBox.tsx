@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { ButtonBase } from '@mui/material'
 import useSWR from 'swr'
 import useSWRMutation from 'swr/mutation'
+import Turnstile, { BoundTurnstileObject, useTurnstile } from 'react-turnstile'
 
 import { checkHash, convert, Unit } from 'nanocurrency'
 import './checkbox.css'
@@ -23,6 +24,7 @@ interface Ticket {
 	ticket: string
 	createdAt: number
 	expiresAt: number
+	verificationRequired: boolean
 }
 
 const rawToNano = (raw: string) => {
@@ -53,12 +55,17 @@ const getTicket = async (): Promise<Ticket> => {
 interface DropMeRequest {
 	account: string
 	ticket: string
+	turnstileToken?: string
 }
 
-const dropMe = async ({ account, ticket }: DropMeRequest): Promise<any> => {
+const dropMe = async ({
+	account,
+	ticket,
+	turnstileToken,
+}: DropMeRequest): Promise<any> => {
 	const response = await fetch(`${API_URL}/drop`, {
 		method: 'POST',
-		body: JSON.stringify({ account, ticket }),
+		body: JSON.stringify({ account, ticket, turnstileToken }),
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -84,6 +91,9 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 	const [errorMessage, setErrorMessage] = useState<string | null>(null)
 	const [isSent, setIsSent] = useState(false)
 	const [isRefreshing, setIsRefreshing] = useState(false)
+	const [turnstileToken, setTurnstileToken] = useState('')
+
+	const turnstile = useTurnstile()
 
 	const { data: ticket, isLoading: isLoadingTicket } = useSWR(
 		'ticket',
@@ -102,7 +112,7 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 		trigger: drop,
 		isMutating: isDropping,
 	} = useSWRMutation(
-		{ account: nanoAddress, ticket: ticket?.ticket },
+		{ account: nanoAddress, ticket: ticket?.ticket, turnstileToken },
 		data => dropMe(data as DropMeRequest),
 		{
 			onError: (error: Error) => {
@@ -132,8 +142,43 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 		event.stopPropagation()
 		if (event.isTrusted) {
 			reset()
+			if (!verified) {
+				turnstile?.reset()
+			}
 			await drop()
 		}
+	}
+
+	const [verified, setVerified] = useState(false)
+	const [verifying, setVerifying] = useState(false)
+
+	useEffect(() => {
+		if (turnstile && ticket?.verificationRequired) {
+			setVerifying(true)
+			turnstile.execute()
+		}
+	}, [turnstile, ticket])
+
+	const handleTurstileVerify = (token: string) => {
+		console.log('handleTurstileVerify')
+		setVerifying(false)
+		setVerified(true)
+		setTurnstileToken(token)
+	}
+
+	const handleTurnstileExpired = (turnstile: BoundTurnstileObject) => {
+		setVerified(false)
+		turnstile.reset()
+	}
+
+	const handleTurnstileError = (error: any) => {
+		setErrorTitle('Verification Error')
+		setErrorMessage(JSON.stringify(error))
+	}
+
+	const handleTurnstileUnsupported = () => {
+		setErrorTitle('Verification Error')
+		setErrorMessage('Unsupported')
 	}
 
 	useEffect(() => {
@@ -153,7 +198,17 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 				},
 			}}
 			className="!rounded"
+			disabled={verifying}
 		>
+			<Turnstile
+				execution="execute"
+				sitekey="0x4AAAAAAAKvYWC-9c5TVGWD"
+				onVerify={handleTurstileVerify}
+				onExpire={(token, turnstile) => handleTurnstileExpired(turnstile)}
+				onError={handleTurnstileError}
+				onTimeout={handleTurnstileExpired}
+				onUnsupported={handleTurnstileUnsupported}
+			/>
 			<div
 				id="nd-anchor-container"
 				className="group w-fit max-w-full flex space-x-3 p-3 rounded hover:shadow cursor-pointer h-16 border border-slate-200 bg-[aliceblue] nd-anchor-light"
@@ -171,7 +226,7 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 							aria-labelledby="recaptcha-anchor-label"
 						>
 							{(isError && <ErrorMark />) ||
-								(isDropping && <CheckboxSpinner />) ||
+								((isDropping || verifying) && <CheckboxSpinner />) ||
 								(isSent && <CheckMark />) || (
 									<div
 										id="recaptcha-checkbox-border"
@@ -202,6 +257,7 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 									</p>
 								</>
 							)) ||
+								(verifying && <>Safe Verifying</>) ||
 								(isSent && (
 									<>
 										<span

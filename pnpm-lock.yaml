@@ -23,6 +23,7 @@ specifiers:
   react: 18.2.0
   react-dom: 18.2.0
   react-timeago: ^7.2.0
+  react-turnstile: ^1.1.2
   swr: ^2.2.2
   tailwindcss: 3.3.3
   tailwindcss-safe-area: ^0.4.0
@@ -47,6 +48,7 @@ dependencies:
   react: 18.2.0
   react-dom: 18.2.0_react@18.2.0
   react-timeago: 7.2.0_react@18.2.0
+  react-turnstile: 1.1.2_biqbaboplfbrettd7655fr4n2y
   swr: 2.2.2_react@18.2.0
   tailwindcss: 3.3.3
   typescript: 5.2.2
@@ -2737,6 +2739,16 @@ packages:
       dom-helpers: 5.2.1
       loose-envify: 1.4.0
       prop-types: 15.8.1
+      react: 18.2.0
+      react-dom: 18.2.0_react@18.2.0
+    dev: false
+
+  /react-turnstile/1.1.2_biqbaboplfbrettd7655fr4n2y:
+    resolution: {integrity: sha512-wfhSf4JtXlmLRkfxMryU8yEeCbh401muKoInhx+TegYwP8RprUW5XPZa8WnCNZiYpMy1i6IXAb1Ar7xj5HxJag==}
+    peerDependencies:
+      react: '>= 17.0.0'
+      react-dom: '>= 17.0.0'
+    dependencies:
       react: 18.2.0
       react-dom: 18.2.0_react@18.2.0
     dev: false
