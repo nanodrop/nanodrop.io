@@ -7,6 +7,7 @@ import { QrCodeIcon } from '@heroicons/react/24/solid'
 import { ClipboardDocumentIcon } from '@heroicons/react/24/outline'
 import { checkAddress } from 'nanocurrency'
 import { useState } from 'react'
+import QrScannerModal from './QrScanner/QrScannerModal'
 
 export interface AddressInputProps {
 	onSubmit?: (event: React.FormEvent<HTMLFormElement>) => void
@@ -22,6 +23,7 @@ export default function AddressInput({
 	onInvalidAddress,
 }: AddressInputProps) {
 	const [value, setValue] = useState('')
+	const [openScanner, setOpenScanner] = useState(false)
 
 	const validate = (value: string) => {
 		if (checkAddress(value)) {
@@ -35,6 +37,13 @@ export default function AddressInput({
 		onChange && onChange(event.target.value)
 		setValue(event.target.value)
 		validate(event.target.value)
+	}
+
+	const handleOnScan = (text: string) => {
+		onChange && onChange(text)
+		setValue(text)
+		validate(text)
+		setOpenScanner(false)
 	}
 
 	const clipboardPaste = async () => {
@@ -63,11 +72,17 @@ export default function AddressInput({
 				onChange={handleOnChange}
 				className="!text-slate-700"
 			/>
+			{openScanner && (
+				<QrScannerModal
+					onClose={() => setOpenScanner(false)}
+					onScan={handleOnScan}
+				/>
+			)}
 			<IconButton
 				type="button"
 				sx={{ p: '10px' }}
-				className="hiddenx"
-				aria-label="search"
+				aria-label="qr-scanner"
+				onClick={() => setOpenScanner(true)}
 			>
 				<QrCodeIcon className="w-5 h-5 text-gray-500" />
 			</IconButton>

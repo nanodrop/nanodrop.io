@@ -13,6 +13,7 @@
 	"dependencies": {
 		"@emotion/react": "^11.11.1",
 		"@emotion/styled": "^11.11.0",
+		"@headlessui/react": "^1.7.17",
 		"@heroicons/react": "^2.0.18",
 		"@mui/material": "^5.14.8",
 		"@types/node": "20.5.9",
@@ -22,6 +23,7 @@
 		"clsx": "^2.0.0",
 		"eslint": "8.48.0",
 		"eslint-config-next": "13.5.3",
+		"jsqr": "^1.4.0",
 		"nanocurrency": "^2.5.0",
 		"next": "13.5.3",
 		"postcss": "8.4.29",

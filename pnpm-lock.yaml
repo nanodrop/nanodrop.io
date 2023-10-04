@@ -3,6 +3,7 @@ lockfileVersion: 5.4
 specifiers:
   '@emotion/react': ^11.11.1
   '@emotion/styled': ^11.11.0
+  '@headlessui/react': ^1.7.17
   '@heroicons/react': ^2.0.18
   '@mui/material': ^5.14.8
   '@types/node': 20.5.9
@@ -15,6 +16,7 @@ specifiers:
   eslint-config-next: 13.5.3
   eslint-config-prettier: ^9.0.0
   eslint-plugin-prettier: ^5.0.0
+  jsqr: ^1.4.0
   nanocurrency: ^2.5.0
   next: 13.5.3
   postcss: 8.4.29
@@ -33,6 +35,7 @@ specifiers:
 dependencies:
   '@emotion/react': 11.11.1_gq4reeurwxuj4hvyerswzzqthy
   '@emotion/styled': 11.11.0_rra5sb3jh6znd7zvpi7zwpaeky
+  '@headlessui/react': 1.7.17_biqbaboplfbrettd7655fr4n2y
   '@heroicons/react': 2.0.18_react@18.2.0
   '@mui/material': 5.14.8_mcyaowhjtk6juxjmabqaayfcxi
   '@types/node': 20.5.9
@@ -42,6 +45,7 @@ dependencies:
   clsx: 2.0.0
   eslint: 8.48.0
   eslint-config-next: 13.5.3_w2g2uv42be7wag4oipwkfv43p4
+  jsqr: 1.4.0
   nanocurrency: 2.5.0
   next: 13.5.3_biqbaboplfbrettd7655fr4n2y
   postcss: 8.4.29
@@ -297,6 +301,18 @@ packages:
 
   /@floating-ui/utils/0.1.1:
     resolution: {integrity: sha512-m0G6wlnhm/AX0H12IOWtK8gASEMffnX08RtKkCgTdHb9JpHKGloI7icFfLg9ZmQeavcvR0PKmzxClyuFPSjKWw==}
+    dev: false
+
+  /@headlessui/react/1.7.17_biqbaboplfbrettd7655fr4n2y:
+    resolution: {integrity: sha512-4am+tzvkqDSSgiwrsEpGWqgGo9dz8qU5M3znCkC4PgkpY4HcCZzEDEvozltGGGHIKl9jbXbZPSH5TWn4sWJdow==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      react: ^16 || ^17 || ^18
+      react-dom: ^16 || ^17 || ^18
+    dependencies:
+      client-only: 0.0.1
+      react: 18.2.0
+      react-dom: 18.2.0_react@18.2.0
     dev: false
 
   /@heroicons/react/2.0.18_react@18.2.0:
@@ -2216,6 +2232,10 @@ packages:
     hasBin: true
     dependencies:
       minimist: 1.2.8
+    dev: false
+
+  /jsqr/1.4.0:
+    resolution: {integrity: sha512-dxLob7q65Xg2DvstYkRpkYtmKm2sPJ9oFhrhmudT1dZvNFFTlroai3AWSpLey/w5vMcLBXRgOJsbXpdN9HzU/A==}
     dev: false
 
   /jsx-ast-utils/3.3.5:
