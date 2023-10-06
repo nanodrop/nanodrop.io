@@ -97,7 +97,7 @@ export default function Drops() {
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-gray-200">
-								{drops?.map((drop, index) => (
+								{drops?.map(drop => (
 									<tr key={drop.hash}>
 										<td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-800 sm:pl-0">
 											<p className="mb-1">{drop.account}</p>
@@ -118,7 +118,7 @@ export default function Drops() {
 											<TimeAgo date={drop.timestamp} />
 										</td>
 										<td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-											{drop.took} ms {index}
+											{drop.took} ms
 										</td>
 										<td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-0">
 											{drop.is_proxy}
