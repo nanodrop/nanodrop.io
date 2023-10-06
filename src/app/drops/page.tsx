@@ -7,6 +7,8 @@ import clsx from 'clsx'
 import { Unit, convert } from 'nanocurrency'
 import TimeAgo from 'react-timeago'
 import Countries from './_assets/countries.json'
+import Link from 'next/link'
+import { explorerLinkFromHash } from '@/utils'
 
 export default function Drops() {
 	const { drops, isLoading, error, refresh, isRefreshing, hasMore, loadMore } =
@@ -101,7 +103,15 @@ export default function Drops() {
 									<tr key={drop.hash}>
 										<td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-800 sm:pl-0">
 											<p className="mb-1">{drop.account}</p>
-											<p className="text-gray-500">{drop.hash}</p>
+											<p>
+												<Link
+													href={explorerLinkFromHash(drop.hash)}
+													target="_blank"
+													className="text-sky-700 hover:underline"
+												>
+													{drop.hash}
+												</Link>
+											</p>
 										</td>
 										<td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
 											{convert(drop.amount, {
