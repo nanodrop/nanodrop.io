@@ -122,7 +122,7 @@ export default function Footer() {
 					<span>Ӿ 2023 NanoDrop</span>
 					<span>·</span>
 					<span>
-						Powered by{' '}
+						Created by{' '}
 						<Link
 							target="_blank"
 							href="https://github.com/anarkrypto"
