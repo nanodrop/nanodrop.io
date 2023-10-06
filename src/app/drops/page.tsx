@@ -2,14 +2,15 @@
 
 import useListDrops from '@/hooks/useListDrops'
 import { ArrowPathIcon } from '@heroicons/react/24/solid'
-import { IconButton, Skeleton } from '@mui/material'
+import { ButtonBase, IconButton, Skeleton } from '@mui/material'
 import clsx from 'clsx'
 import { Unit, convert } from 'nanocurrency'
 import TimeAgo from 'react-timeago'
 import Countries from './_assets/countries.json'
 
 export default function Drops() {
-	const { drops, isLoading, error, refresh, isRefreshing } = useListDrops()
+	const { drops, isLoading, error, refresh, isRefreshing, hasMore, loadMore } =
+		useListDrops()
 	if (error)
 		return (
 			<div className="border border-rose-200 bg-rose-100 text-rose-800 text-lg font-semibold rounded-lg px-4 py-2">
@@ -96,7 +97,7 @@ export default function Drops() {
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-gray-200">
-								{drops?.map(drop => (
+								{drops?.map((drop, index) => (
 									<tr key={drop.hash}>
 										<td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-800 sm:pl-0">
 											<p className="mb-1">{drop.account}</p>
@@ -117,7 +118,7 @@ export default function Drops() {
 											<TimeAgo date={drop.timestamp} />
 										</td>
 										<td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-											{drop.took} ms
+											{drop.took} ms {index}
 										</td>
 										<td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-0">
 											{drop.is_proxy}
@@ -128,6 +129,15 @@ export default function Drops() {
 						</table>
 					</div>
 				</div>
+				{hasMore && (
+					<div className="flex justify-center p-4">
+						<ButtonBase onClick={loadMore}>
+							<div className="bg-nano px-4 py-2 font-semibold text-white uppercase rounded-lg">
+								Load More
+							</div>
+						</ButtonBase>
+					</div>
+				)}
 			</div>
 		</div>
 	)
