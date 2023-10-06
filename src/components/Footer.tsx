@@ -3,7 +3,7 @@ import { EnvelopeIcon } from '@heroicons/react/24/solid'
 import Link from 'next/link'
 
 const navigation = {
-	main: [{ name: 'Terms of Service', href: '#' }],
+	main: [{ name: 'Terms of Service', href: '/tos' }],
 	social: [
 		{
 			name: 'Discord',
