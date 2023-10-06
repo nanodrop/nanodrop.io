@@ -2,10 +2,11 @@
 
 import useListDrops from '@/hooks/useListDrops'
 import { ArrowPathIcon } from '@heroicons/react/24/solid'
-import { ButtonBase, IconButton, Skeleton } from '@mui/material'
+import { IconButton, Skeleton } from '@mui/material'
 import clsx from 'clsx'
 import { Unit, convert } from 'nanocurrency'
 import TimeAgo from 'react-timeago'
+import Countries from './_assets/countries.json'
 
 export default function Drops() {
 	const { drops, isLoading, error, refresh, isRefreshing } = useListDrops()
@@ -75,6 +76,12 @@ export default function Drops() {
 										scope="col"
 										className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
 									>
+										Country
+									</th>
+									<th
+										scope="col"
+										className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+									>
 										Timestamp
 									</th>
 									<th
@@ -101,6 +108,10 @@ export default function Drops() {
 												to: Unit.NANO,
 											})}{' '}
 											NANO
+										</td>
+										<td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+											{(Countries as Record<string, string>)[drop.country] ||
+												'unknown'}
 										</td>
 										<td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
 											<TimeAgo date={drop.timestamp} />
