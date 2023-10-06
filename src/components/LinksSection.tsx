@@ -5,7 +5,7 @@ export default function LinksSection() {
 	return (
 		<section className="py-2 sm:py-6 px-4 grid grid-cols-1 sm:grid-cols-2 gap-1">
 			<a
-				href="https://hub.nano.org/wallets"
+				href="https://hub.nano.org/wallets/open-source/75/allows-representative-changes/76/non-custodial/291"
 				target="_blank"
 				rel="noopener noreferrer"
 			>
