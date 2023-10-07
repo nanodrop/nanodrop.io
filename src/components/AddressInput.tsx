@@ -6,7 +6,7 @@ import IconButton from '@mui/material/IconButton'
 import { QrCodeIcon } from '@heroicons/react/24/solid'
 import { ClipboardDocumentIcon } from '@heroicons/react/24/outline'
 import { checkAddress } from 'nanocurrency'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import QrScannerModal from './QrScanner/QrScannerModal'
 
 export interface AddressInputProps {
@@ -24,6 +24,8 @@ export default function AddressInput({
 }: AddressInputProps) {
 	const [value, setValue] = useState('')
 	const [openScanner, setOpenScanner] = useState(false)
+
+	const inputRef = useRef<HTMLInputElement>(null)
 
 	const validate = (value: string) => {
 		if (checkAddress(value)) {
@@ -57,12 +59,18 @@ export default function AddressInput({
 		}
 	}
 
+	const inputFocus = () => {
+		inputRef.current?.focus()
+	}
+
 	return (
 		<form
-			className="w-full p-2 flex items-center rounded-md border border-slate-200 bg-slate-50"
+			className="w-full select-none p-2 flex items-center rounded-full border border-slate-200 bg-slate-50"
 			action={'#'}
 			onSubmit={onSubmit}
+			onClick={inputFocus}
 		>
+			<div className="w-4"></div>
 			<InputBase
 				id="nano-address"
 				sx={{ ml: 1, flex: 1 }}
@@ -71,6 +79,8 @@ export default function AddressInput({
 				inputProps={{ 'aria-label': 'your nano address' }}
 				onChange={handleOnChange}
 				className="!text-slate-700"
+				inputRef={inputRef}
+				autoFocus={true}
 			/>
 			{openScanner && (
 				<QrScannerModal
@@ -82,7 +92,9 @@ export default function AddressInput({
 				type="button"
 				sx={{ p: '10px' }}
 				aria-label="qr-scanner"
-				onClick={() => setOpenScanner(true)}
+				onClick={e => {
+					setOpenScanner(true)
+				}}
 			>
 				<QrCodeIcon className="w-5 h-5 text-gray-500" />
 			</IconButton>

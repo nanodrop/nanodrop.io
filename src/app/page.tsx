@@ -26,7 +26,7 @@ export default function Home() {
 					<div className="flex flex-col justify-center pb-4">
 						<Hero />
 					</div>
-					<div className="w-full sm:w-[448px] max-w-full px-4">
+					<div className="w-[580px] max-w-full px-4">
 						<AddressInput
 							onValidAddress={setNanoAddress}
 							onInvalidAddress={() => setNanoAddress(null)}
