@@ -5,6 +5,7 @@ import { ArrowPathIcon } from '@heroicons/react/24/solid'
 import { ButtonBase, IconButton, Skeleton } from '@mui/material'
 import clsx from 'clsx'
 import DropListTable from './_components/DropListTable'
+import DropListTableMobile from './_components/DropListTableMobile'
 
 export default function Drops() {
 	const { drops, isLoading, error, refresh, isRefreshing, hasMore, loadMore } =
@@ -53,18 +54,21 @@ export default function Drops() {
 					</IconButton>
 				</div>
 			</div>
-			<div className="mt-4 sm:mt-8 flow-root">
+			<div className="mt-4 sm:mt-8 hidden sm:flow-root">
 				<DropListTable drops={drops || []} />
-				{hasMore && (
-					<div className="flex justify-center p-4">
-						<ButtonBase onClick={loadMore}>
-							<div className="bg-nano px-4 py-2 font-semibold text-white uppercase rounded-lg">
-								Load More
-							</div>
-						</ButtonBase>
-					</div>
-				)}
 			</div>
+			<div className="mt-4 sm:mt-8 flow-root sm:hidden">
+				<DropListTableMobile drops={drops || []} />
+			</div>
+			{hasMore && (
+				<div className="flex justify-center p-4">
+					<ButtonBase onClick={loadMore}>
+						<div className="bg-nano px-4 py-2 font-semibold text-white uppercase rounded-lg">
+							Load More
+						</div>
+					</ButtonBase>
+				</div>
+			)}
 		</div>
 	)
 }
