@@ -4,7 +4,7 @@ import useListDrops from '@/hooks/useListDrops'
 import { ArrowPathIcon } from '@heroicons/react/24/solid'
 import { ButtonBase, IconButton, Skeleton } from '@mui/material'
 import clsx from 'clsx'
-import DropListTable from './_components/DropListTable'
+import DropListTableDesktop from './_components/DropListTableDesktop'
 import DropListTableMobile from './_components/DropListTableMobile'
 
 export default function Drops() {
@@ -55,7 +55,7 @@ export default function Drops() {
 				</div>
 			</div>
 			<div className="mt-4 sm:mt-8 hidden sm:flow-root">
-				<DropListTable drops={drops || []} />
+				<DropListTableDesktop drops={drops || []} />
 			</div>
 			<div className="mt-4 sm:mt-8 flow-root sm:hidden">
 				<DropListTableMobile drops={drops || []} />
