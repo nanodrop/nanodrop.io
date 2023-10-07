@@ -23,7 +23,7 @@ export default function Home() {
 			</section>
 			<section className="flex flex-col w-full flex-1 justify-center items-center py-8 bg-white">
 				<div className="w-full flex flex-col items-center justify-between gap-8">
-					<div className="flex flex-col justify-center pb-4">
+					<div className="flex flex-col justify-center">
 						<Hero />
 					</div>
 					<div className="w-[580px] max-w-full px-4">
