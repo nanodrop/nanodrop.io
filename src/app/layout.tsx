@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import Footer from '@/components/Footer'
 import Appbar from '@/components/Appbar'
+import clsx from 'clsx'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -16,17 +17,16 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
 	children,
+	...props
 }: {
 	children: React.ReactNode
 }) {
 	return (
 		<html lang="en">
-			<body className={inter.className}>
+			<body className={clsx(inter.className, 'bg-white text-slate-800')}>
 				<div className="min-h-screen flex flex-col">
 					<Appbar />
-					<main className="flex flex-col flex-1 items-center bg-slate-100 sm:bg-white">
-						{children}
-					</main>
+					<main className="flex flex-col flex-1 items-center">{children}</main>
 					<Footer />
 				</div>
 			</body>
