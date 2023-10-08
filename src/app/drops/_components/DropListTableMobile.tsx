@@ -4,6 +4,8 @@ import Countries from '../_assets/countries.json'
 import Link from 'next/link'
 import { explorerLinkFromHash } from '@/utils'
 import { Drop } from '@/hooks/useListDrops'
+import { ClockIcon } from '@heroicons/react/24/outline'
+import { BoltIcon, GlobeEuropeAfricaIcon } from '@heroicons/react/24/solid'
 
 export default function DropListTableMobile({ drops }: { drops: Drop[] }) {
 	return (
@@ -20,7 +22,8 @@ export default function DropListTableMobile({ drops }: { drops: Drop[] }) {
 							</p>
 						</div>
 						<div className="flex flex-col items-end">
-							<p className="text-sm font-semibold text-slate-900">
+							<p className="flex items-center gap-1 text-sm font-semibold text-slate-900">
+								<ClockIcon className="w-3 h-3 text-slate-500" />
 								<TimeAgo date={drop.timestamp} />
 							</p>
 						</div>
@@ -28,16 +31,22 @@ export default function DropListTableMobile({ drops }: { drops: Drop[] }) {
 					<div className="flex justify-between items-center">
 						<div className="flex flex-col">
 							<p className="text-xs text-slate-500">Country</p>
-							<p className="text-sm font-semibold text-slate-900">
-								{(Countries as Record<string, string>)[drop.country] ||
-									'unknown'}
-							</p>
+							<div className="flex items-center gap-1">
+								<GlobeEuropeAfricaIcon className="w-3 h-3 text-slate-500" />
+								<p className="text-sm font-semibold text-slate-900">
+									{(Countries as Record<string, string>)[drop.country] ||
+										'unknown'}
+								</p>
+							</div>
 						</div>
 						<div className="flex flex-col">
 							<p className="text-xs text-slate-500">Took</p>
-							<p className="text-sm font-semibold text-slate-900">
-								{drop.took} ms
-							</p>
+							<div className="flex items-center gap-1">
+								<BoltIcon className="w-3 h-3 text-slate-500" />
+								<p className="text-sm font-semibold text-slate-900">
+									{drop.took} ms
+								</p>
+							</div>
 						</div>
 					</div>
 					<div className="flex justify-between items-center break-all">
