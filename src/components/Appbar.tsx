@@ -81,7 +81,7 @@ export default function Appbar() {
 					{isHome && (
 						<nav className="flex justify-center gap-1 w-full sm:w-auto">
 							{navigation.map(link => (
-								<Link href={link.href}>
+								<Link href={link.href} key={link.href}>
 									<div className="text-white sm:text-slate-500 hover:text-nano py-1 px-2">
 										<h2 className="font-normal uppercase text-sm">
 											{link.name}
