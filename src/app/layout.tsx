@@ -13,11 +13,20 @@ export const metadata: Metadata = {
 	description: 'Open Source Nano Faucet',
 	viewport:
 		'width=device-width, initial-scale=1, user-scalable=0, viewport-fit=cover',
+	themeColor: [
+		{
+			color: '#209ce9',
+			media: '(prefers-color-scheme: light)',
+		},
+		{
+			color: '#209ce9',
+			media: '(prefers-color-scheme: dark)',
+		},
+	],
 }
 
 export default function RootLayout({
 	children,
-	...props
 }: {
 	children: React.ReactNode
 }) {
