@@ -4,4 +4,6 @@ export const SOCIALS = {
 	reddit: 'https://www.reddit.com/user/anarkrypto',
 }
 
+export const CONTACT_EMAIL = 'hello@nanodrop.io'
+
 export const API_URL = process.env.NEXT_PUBLIC_API_URL

@@ -1,4 +1,4 @@
-import { SOCIALS } from '@/config'
+import { CONTACT_EMAIL, SOCIALS } from '@/config'
 import Link from 'next/link'
 
 const navigation = {
@@ -125,10 +125,10 @@ export default function Footer() {
 				</div>
 				<div className="flex flex-col items-center border-t border-slate-200 py-4 md:flex-row-reverse md:justify-between">
 					<Link
-						href="mailto:hello@nanodrop.io"
+						href={`mailto:${CONTACT_EMAIL}`}
 						className="text-xs text-slate-500 hover:text-nano"
 					>
-						hello@nanodrop.io
+						{CONTACT_EMAIL}
 					</Link>
 					<p className="mt-6 text-xs text-slate-500 md:mt-0">
 						Ӿ {new Date().getFullYear()} NanoDrop by{' '}
