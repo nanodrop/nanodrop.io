@@ -10,7 +10,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
 	title: 'NanoDrop Faucet',
-	description: 'Open Source Nano Faucet',
+	description: 'Free Nano cryptocurrency (XNO) Faucet',
 	viewport:
 		'width=device-width, initial-scale=1, user-scalable=0, viewport-fit=cover',
 	themeColor: [
@@ -23,6 +23,21 @@ export const metadata: Metadata = {
 			media: '(prefers-color-scheme: dark)',
 		},
 	],
+	applicationName: 'Nanodrop.io',
+	keywords: [
+		'nano',
+		'xno',
+		'nanocurrency',
+		'cryptocurrency',
+		'faucet',
+		'free',
+		'wallet',
+		'open source',
+	],
+	authors: {
+		url: 'https://github.com/anarkrypto',
+		name: 'anarkrypto',
+	},
 }
 
 export default function RootLayout({
