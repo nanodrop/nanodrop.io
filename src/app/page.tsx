@@ -3,7 +3,6 @@
 import AddressInput from '@/components/AddressInput'
 import CheckBox from '@/components/Checkbox'
 import Hero from '@/components/Hero'
-import LinksSection from '@/components/LinksSection'
 import Link from 'next/link'
 import { useState } from 'react'
 
@@ -35,7 +34,6 @@ export default function Home() {
 					</p>
 				</div>
 			</section>
-			<LinksSection />
 		</div>
 	)
 }
