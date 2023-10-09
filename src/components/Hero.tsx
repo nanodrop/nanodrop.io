@@ -17,10 +17,11 @@ export default function Hero() {
 			<h4
 				className={`${montserrat.className} font-normal text-sm text-slate-500 mt-4`}
 			>
-				+200K Drops!{' '}
-				<Link href="/drops" className="text-sky-500">
-					Explore Transactions
-				</Link>
+				Free{' '}
+				<Link href="https://nano.org" className="text-nano hover:underline">
+					Nano cryptocurrency
+				</Link>{' '}
+				(XNO) Faucet
 			</h4>
 		</div>
 	)
