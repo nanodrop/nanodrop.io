@@ -126,6 +126,8 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 		isValidating: isTicketValidating,
 	} = useSWR(`${API_URL}/ticket`, getTicket, {
 		refreshInterval: 1000 * 60 * 4, // 4 minutes
+		revalidateOnFocus: false,
+		revalidateOnReconnect: false,
 		onError: (error: Error) => {
 			handleError('Ticket Error', error.message)
 		},
