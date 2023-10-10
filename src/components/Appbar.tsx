@@ -38,7 +38,7 @@ export default function Appbar() {
 		<header
 			className={clsx(
 				'pt-safe w-full bg-nano sm:bg-white',
-				true && 'border-b border-slate-100',
+				!isHome && 'border-b border-slate-100',
 			)}
 		>
 			<div className="w-full flex justify-between items-center border-none px-4 sm:px-4 py-2">
