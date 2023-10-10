@@ -85,7 +85,7 @@ const navigation = {
 export default function Footer() {
 	return (
 		<footer className="border-t border-slate-100 bg-slate-50 pb-safe">
-			<div className="w-full max-w-7xl mx-auto">
+			<div className="w-full max-w-7xl mx-auto px-4 sm:px-8 lg:px-12">
 				<div className="flex flex-col items-center justify-center gap-y-12 pt-6 pb-4 lg:flex-row lg:items-center">
 					<div>
 						<div className="flex justify-center items-center text-slate-900">
@@ -105,19 +105,17 @@ export default function Footer() {
 						<nav className="mt-4 flex gap-8">
 							<ul className="flex items-center gap-3" aria-label="Footer">
 								{navigation.main.map((item, index) => (
-									<>
-										<li key={item.name} className="flex gap-3">
-											<Link
-												href={item.href}
-												className="flex gap-1 items-center text-[12px] text-slate-500 hover:text-nano"
-											>
-												{item.name}
-											</Link>
-											{index < navigation.main.length - 1 && (
-												<span className="text-slate-500">·</span>
-											)}
-										</li>
-									</>
+									<li key={item.name} className="flex gap-3">
+										<Link
+											href={item.href}
+											className="flex gap-1 items-center text-[12px] text-slate-500 hover:text-nano"
+										>
+											{item.name}
+										</Link>
+										{index < navigation.main.length - 1 && (
+											<span className="text-slate-500">·</span>
+										)}
+									</li>
 								))}
 							</ul>
 						</nav>
