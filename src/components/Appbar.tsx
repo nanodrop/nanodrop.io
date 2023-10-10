@@ -78,19 +78,21 @@ export default function Appbar() {
 					</>
 				)}
 				<div className="flex items-center gap-2 justify-end sm:w-auto">
-					{isHome && (
-						<nav className="flex justify-center gap-1 w-full sm:w-auto">
-							{navigation.map(link => (
-								<Link href={link.href} key={link.href}>
-									<div className="text-white sm:text-slate-500 hover:text-nano py-1 px-2">
-										<h2 className="font-normal uppercase text-sm">
-											{link.name}
-										</h2>
-									</div>
-								</Link>
-							))}
-						</nav>
-					)}
+					<nav className="flex justify-center gap-1 w-full sm:w-auto">
+						{navigation.map(link => (
+							<Link href={link.href} key={link.href}>
+								<div
+									className={clsx(
+										'text-white sm:text-slate-500 sm:hover:text-nano py-1 px-2',
+										link.href === pathname &&
+											'sm:text-nano border-b border-white sm:border-nano/40',
+									)}
+								>
+									<h2 className="font-normal uppercase text-sm">{link.name}</h2>
+								</div>
+							</Link>
+						))}
+					</nav>
 					<ButtonBase className="!rounded-lg" href={SOCIALS.github}>
 						<div className="flex items-center space-x-2 text-slate-600 hover:text-[#1f2328] border border-slate-600 sm:border-slate-300 p-2 rounded-lg">
 							<svg
