@@ -1,6 +1,6 @@
 # NanoDrop.io - Terms of Service
 
-_Effective Date: October 6, 2023_
+_Effective Date: October 10, 2023_
 
 Welcome to NanoDrop.io. By using the Service, you agree to comply with and be bound by the following Terms of Service. Please read these Terms carefully before using the Service.
 
