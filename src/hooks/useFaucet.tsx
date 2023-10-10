@@ -1,4 +1,4 @@
-import { API_URL } from '@/config'
+import { API_URL, TURNSTILE_KEY } from '@/config'
 import { checkAddress, checkAmount, checkHash } from 'nanocurrency'
 import { useCallback, useEffect, useState } from 'react'
 import useSWR from 'swr'
@@ -180,7 +180,7 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 		return (
 			<Turnstile
 				execution="execute"
-				sitekey="0x4AAAAAAAKvYWC-9c5TVGWD"
+				sitekey={TURNSTILE_KEY as string}
 				onVerify={handleTurstileVerified}
 				onExpire={(_, turnstile) => handleTurnstileExpired(turnstile)}
 				onError={handleTurnstileError}
