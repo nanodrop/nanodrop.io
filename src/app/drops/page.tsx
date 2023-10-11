@@ -32,10 +32,10 @@ export default function Drops() {
 		<div className="px-2 sm:px-6 lg:px-8">
 			<div className="flex">
 				<div className="flex-auto">
-					<h1 className="text-base font-semibold leading-6 text-gray-900">
+					<h1 className="text-base font-semibold leading-6 text-slate-900 dark:text-zinc-400">
 						Drop List
 					</h1>
-					<p className="mt-2 text-xs sm:text-sm text-gray-700">
+					<p className="mt-2 text-xs sm:text-sm">
 						A list of all transactions sent by NanoDrop
 					</p>
 				</div>
@@ -44,10 +44,11 @@ export default function Drops() {
 						type="button"
 						onClick={refresh}
 						disabled={isLoading || isRefreshing}
+						className="group"
 					>
 						<ArrowPathIcon
 							className={clsx(
-								'w-6 sm:w-8 h-6 sm:h-8',
+								'w-6 sm:w-8 h-6 sm:h-8 text-slate-600 dark:text-zinc-600 group-hover:text-nano',
 								isRefreshing && 'animate animate-spin',
 							)}
 						/>

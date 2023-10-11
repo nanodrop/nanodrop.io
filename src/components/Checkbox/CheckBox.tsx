@@ -76,7 +76,7 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 			<Verification />
 			<div
 				id="nd-anchor-container"
-				className="group w-fit max-w-full flex space-x-3 p-3 rounded hover:shadow cursor-pointer h-16 border border-slate-200 bg-[aliceblue] nd-anchor-light text-center"
+				className="group w-fit max-w-full flex space-x-3 p-3 rounded hover:shadow cursor-pointer h-16 border border-slate-200 dark:border-zinc-700 bg-[aliceblue] dark:bg-zinc-400/10 nd-anchor-light text-center"
 				onClick={handleClick}
 			>
 				<div
@@ -95,7 +95,7 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 								(isSent && <CheckMark />) || (
 									<div
 										id="recaptcha-checkbox-border"
-										className="w-6 h-6 border-2 border-[#c1c1c1] text-slate-700 rounded group-hover:border-nano bg-white"
+										className="w-6 h-6 border-2 border-[#c1c1c1] dark:border-zinc-700 text-slate-700 rounded group-hover:border-nano bg-white dark:bg-[#101217]"
 										role="presentation"
 									/>
 								)}
@@ -108,7 +108,7 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 					>
 						<label
 							id="nd-anchor-checkbox-label"
-							className="text-sm text-slate-600"
+							className="text-sm text-slate-600 dark:text-zinc-400"
 							aria-hidden="true"
 							role="presentation"
 						>
@@ -214,7 +214,7 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 								/>
 								<div
 									id="nd-anchor-logo-text"
-									className="text-xs text-gray-500 hidden"
+									className="text-xs text-slate-500 hidden"
 								>
 									NanoDrop.io
 								</div>
@@ -260,14 +260,14 @@ export const CheckboxSpinner = () => (
 	<div>
 		<div className="recaptcha-checkbox-borderAnimation" role="presentation" />
 		<div
-			className="recaptcha-checkbox-spinner"
+			className="recaptcha-checkbox-spinner dark:!bg-transparent"
 			role="presentation"
 			style={{
 				animationPlayState: 'running',
 			}}
 		>
 			<div
-				className="recaptcha-checkbox-spinner-overlay"
+				className="recaptcha-checkbox-spinner-overlay dark:!bg-transparent"
 				style={{
 					animationPlayState: 'running',
 				}}

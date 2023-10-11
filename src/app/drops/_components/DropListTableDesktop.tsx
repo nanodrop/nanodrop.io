@@ -9,36 +9,36 @@ export default function DropListTableDesktop({ drops }: { drops: Drop[] }) {
 	return (
 		<div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
 			<div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-				<table className="min-w-full divide-y divide-gray-300">
+				<table className="min-w-full divide-y divide-slate-300 dark:divide-zinc-700">
 					<thead>
-						<tr>
+						<tr className="text-slate-900 dark:text-zinc-500">
 							<th
 								scope="col"
-								className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0"
+								className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold sm:pl-0"
 							>
 								Account / Block
 							</th>
 							<th
 								scope="col"
-								className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+								className="px-3 py-3.5 text-left text-sm font-semibold"
 							>
 								Amount
 							</th>
 							<th
 								scope="col"
-								className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+								className="px-3 py-3.5 text-left text-sm font-semibold"
 							>
 								Country
 							</th>
 							<th
 								scope="col"
-								className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+								className="px-3 py-3.5 text-left text-sm font-semibold"
 							>
 								Timestamp
 							</th>
 							<th
 								scope="col"
-								className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+								className="px-3 py-3.5 text-left text-sm font-semibold "
 							>
 								Took
 							</th>
@@ -47,10 +47,10 @@ export default function DropListTableDesktop({ drops }: { drops: Drop[] }) {
 							</th>
 						</tr>
 					</thead>
-					<tbody className="divide-y divide-gray-200">
+					<tbody className="divide-y divide-slate-200 dark:divide-zinc-700">
 						{drops.map(drop => (
-							<tr key={drop.hash}>
-								<td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-800 sm:pl-0">
+							<tr key={drop.hash} className="text-slate-500 dark:text-zinc-600">
+								<td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-slate-800 dark:text-zinc-400 sm:pl-0">
 									<p className="mb-1">{drop.account}</p>
 									<p>
 										<Link
@@ -62,21 +62,21 @@ export default function DropListTableDesktop({ drops }: { drops: Drop[] }) {
 										</Link>
 									</p>
 								</td>
-								<td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+								<td className="whitespace-nowrap px-3 py-4 text-sm">
 									{convert(drop.amount, {
 										from: Unit.raw,
 										to: Unit.NANO,
 									})}{' '}
 									NANO
 								</td>
-								<td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+								<td className="whitespace-nowrap px-3 py-4 text-sm">
 									{(Countries as Record<string, string>)[drop.country] ||
 										'unknown'}
 								</td>
-								<td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+								<td className="whitespace-nowrap px-3 py-4 text-sm">
 									<TimeAgo date={drop.timestamp} />
 								</td>
-								<td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+								<td className="whitespace-nowrap px-3 py-4 text-sm">
 									{drop.took} ms
 								</td>
 								<td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-0">

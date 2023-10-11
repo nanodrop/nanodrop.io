@@ -65,7 +65,7 @@ export default function AddressInput({
 
 	return (
 		<form
-			className="w-full select-none p-2 flex items-center rounded-full border border-slate-200 bg-slate-50"
+			className="w-full select-none p-2 flex items-center rounded-full border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-transparent"
 			action={'#'}
 			onSubmit={onSubmit}
 			onClick={inputFocus}
@@ -78,7 +78,7 @@ export default function AddressInput({
 				value={value}
 				inputProps={{ 'aria-label': 'your nano address' }}
 				onChange={handleOnChange}
-				className="!text-slate-700"
+				className="!text-slate-700 dark:!text-zinc-400"
 				inputRef={inputRef}
 				autoFocus={true}
 			/>
@@ -96,16 +96,20 @@ export default function AddressInput({
 					setOpenScanner(true)
 				}}
 			>
-				<QrCodeIcon className="w-5 h-5 text-gray-500" />
+				<QrCodeIcon className="w-5 h-5 text-slate-600 dark:text-zinc-500" />
 			</IconButton>
-			<Divider sx={{ height: 28, m: 0.5 }} orientation="vertical" />
+			<Divider
+				sx={{ height: 28, m: 0.5 }}
+				orientation="vertical"
+				className="dark:bg-zinc-800"
+			/>
 			<IconButton
 				color="primary"
 				sx={{ p: '10px' }}
 				aria-label="directions"
 				onClick={clipboardPaste}
 			>
-				<ClipboardDocumentIcon className="w-5 h-5 text-gray-600" />
+				<ClipboardDocumentIcon className="w-5 h-5 text-slate-600 dark:text-zinc-500" />
 			</IconButton>
 		</form>
 	)

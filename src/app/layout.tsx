@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 			media: '(prefers-color-scheme: light)',
 		},
 		{
-			color: '#209ce9',
+			color: '#101217',
 			media: '(prefers-color-scheme: dark)',
 		},
 	],
@@ -47,7 +47,12 @@ export default function RootLayout({
 }) {
 	return (
 		<html lang="en">
-			<body className={clsx(inter.className, 'bg-white text-slate-800')}>
+			<body
+				className={clsx(
+					inter.className,
+					'bg-white dark:bg-midnight-1 text-slate-800 dark:text-zinc-500',
+				)}
+			>
 				<div className="min-h-screen flex flex-col">
 					<Appbar />
 					<main className="flex flex-col flex-1 items-center">{children}</main>

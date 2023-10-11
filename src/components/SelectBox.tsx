@@ -60,7 +60,7 @@ export default function SelectBox({
 							leaveFrom="opacity-100"
 							leaveTo="opacity-0"
 						>
-							<Listbox.Options className="absolute right-0 z-10 mt-1 w-40 origin-top-right divide-y divide-gray-600 overflow-hidden rounded-md bg-[#374349] shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+							<Listbox.Options className="absolute right-0 z-10 mt-1 w-40 origin-top-right divide-y divide-slate-600 overflow-hidden rounded-md bg-[#374349] shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
 								{options.map(option => (
 									<Listbox.Option
 										key={option.title}
@@ -87,7 +87,7 @@ export default function SelectBox({
 												</div>
 												<p
 													className={clsx(
-														active ? 'text-rose-200' : 'text-gray-300',
+														active ? 'text-rose-200' : 'text-slate-300',
 														'mt-2',
 													)}
 												>

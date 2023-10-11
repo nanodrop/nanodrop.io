@@ -69,7 +69,7 @@ const navigation = {
 
 export default function Footer() {
 	return (
-		<footer className="border-t border-slate-100 bg-slate-50 pb-safe">
+		<footer className="border-t border-slate-100 dark:border-zinc-900 bg-slate-50 dark:bg-midnight-2 text-slate-500 dark:text-zinc-500 pb-safe">
 			<div className="w-full max-w-7xl mx-auto px-4 sm:px-8 lg:px-12">
 				<div className="flex flex-col items-center justify-center gap-y-12 pt-6 pb-4 lg:flex-row lg:items-center">
 					<div>
@@ -79,7 +79,7 @@ export default function Footer() {
 									<a
 										key={item.name}
 										href={item.href}
-										className="flex items-center gap-1 text-slate-500 hover:text-nano text-sm"
+										className="flex items-center gap-1 text-slate-500 dark:text-zinc-500 hover:text-nano text-sm"
 									>
 										<item.icon className="h-6 w-6" aria-hidden="true" />
 										<span className="sr-only">{item.name}</span>
@@ -88,17 +88,17 @@ export default function Footer() {
 							</div>
 						</div>
 						<nav className="mt-4 flex gap-8">
-							<ul className="flex items-center gap-3" aria-label="Footer">
+							<ul className="flex items-center gap-3">
 								{navigation.main.map((item, index) => (
 									<li key={item.name} className="flex gap-3">
 										<Link
 											href={item.href}
-											className="flex gap-1 items-center text-[12px] text-slate-500 hover:text-nano"
+											className="flex gap-1 items-center text-[12px] hover:text-nano"
 										>
 											{item.name}
 										</Link>
 										{index < navigation.main.length - 1 && (
-											<span className="text-slate-500">·</span>
+											<span className="">·</span>
 										)}
 									</li>
 								))}
@@ -106,14 +106,14 @@ export default function Footer() {
 						</nav>
 					</div>
 				</div>
-				<div className="flex flex-col items-center border-t border-slate-200 py-4 md:flex-row-reverse md:justify-between">
+				<div className="flex flex-col items-center border-t border-slate-200 dark:border-zinc-900 py-4 md:flex-row-reverse md:justify-between">
 					<Link
 						href={`mailto:${CONTACT_EMAIL}`}
-						className="text-xs text-slate-500 hover:text-nano"
+						className="text-xs  hover:text-nano"
 					>
 						{CONTACT_EMAIL}
 					</Link>
-					<p className="mt-6 text-xs text-slate-500 md:mt-0">
+					<p className="mt-6 text-xs  md:mt-0">
 						Ӿ {new Date().getFullYear()} NanoDrop by{' '}
 						<Link
 							target="_blank"

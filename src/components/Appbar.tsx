@@ -37,8 +37,8 @@ export default function Appbar() {
 	return (
 		<header
 			className={clsx(
-				'pt-safe w-full bg-nano sm:bg-white',
-				!isHome && 'border-b border-slate-100',
+				'pt-safe w-full bg-nano sm:bg-transparent text-white sm:text-slate-500 dark:bg-transparent dark:text-zinc-400 sm:dark:text-zinc-500',
+				!isHome && 'border-b border-slate-100 dark:border-zinc-800',
 			)}
 		>
 			<div className="w-full flex justify-between items-center border-none px-4 sm:px-4 py-2">
@@ -59,7 +59,7 @@ export default function Appbar() {
 				)}
 				{isHome && (
 					<>
-						<div className="whitespace-nowrap py-1 px-2 border border-slate-200 rounded-full text-white sm:text-slate-500 text-sm sm:text-base hidden sm:block">
+						<div className="whitespace-nowrap py-1 px-2 border border-slate-200 dark:border-zinc-800 rounded-full text-sm sm:text-base hidden sm:block">
 							1 XNO ={' '}
 							{priceError
 								? priceError
@@ -67,7 +67,7 @@ export default function Appbar() {
 								? '-- USD'
 								: `US$ ${price}`}
 						</div>
-						<div className="whitespace-nowrap py-1 px-2 border border-slate-200 rounded-full text-white sm:text-slate-500 text-sm sm:text-base sm:hidden">
+						<div className="whitespace-nowrap py-1 px-2 border border-slate-200 dark:border-zinc-800 rounded-full text-sm sm:text-base sm:hidden">
 							1Ӿ ={' '}
 							{priceError
 								? priceError
@@ -83,7 +83,7 @@ export default function Appbar() {
 							<Link href={link.href} key={link.href}>
 								<div
 									className={clsx(
-										'text-white sm:text-slate-500 sm:hover:text-nano py-1 px-2',
+										'sm:hover:text-nano py-1 px-2',
 										link.href === pathname &&
 											'sm:text-nano border-b border-white sm:border-nano/40',
 									)}
@@ -94,7 +94,7 @@ export default function Appbar() {
 						))}
 					</nav>
 					<ButtonBase className="!rounded-lg" href={SOCIALS.github}>
-						<div className="flex items-center space-x-2 text-slate-600 hover:text-[#1f2328] border border-slate-600 sm:border-slate-300 p-2 rounded-lg">
+						<div className="flex items-center space-x-2 text-slate-600 hover:text-[#1f2328] border border-slate-600 dark:border-zinc-800 sm:border-slate-300 sm:dark:border-zinc-800 p-2 rounded-lg">
 							<svg
 								viewBox="0 0 20 20"
 								version="1.1"
