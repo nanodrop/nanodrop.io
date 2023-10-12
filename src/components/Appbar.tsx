@@ -48,7 +48,7 @@ export default function Appbar() {
 					<div>
 						<Link href="/">
 							<h1
-								className={`flex ${montserrat.className} items-center font-light text-xl sm:text-2xl uppercase text-nano`}
+								className={`${montserrat.className} items-center font-light text-xl sm:text-2xl uppercase text-nano hidden sm:flex`}
 							>
 								<span>Nano</span>
 								<span className="px-1">
@@ -56,6 +56,7 @@ export default function Appbar() {
 								</span>
 								<span>Drop</span>
 							</h1>
+							<DropSVG className="sm:hidden text-white dark:text-nano w-7 h-auto" />
 						</Link>
 					</div>
 				)}
@@ -96,7 +97,7 @@ export default function Appbar() {
 						))}
 					</nav>
 					<ButtonBase className="!rounded-full" onClick={toggleDarkMode}>
-						<div className="flex items-center sm:space-x-1 text-slate-600 hover:text-nano hover:border-nano border border-slate-600 dark:border-zinc-800 sm:border-slate-300 sm:dark:border-zinc-800 px-2 py-1.5 rounded-full">
+						<div className="flex text-sm items-center sm:space-x-1 text-white sm:text-slate-500 hover:text-nano hover:border-nano sm:border sm:border-slate-300 sm:dark:border-zinc-800 dark:border-zinc-800 px-2 py-1.5 rounded-full">
 							{darkMode ? (
 								<>
 									<span className="hidden sm:block">Dark</span>
