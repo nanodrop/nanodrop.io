@@ -16,6 +16,7 @@
 		"@headlessui/react": "^1.7.17",
 		"@heroicons/react": "^2.0.18",
 		"@mui/material": "^5.14.8",
+		"@sentry/nextjs": "^7.73.0",
 		"@types/node": "20.5.9",
 		"@types/react": "18.2.21",
 		"@types/react-dom": "18.2.7",
