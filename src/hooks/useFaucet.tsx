@@ -34,6 +34,7 @@ export interface UseFaucetProps {
 	debug?: boolean
 }
 
+// TODO: Move error handle logic to a fetcher
 const getTicket = async (url: string): Promise<Ticket> => {
 	const response = await fetch(url)
 	if (response.ok) {
@@ -52,6 +53,7 @@ const getTicket = async (url: string): Promise<Ticket> => {
 	}
 }
 
+// TODO: Move error handle logic to a fetcher
 const drop = async (
 	url: string,
 	{ arg: { account, ticket, turnstileToken } }: { arg: DropRequest },
