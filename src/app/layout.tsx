@@ -5,6 +5,7 @@ import { Inter } from 'next/font/google'
 import Footer from '@/components/Footer'
 import Appbar from '@/components/Appbar'
 import clsx from 'clsx'
+import { PreferencesProvider } from '@/contexts/PreferencesProvider'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -53,11 +54,15 @@ export default function RootLayout({
 					'bg-white dark:bg-midnight-1 text-slate-800 dark:text-zinc-500',
 				)}
 			>
-				<div className="min-h-screen flex flex-col">
-					<Appbar />
-					<main className="flex flex-col flex-1 items-center">{children}</main>
-					<Footer />
-				</div>
+				<PreferencesProvider>
+					<div className="min-h-screen flex flex-col">
+						<Appbar />
+						<main className="flex flex-col flex-1 items-center">
+							{children}
+						</main>
+						<Footer />
+					</div>
+				</PreferencesProvider>
 			</body>
 		</html>
 	)

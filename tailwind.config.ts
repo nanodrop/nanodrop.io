@@ -15,6 +15,7 @@ const config: Config = {
 			},
 		},
 	},
+	darkMode: 'class',
 	plugins: [require('tailwindcss-safe-area')],
 }
 export default config
