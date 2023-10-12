@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import useSWR from 'swr'
 import useSWRMutation from 'swr/mutation'
 import Turnstile, { BoundTurnstileObject, useTurnstile } from 'react-turnstile'
+import * as Sentry from '@sentry/nextjs'
 
 export interface Ticket {
 	amount: string
@@ -94,10 +95,15 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 	const turnstile = useTurnstile()
 
 	const handleError = (title: string, message: string) => {
-		if (debug) {
-			console.error(`ERROR | ${title}:`, message)
-		}
 		setError({ title, message })
+		const logMessage = `useFaucet - ERROR | ${title}: ${message}`
+		if (debug) {
+			console.error(logMessage)
+		}
+		const sentryIsInited = Sentry.getCurrentHub()?.getClient()?.getDsn()
+		if (sentryIsInited) {
+			Sentry.captureMessage(logMessage)
+		}
 	}
 
 	const handleTurstileVerified = (token: string) => {
