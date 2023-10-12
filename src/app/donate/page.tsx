@@ -27,7 +27,7 @@ export default function Donate() {
 			<div className="flex flex-col items-center gap-4">
 				<div className="border border-slate-200 dark:border-zinc-700 rounded-xl w-full max-w-xl flex justify-center">
 					<h1
-						className={`flex ${montserrat.className} font-normal text-2xl sm:text-3xl uppercase py-4`}
+						className={`flex ${montserrat.className} font-normal text-xl sm:text-2xl uppercase py-4`}
 					>
 						Donate with NANO
 					</h1>
@@ -53,7 +53,7 @@ export default function Donate() {
 						</div>
 					</ButtonBase>
 					<ButtonBase
-						className="text-sm flex-1 p-4 bg-nano text-white rounded-xl shadow font-semibold break-all text-center"
+						className="text-sm flex-1 p-4 !bg-nano/50 !text-white !rounded-xl shadow font-semibold break-all text-center"
 						href={`nano:${account}`}
 					>
 						Open Wallet
