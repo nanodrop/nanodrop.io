@@ -41,7 +41,7 @@ const getTicket = async (url: string): Promise<Ticket> => {
 	if (response.ok) {
 		return await response.json()
 	} else {
-		let message = `Failed with status ${response.status}`
+		let message = `Failed: ${response.statusText}`
 		try {
 			const body = await response.json()
 			if ('message' in body) {
@@ -73,7 +73,7 @@ const drop = async (
 		}
 		return { hash: data.hash, amount: data.amount, account }
 	} else {
-		let message = `Failed with status ${response.status}`
+		let message = `Failed: ${response.statusText}`
 		try {
 			const body = await response.json()
 			if ('message' in body) {
