@@ -117,7 +117,7 @@ export default function Footer() {
 						Ӿ {new Date().getFullYear()} NanoDrop by{' '}
 						<Link
 							target="_blank"
-							href="https:github.com/anarkrypto"
+							href="https://github.com/anarkrypto"
 							className="text-sky-600 hover:underline"
 						>
 							Anarkrypto
