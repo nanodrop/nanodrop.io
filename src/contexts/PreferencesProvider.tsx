@@ -41,6 +41,25 @@ export function PreferencesProvider({
 		setIsLoading(false)
 	}, [darkMode])
 
+	useEffect(() => {
+		const mediaQueryListener = (event: MediaQueryListEvent) => {
+			// only change if no theme was previously toggled
+			if (localStorage.theme === undefined) {
+				setDarkMode(event.matches)
+			}
+		}
+
+		window
+			.matchMedia('(prefers-color-scheme: dark)')
+			.addEventListener('change', mediaQueryListener)
+
+		return () => {
+			window
+				.matchMedia('(prefers-color-scheme: dark)')
+				.removeEventListener('change', mediaQueryListener)
+		}
+	}, [])
+
 	const toggleDarkMode = () => {
 		localStorage.setItem('theme', !darkMode ? 'dark' : 'light')
 		setDarkMode(!darkMode)
