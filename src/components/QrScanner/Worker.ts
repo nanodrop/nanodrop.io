@@ -1,4 +1,3 @@
-// @ts-ignore jsqr-es6 does not provide types currently
 import jsQR from 'jsqr'
 
 let inversionAttempts: 'dontInvert' | 'onlyInvert' | 'attemptBoth' =
