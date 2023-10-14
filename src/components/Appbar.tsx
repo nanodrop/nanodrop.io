@@ -80,8 +80,8 @@ export default function Appbar() {
 						</div>
 					</>
 				)}
-				<div className="flex items-center gap-2 justify-end sm:w-auto">
-					<nav className="flex justify-center gap-1 w-full sm:w-auto">
+				<div className="flex items-center gap-2 sm:gap-4 justify-end sm:w-auto">
+					<nav className="flex justify-center gap-1 sm:gap-2 w-full sm:w-auto">
 						{navigation.map(link => (
 							<Link href={link.href} key={link.href}>
 								<div
@@ -97,7 +97,7 @@ export default function Appbar() {
 						))}
 					</nav>
 					<ButtonBase className="!rounded-full" onClick={toggleDarkMode}>
-						<div className="flex text-sm items-center sm:space-x-1 text-white sm:text-slate-500 hover:text-nano hover:border-nano sm:border sm:border-slate-300 sm:dark:border-zinc-800 dark:border-zinc-800 px-2 py-1.5 rounded-full">
+						<div className="flex text-sm items-center sm:gap-1 text-white sm:text-slate-500 hover:text-nano hover:border-nano sm:border sm:border-slate-300 sm:dark:border-zinc-800 dark:border-zinc-800 px-2 py-1.5 rounded-full">
 							{darkMode ? (
 								<>
 									<span className="hidden sm:block">Dark</span>
