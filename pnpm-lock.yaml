@@ -27,6 +27,7 @@ specifiers:
   react-dom: 18.2.0
   react-markdown: ^9.0.0
   react-qr-code: ^2.0.12
+  react-svg-worldmap: 2.0.0-alpha.16
   react-timeago: ^7.2.0
   react-turnstile: ^1.1.2
   remark-gfm: ^4.0.0
@@ -34,6 +35,7 @@ specifiers:
   tailwindcss: 3.3.3
   tailwindcss-safe-area: ^0.4.0
   typescript: 5.2.2
+  use-sound: ^4.0.1
   zod: ^3.22.2
 
 dependencies:
@@ -58,12 +60,14 @@ dependencies:
   react-dom: 18.2.0_react@18.2.0
   react-markdown: 9.0.0_gq4reeurwxuj4hvyerswzzqthy
   react-qr-code: 2.0.12_react@18.2.0
+  react-svg-worldmap: 2.0.0-alpha.16_biqbaboplfbrettd7655fr4n2y
   react-timeago: 7.2.0_react@18.2.0
   react-turnstile: 1.1.2_biqbaboplfbrettd7655fr4n2y
   remark-gfm: 4.0.0
   swr: 2.2.2_react@18.2.0
   tailwindcss: 3.3.3
   typescript: 5.2.2
+  use-sound: 4.0.1_react@18.2.0
   zod: 3.22.2
 
 devDependencies:
@@ -1423,6 +1427,18 @@ packages:
   /csstype/3.1.2:
     resolution: {integrity: sha512-I7K1Uu0MBPzaFKg4nI5Q7Vs2t+3gWWW648spaF+Rg7pI9ds18Ugn+lvg4SHczUdKlHI5LWBXyqfS8+DufyBsgQ==}
 
+  /d3-array/2.12.1:
+    resolution: {integrity: sha512-B0ErZK/66mHtEsR1TkPEEkwdy+WDesimkM5gpZr5Dsg54BiTA5RXtYW5qTLIAcekaS9xfZrzBLF/OAkB3Qn1YQ==}
+    dependencies:
+      internmap: 1.0.1
+    dev: false
+
+  /d3-geo/2.0.2:
+    resolution: {integrity: sha512-8pM1WGMLGFuhq9S+FpPURxic+gKzjluCD/CHTuUF3mXMeiCo0i6R0tO1s4+GArRFde96SLcW/kOFRjoAosPsFA==}
+    dependencies:
+      d3-array: 2.12.1
+    dev: false
+
   /damerau-levenshtein/1.0.8:
     resolution: {integrity: sha512-sdQSFB7+llfUcQHUQO3+B8ERRj0Oa4w9POWMI/puGtuf7gFywGmkaLCElnudfTiKZV+NvHqL0ifzdrI8Ro7ESA==}
     dev: false
@@ -2287,6 +2303,10 @@ packages:
       react-is: 16.13.1
     dev: false
 
+  /howler/2.2.4:
+    resolution: {integrity: sha512-iARIBPgcQrwtEr+tALF+rapJ8qSc+Set2GJQl7xT1MQzWaVkFebdJhR3alVlSiUf5U7nAANKuj3aWpwerocD5w==}
+    dev: false
+
   /html-url-attributes/3.0.0:
     resolution: {integrity: sha512-/sXbVCWayk6GDVg3ctOX6nxaVj7So40FcFAnWlWGNAB1LpYKcV5Cd10APjPjW80O7zYW2MsjBV4zZ7IZO5fVow==}
     dev: false
@@ -2350,6 +2370,10 @@ packages:
       get-intrinsic: 1.2.1
       has: 1.0.3
       side-channel: 1.0.4
+    dev: false
+
+  /internmap/1.0.1:
+    resolution: {integrity: sha512-lDB5YccMydFBtasVtxnZ3MRBHuaoE8GKsppq+EchKL2U4nK/DmEpPHNH8MZe5HkMtpSiTSOZwfN0tzYjO/lJEw==}
     dev: false
 
   /is-array-buffer/3.0.2:
@@ -3596,6 +3620,17 @@ packages:
       - supports-color
     dev: false
 
+  /react-path-tooltip/1.0.25_biqbaboplfbrettd7655fr4n2y:
+    resolution: {integrity: sha512-wT1+mDi10aFyP3nyRCz3ixcwWGPIeCb3QOPHFYC+kIzaQUPk82Lrm3TsDn2k24n8FdUbbsxpfL8iwIddzaG5LQ==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      react: '>=16'
+      react-dom: '>=16.0.0'
+    dependencies:
+      react: 18.2.0
+      react-dom: 18.2.0_react@18.2.0
+    dev: false
+
   /react-qr-code/2.0.12_react@18.2.0:
     resolution: {integrity: sha512-k+pzP5CKLEGBRwZsDPp98/CAJeXlsYRHM2iZn1Sd5Th/HnKhIZCSg27PXO58zk8z02RaEryg+60xa4vyywMJwg==}
     peerDependencies:
@@ -3608,6 +3643,20 @@ packages:
       prop-types: 15.8.1
       qr.js: 0.0.0
       react: 18.2.0
+    dev: false
+
+  /react-svg-worldmap/2.0.0-alpha.16_biqbaboplfbrettd7655fr4n2y:
+    resolution: {integrity: sha512-yztQgcshmUjN6GQ5irTuEiO54iWzY/iZsPP7vygEc+yY1IFlbXWOffRaZW7cHm9oBBmSk+/UNaaDI9iCQlHQ8g==}
+    engines: {node: '>=14.16'}
+    peerDependencies:
+      react: '>=16'
+      react-dom: '>=16.0.0'
+    dependencies:
+      d3-geo: 2.0.2
+      react: 18.2.0
+      react-dom: 18.2.0_react@18.2.0
+      react-path-tooltip: 1.0.25_biqbaboplfbrettd7655fr4n2y
+      tslib: 2.6.2
     dev: false
 
   /react-timeago/7.2.0_react@18.2.0:
@@ -4254,6 +4303,15 @@ packages:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
     dependencies:
       punycode: 2.3.0
+
+  /use-sound/4.0.1_react@18.2.0:
+    resolution: {integrity: sha512-hykJ86kNcu6y/FzlSHcQxhjSGMslZx2WlfLpZNoPbvueakv4OF3xPxEtGV2YmculrIaH0tPp9LtG4jgy17xMWg==}
+    peerDependencies:
+      react: '>=16.8'
+    dependencies:
+      howler: 2.2.4
+      react: 18.2.0
+    dev: false
 
   /use-sync-external-store/1.2.0_react@18.2.0:
     resolution: {integrity: sha512-eEgnFxGQ1Ife9bzYs6VLi8/4X6CObHMw9Qr9tPY43iKwsPw8xE8+EFsf/2cFZ5S3esXgpWgtSCtLNS41F+sKPA==}
