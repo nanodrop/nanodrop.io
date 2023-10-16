@@ -102,12 +102,14 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 	}
 
 	const handleTurstileVerified = (token: string) => {
+		logger.info('TURNSTILE VERIFIED')
 		setIsVerifying(false)
 		setIsVerified(true)
 		setTurnstileToken(token)
 	}
 
 	const handleTurnstileExpired = (turnstile: BoundTurnstileObject) => {
+		logger.warn('Turnstile expired')
 		setIsVerified(false)
 		setTurnstileToken('')
 		turnstile.reset()
@@ -138,6 +140,7 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 
 	useEffect(() => {
 		if (turnstile && ticket?.verificationRequired) {
+			logger.info('Turnstile verifying')
 			setIsVerifying(true)
 			turnstile.execute()
 		}
@@ -150,12 +153,18 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 		error: dropError,
 		reset: resetDrop,
 	} = useSWRMutation(`${API_URL}/drop`, drop, {
+		onSuccess: data => {
+			logger.info(
+				`Dropped ${data.amount} to ${data.account} with hash ${data.hash}`,
+			)
+		},
 		onError: (error: Error) => {
 			handleError('Error Sending', error.message)
 		},
 	})
 
 	const refresh = async () => {
+		logger.info('Refreshing')
 		setError(null)
 		resetDrop()
 		await refreshTicket()
@@ -176,6 +185,9 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 				turnstile?.reset()
 				return
 			}
+			logger.info(
+				`Dropping ${ticket.amount} to ${account} with ticket ${ticket.ticket}`,
+			)
 			dropTrigger({ account, ticket: ticket.ticket, turnstileToken })
 		},
 		[ticket, turnstileToken],
