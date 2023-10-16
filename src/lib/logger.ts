@@ -43,7 +43,7 @@ export default class Logger {
 		let prefix = `${this.formatedDateTime()} | ${this.colorize(
 			level,
 			level,
-		)} | ${this.colorize(level)}`
+		)} | ${this.colorize(this.name)}`
 		return `${prefix} | ${data.join(' ')}`
 	}
 
