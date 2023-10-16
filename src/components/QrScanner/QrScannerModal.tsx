@@ -64,7 +64,7 @@ export default function QrScannerModal({
 	return (
 		<>
 			<div className="fixed z-50 bg-black/50 h-screen-safe w-full inset-0 flex flex-col justify-end sm:justify-center sm:items-center">
-				<div className="bg-white w-full max-w-3xl rounded-t-lg sm:rounded-b-lg outline-none">
+				<div className="bg-white w-full max-w-2xl rounded-t-lg sm:rounded-b-lg outline-none">
 					<div className="w-full flex justify-between p-2 items-center">
 						<IconButton onClick={handleClose}>
 							<XCircleIcon className="w-8 h-8 text-slate-700" />
