@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 
-type LoggerLevel = 'info' | 'error'
+type LoggerLevel = 'info' | 'error' | 'warn'
 
 export default class Logger {
 	private name: string = 'LOGGER'
@@ -25,14 +25,25 @@ export default class Logger {
 		return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`
 	}
 
+	private colorize(text: string, level?: LoggerLevel): string {
+		// Adding ANSI escape codes
+		switch (level) {
+			case 'info':
+				return `\x1b[32m${text.toUpperCase()}\x1b[0m`
+			case 'error':
+				return `\x1b[31m${text.toUpperCase()}\x1b[0m`
+			case 'warn':
+				return `\x1b[33m${text.toUpperCase()}\x1b[0m`
+			default:
+				return `\x1b[32m${text.toUpperCase()}\x1b[0m`
+		}
+	}
+
 	private formatMessage(data: any[], level: LoggerLevel): string {
-		// Adding ANSI escape codes to display the error message in red
-		const coloredLevel =
-			level === 'error'
-				? `\x1b[31m${level.toUpperCase()}\x1b[0m`
-				: `\x1b[32m${level.toUpperCase()}\x1b[0m`
-		let prefix = `${this.formatedDateTime()} | ${coloredLevel}`
-		prefix += ` | \u001b[1m${this.name}\u001b[0m`
+		let prefix = `${this.formatedDateTime()} | ${this.colorize(
+			level,
+			level,
+		)} | ${this.colorize(level)}`
 		return `${prefix} | ${data.join(' ')}`
 	}
 
@@ -47,6 +58,13 @@ export default class Logger {
 			const errorMessage = this.formatMessage(data, 'error')
 			console.error(`${errorMessage}`)
 			this.sendToSentry(errorMessage)
+		}
+	}
+
+	warn(...data: any[]) {
+		if (this.debug) {
+			const errorMessage = this.formatMessage(data, 'warn')
+			console.warn(`${errorMessage}`)
 		}
 	}
 
