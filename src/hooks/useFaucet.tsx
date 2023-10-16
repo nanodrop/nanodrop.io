@@ -1,10 +1,10 @@
 import { API_URL, TURNSTILE_KEY } from '@/config'
 import { checkAddress, checkAmount, checkHash } from 'nanocurrency'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import useSWRMutation from 'swr/mutation'
 import Turnstile, { BoundTurnstileObject, useTurnstile } from 'react-turnstile'
-import * as Sentry from '@sentry/nextjs'
+import Logger from '@/lib/logger'
 
 export interface Ticket {
 	amount: string
@@ -94,16 +94,11 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 
 	const turnstile = useTurnstile()
 
+	const logger = useMemo(() => new Logger('USE_FAUCET', debug), [debug])
+
 	const handleError = (title: string, message: string) => {
 		setError({ title, message })
-		const logMessage = `useFaucet - ERROR | ${title}: ${message}`
-		if (debug) {
-			console.error(logMessage)
-		}
-		const sentryIsInited = Sentry.getCurrentHub()?.getClient()?.getDsn()
-		if (sentryIsInited) {
-			Sentry.captureMessage(logMessage)
-		}
+		logger.error(`${title}: ${message}`)
 	}
 
 	const handleTurstileVerified = (token: string) => {
