@@ -57,8 +57,8 @@ export default class Logger {
 		if (this.enabled) {
 			const errorMessage = this.formatMessage(data, 'error')
 			console.error(`${errorMessage}`)
-			this.sendToSentry(errorMessage)
 		}
+		this.sendToSentry(data)
 	}
 
 	warn(...data: any[]) {
