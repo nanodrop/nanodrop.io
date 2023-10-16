@@ -1,9 +1,9 @@
 import { API_URL, TURNSTILE_KEY } from '@/config'
 import { checkAddress, checkAmount, checkHash } from 'nanocurrency'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
 import useSWRMutation from 'swr/mutation'
-import Turnstile, { BoundTurnstileObject, useTurnstile } from 'react-turnstile'
+import { Turnstile, TurnstileInstance } from '@marsidev/react-turnstile'
 import Logger from '@/lib/logger'
 
 export interface Ticket {
@@ -92,7 +92,7 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 	const [turnstileToken, setTurnstileToken] = useState('')
 	const [error, setError] = useState<FaucetError | null>(null)
 
-	const turnstile = useTurnstile()
+	const turnstile = useRef<TurnstileInstance>(null)
 
 	const logger = useMemo(() => new Logger('USE_FAUCET', debug), [debug])
 
@@ -108,15 +108,15 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 		setTurnstileToken(token)
 	}
 
-	const handleTurnstileExpired = (turnstile: BoundTurnstileObject) => {
+	const handleTurnstileExpired = () => {
 		logger.warn('Turnstile expired')
 		setIsVerified(false)
 		setTurnstileToken('')
-		turnstile.reset()
+		turnstile.current?.reset()
 	}
 
-	const handleTurnstileError = (error: any) => {
-		handleError('Verification Error', JSON.stringify(error))
+	const handleTurnstileError = () => {
+		handleError('Verification Error', 'Check your network')
 	}
 
 	const handleTurnstileUnsupported = () => {
@@ -139,12 +139,16 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 	})
 
 	useEffect(() => {
-		if (turnstile && ticket?.verificationRequired) {
+		if (!ticket?.verificationRequired) return
+		if (isVerifying || isVerified) return
+		if (turnstile.current) {
 			logger.info('Turnstile verifying')
 			setIsVerifying(true)
-			turnstile.execute()
+			turnstile.current.execute()
+		} else {
+			handleError('Verification Error', 'Turnstile not rendered')
 		}
-	}, [turnstile, ticket])
+	}, [turnstile.current, ticket, isVerifying])
 
 	const {
 		data: dropData,
@@ -182,7 +186,7 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 			}
 			if (ticket.verificationRequired && !turnstileToken) {
 				handleError('Error Sending', 'Verification missing!')
-				turnstile?.reset()
+				turnstile.current?.reset()
 				return
 			}
 			logger.info(
@@ -193,19 +197,22 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 		[ticket, turnstileToken],
 	)
 
-	const Verification = () => {
+	const Verification = useCallback(() => {
 		return (
 			<Turnstile
-				execution="execute"
-				sitekey={TURNSTILE_KEY as string}
-				onVerify={handleTurstileVerified}
-				onExpire={(_, turnstile) => handleTurnstileExpired(turnstile)}
+				options={{
+					execution: 'execute',
+					size: 'invisible',
+				}}
+				siteKey={TURNSTILE_KEY as string}
+				onSuccess={handleTurstileVerified}
+				onExpire={handleTurnstileExpired}
 				onError={handleTurnstileError}
-				onTimeout={handleTurnstileExpired}
 				onUnsupported={handleTurnstileUnsupported}
+				ref={turnstile}
 			/>
 		)
-	}
+	}, [])
 
 	return {
 		isReady: !isTicketLoading,
