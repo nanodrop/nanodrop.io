@@ -48,13 +48,13 @@ export default class Logger {
 	}
 
 	info(...data: any[]) {
-		if (this.debug) {
+		if (this.enabled) {
 			console.info(this.formatMessage(data, 'info'))
 		}
 	}
 
 	error(...data: any[]) {
-		if (this.debug) {
+		if (this.enabled) {
 			const errorMessage = this.formatMessage(data, 'error')
 			console.error(`${errorMessage}`)
 			this.sendToSentry(errorMessage)
@@ -62,7 +62,7 @@ export default class Logger {
 	}
 
 	warn(...data: any[]) {
-		if (this.debug) {
+		if (this.enabled) {
 			const errorMessage = this.formatMessage(data, 'warn')
 			console.warn(`${errorMessage}`)
 		}
@@ -74,5 +74,15 @@ export default class Logger {
 		if (sentryIsInited) {
 			Sentry.captureMessage(`${this.name} | ${data.join(' ')}`)
 		}
+	}
+
+	private get enabled() {
+		return this.debug || window.debug === true
+	}
+}
+
+declare global {
+	interface Window {
+		debug: boolean
 	}
 }
