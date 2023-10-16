@@ -35,7 +35,7 @@ export default class Logger {
 			case 'warn':
 				return `\x1b[33m${text.toUpperCase()}\x1b[0m`
 			default:
-				return `\x1b[32m${text.toUpperCase()}\x1b[0m`
+				return `\u001b[32m${text.toUpperCase()}\u001b[0m`
 		}
 	}
 
