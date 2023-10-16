@@ -23,14 +23,17 @@ export default function Drops() {
 		)
 	if (isLoading) {
 		return (
-			<>
-				<Skeleton className="w-full h-10" />
-				<div className="flex gap-4">
-					<Skeleton className="w-full h-5 flex-1" />
-					<Skeleton className="w-full h-5 flex-1" />
-					<Skeleton className="w-full h-5 flex-1" />
+			<div className="w-full flex justify-center">
+				<div className="p-4 w-full max-w-5xl">
+					<Skeleton className="w-full !h-12 dark:bg-slate-800" />
+					<Skeleton className="w-full !h-8 dark:bg-slate-800" />
+					<div className="flex gap-4">
+						<Skeleton className="w-full 1h-8 flex-1 dark:bg-slate-800" />
+						<Skeleton className="w-full !h-8 flex-1 dark:bg-slate-800" />
+						<Skeleton className="w-full !h-8 flex-1 dark:bg-slate-800" />
+					</div>
 				</div>
-			</>
+			</div>
 		)
 	}
 	return (
