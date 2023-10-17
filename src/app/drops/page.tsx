@@ -47,16 +47,13 @@ export default function Drops() {
 				</div>
 			</div>
 			<div className="flex flex-col flex-1 px-4 2xl:py-4 overflow-hidden">
-				<div className="flex">
-					<div className="flex-auto">
+				<div className="flex justify-between items-center">
+					<div>
 						<h1 className="text-base font-semibold leading-6 text-slate-900 dark:text-zinc-400">
 							Drop List
 						</h1>
-						<p className="mt-2 text-xs sm:text-sm">
-							A list of all transactions sent by NanoDrop
-						</p>
 					</div>
-					<div className="sm:mt-6 sm:ml-16 sm:flex-none">
+					<div>
 						<IconButton
 							type="button"
 							onClick={refresh}
@@ -73,10 +70,10 @@ export default function Drops() {
 					</div>
 				</div>
 				<div className="flex flex-col flex-1 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-300 dark:scrollbar-thumb-zinc-600">
-					<div className="mt-4 sm:mt-8 hidden sm:flow-root">
+					<div className="hidden sm:flow-root">
 						<DropListTableDesktop drops={drops || []} />
 					</div>
-					<div className="mt-4 sm:mt-8 flow-root sm:hidden">
+					<div className="flow-root sm:hidden">
 						<DropListTableMobile drops={drops || []} />
 					</div>
 					{hasMore && (
