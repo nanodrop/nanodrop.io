@@ -69,7 +69,7 @@ export default function DropListTableDesktop({ drops }: { drops: Drop[] }) {
 								NANO
 							</td>
 							<td className="whitespace-nowrap px-3 py-4 text-sm">
-								{(Countries as Record<string, string>)[drop.country] ||
+								{(Countries as Record<string, string>)[drop.country_code] ||
 									'unknown'}
 							</td>
 							<td className="whitespace-nowrap px-3 py-4 text-sm">

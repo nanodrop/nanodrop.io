@@ -8,7 +8,7 @@ export interface Drop {
 	amount: string
 	took: number
 	timestamp: number
-	country: string
+	country_code: string
 	is_proxy: boolean
 }
 

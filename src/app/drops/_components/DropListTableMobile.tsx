@@ -36,7 +36,7 @@ export default function DropListTableMobile({ drops }: { drops: Drop[] }) {
 							<div className="flex items-center gap-1">
 								<GlobeEuropeAfricaIcon className="w-3 h-3 text-slate-500 dark:text-zinc-600" />
 								<p className="text-sm font-semibold text-slate-800 dark:text-zinc-400">
-									{(Countries as Record<string, string>)[drop.country] ||
+									{(Countries as Record<string, string>)[drop.country_code] ||
 										'unknown'}
 								</p>
 							</div>
