@@ -8,7 +8,7 @@ import Countries from '../_assets/countries.json'
 export default function DropListTableDesktop({ drops }: { drops: Drop[] }) {
 	return (
 		<div className="inline-block min-w-full py-2 align-middle">
-			<table className="min-w-full divide-y divide-slate-300 dark:divide-zinc-700">
+			<table className="min-w-full divide-y divide-slate-300 dark:divide-zinc-800">
 				<thead>
 					<tr className="text-slate-900 dark:text-zinc-500">
 						<th
@@ -46,7 +46,7 @@ export default function DropListTableDesktop({ drops }: { drops: Drop[] }) {
 						</th>
 					</tr>
 				</thead>
-				<tbody className="divide-y divide-slate-200 dark:divide-zinc-700">
+				<tbody className="divide-y divide-slate-200 dark:divide-zinc-900">
 					{drops.map(drop => (
 						<tr key={drop.hash} className="text-slate-500 dark:text-zinc-600">
 							<td className="py-4 pl-4 pr-3 text-sm font-medium text-slate-800 dark:text-zinc-400 sm:pl-0">

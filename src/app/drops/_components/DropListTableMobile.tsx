@@ -9,7 +9,7 @@ import { BoltIcon, GlobeEuropeAfricaIcon } from '@heroicons/react/24/solid'
 
 export default function DropListTableMobile({ drops }: { drops: Drop[] }) {
 	return (
-		<div className="flex flex-col divide-y divide-slate-200 dark:divide-zinc-700">
+		<div className="flex flex-col divide-y divide-slate-200 dark:divide-zinc-800">
 			{drops.map(drop => (
 				<div key={drop.hash} className="flex flex-col py-4 gap-2">
 					<div className="flex flex-col">
