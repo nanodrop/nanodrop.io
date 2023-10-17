@@ -9,7 +9,7 @@ interface DropsMapProps {
 export default function DropsMap({ theme }: DropsMapProps) {
 	const { data } = useCountryDrop()
 
-	const mapData = data
+	const mapData: DataItem[] = data
 		? Object.entries(data).map(([country, value]) => ({
 				country,
 				value,
