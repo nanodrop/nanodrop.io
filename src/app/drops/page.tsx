@@ -72,7 +72,7 @@ export default function Drops() {
 						</IconButton>
 					</div>
 				</div>
-				<div className="flex flex-col flex-1 overflow-y-auto">
+				<div className="flex flex-col flex-1 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-300 dark:scrollbar-thumb-zinc-600">
 					<div className="mt-4 sm:mt-8 hidden sm:flow-root">
 						<DropListTableDesktop drops={drops || []} />
 					</div>

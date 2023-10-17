@@ -16,6 +16,6 @@ const config: Config = {
 		},
 	},
 	darkMode: 'class',
-	plugins: [require('tailwindcss-safe-area')],
+	plugins: [require('tailwindcss-safe-area'), require('tailwind-scrollbar')],
 }
 export default config
