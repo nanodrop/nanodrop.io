@@ -1,14 +1,21 @@
+import useCountryDrop from '@/hooks/useCountryDrops'
 import { useEffect, useRef, useState } from 'react'
 import WorldMap, { DataItem } from 'react-svg-worldmap'
 import { slate } from 'tailwindcss/colors'
-
-const data: DataItem[] = []
-
 interface DropsMapProps {
 	theme: 'light' | 'dark'
 }
 
 export default function DropsMap({ theme }: DropsMapProps) {
+	const { data } = useCountryDrop()
+
+	const mapData = data
+		? Object.entries(data).map(([country, value]) => ({
+				country,
+				value,
+		  }))
+		: []
+
 	const [width, setWidth] = useState(0)
 
 	const containerRef = useRef<HTMLDivElement>(null)
@@ -42,7 +49,7 @@ export default function DropsMap({ theme }: DropsMapProps) {
 				backgroundColor="transparent"
 				value-suffix="people"
 				size={width || 'responsive'}
-				data={data}
+				data={mapData}
 				richInteraction
 			/>
 		</div>
