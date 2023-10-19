@@ -18,8 +18,16 @@ const roboto = Roboto({
 export default function Drops() {
 	const { darkMode } = usePreferences()
 
-	const { drops, isLoading, error, refresh, isRefreshing, hasMore, loadMore } =
-		useListDrops()
+	const {
+		drops,
+		total,
+		isLoading,
+		error,
+		refresh,
+		isRefreshing,
+		hasMore,
+		loadMore,
+	} = useListDrops()
 	if (error)
 		return (
 			<div className="border border-rose-200 bg-rose-100 text-rose-800 text-lg font-semibold rounded-lg px-4 py-2">
@@ -50,7 +58,7 @@ export default function Drops() {
 				<div className="flex justify-between items-center">
 					<div>
 						<div className="text-sm sm:text-base font-semibold leading-6 text-slate-600 dark:text-zinc-400 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-0.5">
-							256.343 DROPS
+							{total} DROPS
 						</div>
 					</div>
 					<div>
