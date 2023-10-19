@@ -9,7 +9,12 @@ import DropListTableDesktop from './_components/DropListTableDesktop'
 import DropListTableMobile from './_components/DropListTableMobile'
 import DropsMap from '@/components/DropsMap'
 import { usePreferences } from '@/contexts/PreferencesProvider'
+import { Roboto } from 'next/font/google'
 
+const roboto = Roboto({
+	weight: ['500'],
+	subsets: ['latin'],
+})
 export default function Drops() {
 	const { darkMode } = usePreferences()
 
@@ -38,20 +43,15 @@ export default function Drops() {
 	}
 	return (
 		<div className="flex flex-col flex-1 2xl:flex-row 2xl:justify-between 2xl:gap-4 overflow-hidden">
-			<div className="w-full relative flex flex-col flex-1 2xl:w-3/5 max-w-7xl max-h-[60%] 2xl:max-h-max">
+			<div className="w-full flex flex-col flex-1 2xl:w-3/5 max-w-7xl max-h-[60%] 2xl:max-h-max">
 				<DropsMap theme={darkMode ? 'dark' : 'light'} />
-				<div className="w-full absolute top-0 left-0 p-2">
-					<h1 className="text-sm font-semibold text-slate-400 dark:text-zinc-600">
-						203.443 Drops
-					</h1>
-				</div>
 			</div>
 			<div className="flex flex-col flex-1 px-4 2xl:py-4 overflow-hidden">
 				<div className="flex justify-between items-center">
 					<div>
-						<h1 className="text-base font-semibold leading-6 text-slate-900 dark:text-zinc-400">
-							Drop List
-						</h1>
+						<div className="text-sm sm:text-base font-semibold leading-6 text-slate-600 dark:text-zinc-400 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-0.5">
+							256.343 DROPS
+						</div>
 					</div>
 					<div>
 						<IconButton
