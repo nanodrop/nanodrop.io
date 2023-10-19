@@ -12,27 +12,42 @@ export interface Drop {
 	is_proxy: boolean
 }
 
+export interface Drops {
+	total: number
+	drops: Drop[]
+}
+
 export interface UseListDropsProps {
 	limit?: number
 }
 
 export default function useListDrops({ limit = 50 }: UseListDropsProps = {}) {
-	const getKey = (pageIndex: number, previousPageData: Drop[]) => {
-		if (previousPageData && !previousPageData.length) return null // reached the end
+	const getKey = (pageIndex: number, previousPageData: Drops) => {
+		if (previousPageData && !hasMore) return null // reached the end
 		return `${API_URL}/drops?limit=${limit}&offset=${
 			pageIndex * limit
 		}&orderBy=desc`
 	}
 
-	const { data, error, isLoading, mutate, isValidating, size, setSize } =
-		useSWRInfinite<Drop[]>(getKey, fetcher)
+	const {
+		data = [],
+		error,
+		isLoading,
+		mutate,
+		isValidating,
+		size,
+		setSize,
+	} = useSWRInfinite<Drops>(getKey, fetcher)
 
-	const hasMore = data?.[data.length - 1].length === limit
+	const total = data[data.length - 1]?.total || 0
 
-	const drops = data ? ([] as Drop[]).concat(...data) : []
+	const hasMore = data.length * limit <= total
+
+	const drops = data.map(d => d.drops).flat()
 
 	return {
 		drops,
+		total,
 		error: error as string | null,
 		isLoading,
 		refresh: () => mutate(),
