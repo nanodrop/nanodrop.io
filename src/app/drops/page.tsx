@@ -2,7 +2,7 @@
 
 import useListDrops from '@/hooks/useListDrops'
 import { ArrowPathIcon } from '@heroicons/react/24/solid'
-import { ButtonBase, IconButton, Skeleton } from '@mui/material'
+import { Button, CircularProgress, IconButton, Skeleton } from '@mui/material'
 import clsx from 'clsx'
 
 import DropListTableDesktop from './_components/DropListTableDesktop'
@@ -11,10 +11,6 @@ import DropsMap from '@/components/DropsMap'
 import { usePreferences } from '@/contexts/PreferencesProvider'
 import { Roboto } from 'next/font/google'
 
-const roboto = Roboto({
-	weight: ['500'],
-	subsets: ['latin'],
-})
 export default function Drops() {
 	const { darkMode } = usePreferences()
 
@@ -85,12 +81,14 @@ export default function Drops() {
 						<DropListTableMobile drops={drops || []} />
 					</div>
 					{hasMore && (
-						<div className="flex justify-center p-4">
-							<ButtonBase onClick={loadMore}>
-								<div className="bg-nano px-4 py-2 font-semibold text-white uppercase rounded-lg">
-									Load More
-								</div>
-							</ButtonBase>
+						<div className="flex justify-center px-3 pb-3">
+							{isLoading ? (
+								<CircularProgress size={22} />
+							) : (
+								<Button onClick={loadMore} variant="outlined">
+									<span className="text-nano">Load More</span>
+								</Button>
+							)}
 						</div>
 					)}
 				</div>
