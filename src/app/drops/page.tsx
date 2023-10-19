@@ -9,7 +9,6 @@ import DropListTableDesktop from './_components/DropListTableDesktop'
 import DropListTableMobile from './_components/DropListTableMobile'
 import DropsMap from '@/components/DropsMap'
 import { usePreferences } from '@/contexts/PreferencesProvider'
-import { Roboto } from 'next/font/google'
 
 export default function Drops() {
 	const { darkMode } = usePreferences()
@@ -82,7 +81,7 @@ export default function Drops() {
 					</div>
 					{hasMore && (
 						<div className="flex justify-center px-3 pb-3">
-							{isLoading ? (
+							{isLoading || isRefreshing ? (
 								<CircularProgress size={22} />
 							) : (
 								<Button onClick={loadMore} variant="outlined">
