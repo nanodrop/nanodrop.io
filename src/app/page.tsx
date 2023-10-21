@@ -21,7 +21,10 @@ export default function Home() {
 							onReset={() => setNanoAddress(null)}
 							onValidAddress={setNanoAddress}
 							onInvalidAddress={() => setNanoAddress(null)}
-							onSubmit={console.log}
+							onSubmit={e => {
+								e.preventDefault()
+								e.stopPropagation()
+							}}
 						/>
 					</div>
 					<div className="w-full flex justify-center">
