@@ -18,6 +18,7 @@ export default function Home() {
 					</div>
 					<div className="w-[580px] max-w-full px-4">
 						<AddressInput
+							onReset={() => setNanoAddress(null)}
 							onValidAddress={setNanoAddress}
 							onInvalidAddress={() => setNanoAddress(null)}
 							onSubmit={console.log}
