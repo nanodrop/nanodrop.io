@@ -64,10 +64,10 @@ export default function QrScannerModal({
 	return (
 		<>
 			<div className="fixed z-50 bg-black/50 h-screen-safe w-full inset-0 flex flex-col justify-end sm:justify-center sm:items-center">
-				<div className="bg-white w-full max-w-2xl rounded-t-lg sm:rounded-b-lg outline-none">
+				<div className="bg-white dark:bg-midnight-2 w-full max-w-2xl rounded-t-lg sm:rounded-b-lg outline-none">
 					<div className="w-full flex justify-between p-2 items-center">
 						<IconButton onClick={handleClose}>
-							<XCircleIcon className="w-8 h-8 text-slate-700" />
+							<XCircleIcon className="w-8 h-8 text-slate-700 dark:text-zinc-600" />
 						</IconButton>
 						{cameras?.length > 0 ? (
 							<div>
@@ -82,12 +82,12 @@ export default function QrScannerModal({
 								/>
 							</div>
 						) : (
-							<div className="text-slate-700 font-semibold text-sm p-2">
+							<div className="text-slate-700 dark:text-zinc-500 font-semibold text-sm p-2">
 								No cameras found
 							</div>
 						)}
 					</div>
-					<div className="w-full flex justify-center max-h-[320px] bg-slate-200 relative">
+					<div className="w-full flex justify-center max-h-[320px] bg-slate-200 dark:bg-zinc-950 relative">
 						<video
 							ref={ref}
 							style={{
@@ -111,7 +111,7 @@ export default function QrScannerModal({
 									current === 'environment' ? 'user' : 'environment',
 								)
 							}
-							className="relative bg-slate-600 shadow"
+							className="relative !bg-slate-600 dark:!bg-zinc-600 shadow"
 						>
 							<svg
 								focusable="false"

@@ -37,13 +37,13 @@ export default function SelectBox({
 				<>
 					<div className="relative">
 						<div className="inline-flex rounded-md shadow-sm">
-							<div className="inline-flex items-center gap-x-1.5 rounded-l-md bg-slate-600 border border-white/10 p-2 text-white shadow-sm w-40">
+							<div className="inline-flex items-center gap-x-1.5 rounded-l-md bg-slate-600 dark:bg-zinc-700 border border-white/10 p-2 text-white shadow-sm w-40">
 								<p className="text-xs font-semibold">{selected?.title}</p>
 							</div>
 							<Listbox.Button
 								className={clsx(
-									'inline-flex items-center rounded-l-none rounded-r-md border border-white/10 p-2 bg-slate-600 hover:bg-slate-700 focus:outline-none',
-									open && 'bg-slate-700',
+									'inline-flex items-center rounded-l-none rounded-r-md border border-white/10 p-2 bg-slate-600 dark:bg-zinc-700 hover:bg-slate-700 dark:hover:bg-zinc-800 focus:outline-none',
+									open && 'bg-slate-700 dark:bg-zinc-800',
 								)}
 							>
 								<ChevronDownIcon
@@ -60,13 +60,15 @@ export default function SelectBox({
 							leaveFrom="opacity-100"
 							leaveTo="opacity-0"
 						>
-							<Listbox.Options className="absolute right-0 z-10 mt-1 w-40 origin-top-right divide-y divide-slate-600 overflow-hidden rounded-md bg-[#374349] shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+							<Listbox.Options className="absolute right-0 z-10 mt-1 w-40 origin-top-right divide-y divide-slate-600 dark:divide-zinc-700 overflow-hidden rounded-md bg-slate-700 dark:bg-zinc-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
 								{options.map(option => (
 									<Listbox.Option
 										key={option.title}
 										className={({ active }) =>
 											clsx(
-												active ? 'bg-slate-600 text-white' : 'text-white',
+												active
+													? 'bg-slate-600 dark:bg-zinc-700 text-white'
+													: 'text-white',
 												'cursor-pointer select-none p-2 text-xs',
 											)
 										}
