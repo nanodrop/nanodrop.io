@@ -12,6 +12,7 @@ const config: Config = {
 				nano: '#209CE9',
 				'midnight-1': '#101217',
 				'midnight-2': '#0d0f13',
+				danger: '#d9534f',
 			},
 		},
 	},
