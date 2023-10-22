@@ -8,6 +8,7 @@ import { ClipboardDocumentIcon } from '@heroicons/react/24/outline'
 import { checkAddress } from 'nanocurrency'
 import { useRef, useState } from 'react'
 import QrScannerModal from './QrScanner/QrScannerModal'
+import clsx from 'clsx'
 
 export interface AddressInputProps {
 	onSubmit?: (event: React.FormEvent<HTMLFormElement>) => void
@@ -26,13 +27,16 @@ export default function AddressInput({
 }: AddressInputProps) {
 	const [value, setValue] = useState('')
 	const [openScanner, setOpenScanner] = useState(false)
+	const [isInvalid, setIsInvalid] = useState(false)
 
 	const inputRef = useRef<HTMLInputElement>(null)
 
 	const validate = (value: string) => {
+		setIsInvalid(false)
 		if (checkAddress(value)) {
 			onValidAddress && onValidAddress(value)
 		} else {
+			value !== '' && setIsInvalid(true)
 			onInvalidAddress && onInvalidAddress(value)
 		}
 	}
@@ -73,7 +77,10 @@ export default function AddressInput({
 
 	return (
 		<form
-			className="w-full select-none p-2 flex items-center rounded-full border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-transparent"
+			className={clsx(
+				'w-full select-none p-2 flex items-center rounded-full bg-slate-50 dark:bg-transparent border',
+				isInvalid ? 'border-danger' : 'border-slate-200 dark:border-zinc-800',
+			)}
 			action={'#'}
 			onSubmit={onSubmit}
 			onClick={inputFocus}
@@ -89,6 +96,8 @@ export default function AddressInput({
 				className="!text-slate-700 dark:!text-zinc-400"
 				inputRef={inputRef}
 				autoFocus={true}
+				spellCheck={false}
+				autoCorrect="off"
 			/>
 			{value ? (
 				<>
@@ -99,7 +108,7 @@ export default function AddressInput({
 						onClick={handleReset}
 						className="group"
 					>
-						<XMarkIcon className="w-5 h-5 text-slate-600 dark:text-zinc-500 group-hover:text-rose-500" />
+						<XMarkIcon className="w-5 h-5 text-slate-600 dark:text-zinc-500 sm:group-hover:text-danger" />
 					</IconButton>{' '}
 				</>
 			) : (
@@ -111,8 +120,9 @@ export default function AddressInput({
 						onClick={e => {
 							setOpenScanner(true)
 						}}
+						className="group"
 					>
-						<QrCodeIcon className="w-5 h-5 text-slate-600 dark:text-zinc-500" />
+						<QrCodeIcon className="w-5 h-5 text-slate-600 dark:text-zinc-500 group-hover:!text-nano" />
 					</IconButton>
 					<Divider
 						sx={{ height: 28, m: 0.5 }}
@@ -124,8 +134,9 @@ export default function AddressInput({
 						sx={{ p: '10px' }}
 						aria-label="directions"
 						onClick={clipboardPaste}
+						className="group"
 					>
-						<ClipboardDocumentIcon className="w-5 h-5 text-slate-600 dark:text-zinc-500" />
+						<ClipboardDocumentIcon className="w-5 h-5 text-slate-600 dark:text-zinc-500 group-hover:!text-nano" />
 					</IconButton>
 				</>
 			)}
