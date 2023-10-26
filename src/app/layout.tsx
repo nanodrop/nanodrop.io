@@ -43,6 +43,7 @@ export const metadata: Metadata = {
 		url: 'https://github.com/anarkrypto',
 		name: 'anarkrypto',
 	},
+	category: 'Cryptocurrency Faucet',
 }
 
 export default function RootLayout({
