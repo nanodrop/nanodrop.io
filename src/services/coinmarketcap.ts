@@ -1,7 +1,7 @@
 import { revalidateTag } from 'next/cache'
 import { ZodError, z } from 'zod'
 
-const CACHE_TIME = 10 * 5 // 5 minutes
+const CACHE_TIME = 60 * 5 // 5 minutes
 
 export interface LatestPrice {
 	price: number
