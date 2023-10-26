@@ -1,4 +1,10 @@
+import { Metadata } from 'next'
 import { ReactNode } from 'react'
+
+export const metadata: Metadata = {
+	title: 'DROPS | NanoDrop Faucet',
+	description: 'Faucet transaction history with visualization by country.',
+}
 
 export default function DropsLayout({ children }: { children: ReactNode }) {
 	return (
@@ -8,6 +14,7 @@ export default function DropsLayout({ children }: { children: ReactNode }) {
 				height: 'calc(100vh - 60px)',
 			}}
 		>
+			<h1 className="sr-only">Drop List</h1>
 			{children}
 		</div>
 	)

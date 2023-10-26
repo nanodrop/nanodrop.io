@@ -11,6 +11,7 @@ export default function Home() {
 
 	return (
 		<div className="flex flex-col flex-1 justify-center w-full max-w-5xl">
+			<h1 className="sr-only">Nano Faucet</h1>
 			<section className="flex flex-col w-full flex-1 justify-center items-center py-8">
 				<div className="w-full flex flex-col items-center justify-between gap-8">
 					<div className="flex flex-col justify-center">

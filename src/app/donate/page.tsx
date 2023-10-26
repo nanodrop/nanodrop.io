@@ -1,7 +1,7 @@
 'use client'
 
 import QRCode from 'react-qr-code'
-import { slate, zinc } from 'tailwindcss/colors'
+import { slate } from 'tailwindcss/colors'
 import { ButtonBase } from '@mui/material'
 import { Montserrat } from 'next/font/google'
 
