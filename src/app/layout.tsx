@@ -10,8 +10,12 @@ import { PreferencesProvider } from '@/contexts/PreferencesProvider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-	title: 'NanoDrop Faucet',
-	description: 'Free Nano cryptocurrency (XNO) Faucet',
+	title: {
+		default: 'Nano Faucet | NanoDrop.io',
+		template: '%s | NanoDrop.io',
+	},
+	description:
+		'Welcome to NanoDrop.io, a clean, easy, fast, and open-source faucet for Nano. Get start with Nano now and experience a fee-less, instant, and scalable cryptocurrency.',
 	viewport:
 		'width=device-width, initial-scale=1, user-scalable=0, viewport-fit=cover',
 	themeColor: [

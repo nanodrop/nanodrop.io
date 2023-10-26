@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import { ReactNode } from 'react'
 
 export const metadata: Metadata = {
-	title: 'DROPS | NanoDrop Faucet',
+	title: 'Drop List',
 	description: 'Faucet transaction history with visualization by country.',
 }
 
