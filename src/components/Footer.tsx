@@ -94,6 +94,7 @@ export default function Footer() {
 										<Link
 											href={item.href}
 											className="flex gap-1 items-center text-[12px] hover:text-nano"
+											target={item.external ? '_blank' : '_self'}
 										>
 											{item.name}
 										</Link>
