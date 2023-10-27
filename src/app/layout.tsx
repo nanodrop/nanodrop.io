@@ -7,6 +7,8 @@ import Appbar from '@/components/Appbar'
 import clsx from 'clsx'
 import { PreferencesProvider } from '@/contexts/PreferencesProvider'
 
+const SITE_URL = new URL(process.env.NEXT_PUBLIC_SITE_URL as string).origin
+
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
@@ -15,7 +17,7 @@ export const metadata: Metadata = {
 		template: '%s | NanoDrop.io',
 	},
 	description:
-		'Welcome to NanoDrop.io, a clean, easy, fast, and open-source faucet for Nano. Get start with Nano now and experience a fee-less, instant, and scalable cryptocurrency.',
+		'Welcome to NanoDrop.io - a clean, easy, fast and open-source faucet to get started with Nano (XNO): a fee-less, instant and scalable cryptocurrency.',
 	viewport:
 		'width=device-width, initial-scale=1, user-scalable=0, viewport-fit=cover',
 	themeColor: [
@@ -44,6 +46,32 @@ export const metadata: Metadata = {
 		name: 'anarkrypto',
 	},
 	category: 'Cryptocurrency Faucet',
+	openGraph: {
+		title: 'NanoDrop.io | Free Nano (XNO) Cryptocurrency Faucet',
+		description:
+			'Welcome to NanoDrop.io - a clean, easy, fast and open-source faucet to get started with Nano (XNO): a fee-less, instant and scalable cryptocurrency.',
+		url: `${SITE_URL}/`,
+		siteName: 'NanoDrop.io',
+		locale: 'en_US',
+		type: 'website',
+	},
+	robots: {
+		index: true,
+		follow: true,
+		googleBot: {
+			index: true,
+			follow: true,
+			'max-video-preview': -1,
+			'max-image-preview': 'large',
+			'max-snippet': -1,
+		},
+	},
+	alternates: {
+		canonical: `${SITE_URL}/`,
+		languages: {
+			'en-US': `${SITE_URL}/`,
+		},
+	},
 }
 
 export default function RootLayout({

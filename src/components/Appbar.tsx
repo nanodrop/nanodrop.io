@@ -47,7 +47,7 @@ export default function Appbar() {
 				{!isHome && (
 					<div>
 						<Link href="/">
-							<h1
+							<div
 								className={`${montserrat.className} items-center font-light text-xl sm:text-2xl uppercase text-nano hidden sm:flex`}
 							>
 								<span>Nano</span>
@@ -55,7 +55,7 @@ export default function Appbar() {
 									<DropSVG />
 								</span>
 								<span>Drop</span>
-							</h1>
+							</div>
 							<DropSVG className="sm:hidden text-white dark:text-nano w-7 h-auto" />
 						</Link>
 					</div>
