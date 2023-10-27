@@ -207,11 +207,6 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 									alt={''}
 									className="w-7 h-7 opacity-80"
 								/>
-								<img
-									id="nd-anchor-logo-img"
-									src="/icons/favicon-32x32.png"
-									className="w-[32px] h-[32px] hidden"
-								/>
 								<div
 									id="nd-anchor-logo-text"
 									className="text-xs text-slate-500 hidden"
