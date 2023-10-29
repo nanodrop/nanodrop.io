@@ -108,6 +108,7 @@ body {
 .nd-anchor-logo-portrait {
 	margin: 10px auto 0;
 	width: 60px;
+	user-select: none;
 	-webkit-user-select: none;
 	-moz-user-select: none;
 	-ms-user-select: none;
