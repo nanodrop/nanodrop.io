@@ -72,6 +72,7 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 			disabled={isLoading}
 			href={isSent ? explorerLinkFromHash(dropData?.hash || '') : ''}
 			target="_blank"
+			aria-labelledby="checkbox-anchor-label"
 		>
 			<Verification />
 			<div
@@ -88,7 +89,7 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 							id="nd-anchor-checkbox"
 							role="checkbox"
 							aria-checked="false"
-							aria-labelledby="recaptcha-anchor-label"
+							aria-labelledby="checkbox-anchor-label"
 						>
 							{(isError && <ErrorMark />) ||
 								(isLoading && (
@@ -102,7 +103,7 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 								)) ||
 								(isSent && <CheckMark />) || (
 									<div
-										id="recaptcha-checkbox-border"
+										id="checkbox-border"
 										className="w-6 h-6 border-2 border-[#c1c1c1] dark:border-zinc-700 text-slate-700 rounded group-hover:border-nano bg-white dark:bg-[#101217]"
 										role="presentation"
 									/>
@@ -115,7 +116,7 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 						className="flex flex-1 justify-center items-center"
 					>
 						<label
-							id="nd-anchor-checkbox-label"
+							id="checkbox-anchor-label"
 							className="text-sm text-slate-600 dark:text-zinc-400"
 							aria-hidden="true"
 							role="presentation"
@@ -135,7 +136,7 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 									<>
 										<span
 											aria-live="polite"
-											aria-labelledby="recaptcha-accessible-status"
+											aria-labelledby="checkbox-accessible-status"
 										></span>
 										Sent{' '}
 										<span id="drop-amount">
@@ -150,7 +151,7 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 									<>
 										<span
 											aria-live="polite"
-											aria-labelledby="recaptcha-accessible-status"
+											aria-labelledby="checkbox-accessible-status"
 										></span>
 										Send{' '}
 										<span id="drop-amount">
@@ -234,10 +235,7 @@ export const LinkIcon = () => (
 )
 
 export const CheckMark = () => (
-	<svg
-		className="recaptcha-checkbox-checkmark blue-stroke animate"
-		role="presentation"
-	>
+	<svg className="checkbox-checkmark blue-stroke animate" role="presentation">
 		<g transform="matrix(0.79961,8.65821e-32,8.39584e-32,0.79961,-489.57,-205.679)">
 			<path
 				className="checkmark__check"
