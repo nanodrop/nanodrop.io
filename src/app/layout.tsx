@@ -6,6 +6,7 @@ import Footer from '@/components/Footer'
 import Appbar from '@/components/Appbar'
 import clsx from 'clsx'
 import { PreferencesProvider } from '@/contexts/PreferencesProvider'
+import ThemeProvider from '@/contexts/ThemeProvider'
 
 const SITE_URL = new URL(process.env.NEXT_PUBLIC_SITE_URL as string).origin
 
@@ -88,13 +89,15 @@ export default function RootLayout({
 				)}
 			>
 				<PreferencesProvider>
-					<div className="min-h-screen flex flex-col">
-						<Appbar />
-						<main className="flex flex-col flex-1 items-center">
-							{children}
-						</main>
-						<Footer />
-					</div>
+					<ThemeProvider>
+						<div className="min-h-screen flex flex-col">
+							<Appbar />
+							<main className="flex flex-col flex-1 items-center">
+								{children}
+							</main>
+							<Footer />
+						</div>
+					</ThemeProvider>
 				</PreferencesProvider>
 			</body>
 		</html>
