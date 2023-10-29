@@ -19,8 +19,7 @@ export const metadata: Metadata = {
 	},
 	description:
 		'Welcome to NanoDrop.io - a clean, easy, fast and open-source faucet to get started with Nano (XNO): a fee-less, instant and scalable cryptocurrency.',
-	viewport:
-		'width=device-width, initial-scale=1, user-scalable=0, viewport-fit=cover',
+	viewport: 'width=device-width, initial-scale=1, viewport-fit=cover',
 	themeColor: [
 		{
 			color: '#209ce9',
