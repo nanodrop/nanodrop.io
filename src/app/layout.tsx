@@ -31,16 +31,6 @@ export const metadata: Metadata = {
 		},
 	],
 	applicationName: 'Nanodrop.io',
-	keywords: [
-		'nano',
-		'xno',
-		'nanocurrency',
-		'cryptocurrency',
-		'faucet',
-		'free',
-		'wallet',
-		'open source',
-	],
 	authors: {
 		url: 'https://github.com/anarkrypto',
 		name: 'anarkrypto',
