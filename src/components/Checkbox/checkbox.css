@@ -48,28 +48,23 @@ body {
 	height: 100%;
 }
 
-.recaptcha-checkbox-focused .recaptcha-checkbox-border,
-.recaptcha-checkbox-focused .recaptcha-checkbox-spinner-gif {
+.recaptcha-checkbox-focused .recaptcha-checkbox-border {
 	border: 2px solid #209CE9;
 }
 
-.recaptcha-checkbox-active .recaptcha-checkbox-border,
-.recaptcha-checkbox-active .recaptcha-checkbox-spinner-gif {
+.recaptcha-checkbox-active .recaptcha-checkbox-border {
 	background-color: #ebebeb;
 }
 
-.recaptcha-checkbox-disabled .recaptcha-checkbox-border,
-.recaptcha-checkbox-disabled .recaptcha-checkbox-spinner-gif {
+.recaptcha-checkbox-disabled .recaptcha-checkbox-border {
 	background-color: #f1f1f1;
 }
 
-.recaptcha-checkbox-expired .recaptcha-checkbox-border,
-.recaptcha-checkbox-expired .recaptcha-checkbox-spinner-gif {
+.recaptcha-checkbox-expired .recaptcha-checkbox-border {
 	border: 2px solid #ff0000;
 }
 
-.recaptcha-checkbox-clearOutline.recaptcha-checkbox-focused .recaptcha-checkbox-border,
-.recaptcha-checkbox-clearOutline.recaptcha-checkbox-focused .recaptcha-checkbox-spinner-gif {
+.recaptcha-checkbox-clearOutline.recaptcha-checkbox-focused .recaptcha-checkbox-border {
 	border: 2px solid #c1c1c1;
 }
 
@@ -80,53 +75,7 @@ body {
 	-moz-box-shadow: 0 0 4px 1px rgba(0, 0, 0, 0.08);
 }
 
-.recaptcha-checkbox-spinner {
-	background-color: #f9f9f9;
-	border: 5px solid #209CE9;
-	border-radius: 32px;
-	border-bottom-color: transparent;
-	border-left-color: transparent;
-	height: 32px;
-	left: -4px;
-	outline: 0;
-	top: -4px;
-	width: 32px;
-	box-sizing: border-box;
-	animation: spinner-spin linear 2.5s infinite;
-	animation-play-state: paused;
-	transition-duration: 1s;
-}
-
-@keyframes overlay-spin {
-	0% {
-		opacity: 1;
-		transform: rotateZ(45deg);
-	}
-
-	50% {
-		opacity: 1;
-		transform: rotateZ(225deg);
-	}
-}
-
-.recaptcha-checkbox-spinner-overlay {
-	content: '';
-	position: absolute;
-	top: -7px;
-	left: -7px;
-	width: 38px;
-	height: 19px;
-	background-color: #f9f9f9;
-	animation: overlay-spin linear 2.5s infinite;
-	animation-play-state: paused;
-	transform-origin: bottom center;
-	border-radius: 32px 32px 0 0;
-	transform: rotateZ(45deg);
-	opacity: 1;
-}
-
-.recaptcha-checkbox-hover .recaptcha-checkbox-border,
-.recaptcha-checkbox-hover .recaptcha-checkbox-spinner-gif {
+.recaptcha-checkbox-hover .recaptcha-checkbox-border {
 	-webkit-box-shadow: inset 0px 1px 1px rgba(0, 0, 0, 0.1);
 	-moz-box-shadow: inset 0px 1px 1px rgba(0, 0, 0, 0.1);
 	box-shadow: inset 0px 1px 1px rgba(0, 0, 0, 0.1);
@@ -283,36 +232,6 @@ body {
 	color: #777;
 }
 
-/* Refresh Checkbox */
-
-.checkbox-refresh .nd-anchor-footer {
-	cursor: pointer;
-}
-
-.checkbox-refresh .nd-anchor-logo-text,
-.checkbox-refreshing .nd-anchor-logo-text {
-	display: none;
-}
-
-.checkbox-refresh .nd-anchor-logo-text-refresh,
-.checkbox-refreshing .nd-anchor-logo-text-refreshing {
-	display: block;
-}
-
-.checkbox-refresh .nd-anchor-logo-img,
-.checkbox-refreshing .nd-anchor-logo-img {
-	background: url('/assets/refresh.png');
-	background-size: 32px;
-	height: 32px;
-	width: 32px;
-}
-
-.checkbox-refreshing .nd-anchor-logo-img {
-	animation: spinner-spin linear 2.5s infinite;
-	transition-duration: 1s;
-	background-repeat: no-repeat;
-}
-
 /* Dark mode */
 
 .nd-anchor-dark {
@@ -331,32 +250,6 @@ body {
 .nd-anchor-dark div a:link,
 .nd-anchor-dark div a:visited {
 	color: #aaa;
-}
-
-@keyframes spinner-spin {
-	0% {
-		transform: rotateZ(0deg);
-	}
-
-	10% {
-		transform: rotateZ(135deg);
-	}
-
-	25% {
-		transform: rotateZ(245deg);
-	}
-
-	60% {
-		transform: rotateZ(700deg);
-	}
-
-	75% {
-		transform: rotateZ(810deg);
-	}
-
-	100% {
-		transform: rotateZ(1080deg);
-	}
 }
 
 @keyframes draw-first-line {

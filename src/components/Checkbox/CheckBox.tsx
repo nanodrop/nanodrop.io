@@ -4,7 +4,7 @@ import { useCallback, useEffect } from 'react'
 import Image from 'next/image'
 
 import clsx from 'clsx'
-import { ButtonBase } from '@mui/material'
+import { ButtonBase, CircularProgress } from '@mui/material'
 import { convert, Unit } from 'nanocurrency'
 
 import useFaucet from '@/hooks/useFaucet'
@@ -91,7 +91,15 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 							aria-labelledby="recaptcha-anchor-label"
 						>
 							{(isError && <ErrorMark />) ||
-								(isLoading && <CheckboxSpinner />) ||
+								(isLoading && (
+									<div className="h-full flex items-center">
+										<CircularProgress
+											size={28}
+											color="primary"
+											thickness={6.5}
+										/>
+									</div>
+								)) ||
 								(isSent && <CheckMark />) || (
 									<div
 										id="recaptcha-checkbox-border"
@@ -249,24 +257,4 @@ export const ErrorMark = () => (
 			<path className="second-line" d="M634.087,300.805L673.361,261.53" />
 		</g>
 	</svg>
-)
-
-export const CheckboxSpinner = () => (
-	<div>
-		<div className="recaptcha-checkbox-borderAnimation" role="presentation" />
-		<div
-			className="recaptcha-checkbox-spinner dark:!bg-transparent"
-			role="presentation"
-			style={{
-				animationPlayState: 'running',
-			}}
-		>
-			<div
-				className="recaptcha-checkbox-spinner-overlay dark:!bg-transparent"
-				style={{
-					animationPlayState: 'running',
-				}}
-			></div>
-		</div>
-	</div>
 )
