@@ -48,23 +48,23 @@ body {
 	height: 100%;
 }
 
-.recaptcha-checkbox-focused .recaptcha-checkbox-border {
+.checkbox-focused .checkbox-border {
 	border: 2px solid #209CE9;
 }
 
-.recaptcha-checkbox-active .recaptcha-checkbox-border {
+.checkbox-active .checkbox-border {
 	background-color: #ebebeb;
 }
 
-.recaptcha-checkbox-disabled .recaptcha-checkbox-border {
+.checkbox-disabled .checkbox-border {
 	background-color: #f1f1f1;
 }
 
-.recaptcha-checkbox-expired .recaptcha-checkbox-border {
+.checkbox-expired .checkbox-border {
 	border: 2px solid #ff0000;
 }
 
-.recaptcha-checkbox-clearOutline.recaptcha-checkbox-focused .recaptcha-checkbox-border {
+.checkbox-clearOutline.checkbox-focused .checkbox-border {
 	border: 2px solid #c1c1c1;
 }
 
@@ -75,7 +75,7 @@ body {
 	-moz-box-shadow: 0 0 4px 1px rgba(0, 0, 0, 0.08);
 }
 
-.recaptcha-checkbox-hover .recaptcha-checkbox-border {
+.checkbox-hover .checkbox-border {
 	-webkit-box-shadow: inset 0px 1px 1px rgba(0, 0, 0, 0.1);
 	-moz-box-shadow: inset 0px 1px 1px rgba(0, 0, 0, 0.1);
 	box-shadow: inset 0px 1px 1px rgba(0, 0, 0, 0.1);
@@ -141,7 +141,7 @@ body {
 	stroke: #209CE9;
 }
 
-.recaptcha-checkbox-checkmark {
+.checkbox-checkmark {
 	transform: scale(0.6);
 	stroke-width: 8;
 	stroke-linecap: round;
@@ -150,11 +150,11 @@ body {
 	display: none;
 }
 
-.recaptcha-checkbox-checkmark.animate {
+.checkbox-checkmark.animate {
 	display: block;
 }
 
-.recaptcha-checkbox-checkmark.animate path {
+.checkbox-checkmark.animate path {
 	animation: 0.7s draw-check ease-out;
 }
 
