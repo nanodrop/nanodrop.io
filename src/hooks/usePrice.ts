@@ -12,7 +12,7 @@ export default function usePrice() {
 	const { data, error, isLoading } = useSWR<LatestPrice>('/api/price', fetcher)
 
 	return {
-		price: data ? formatPrice(data.price) : null,
+		price: data?.price ? formatPrice(data.price) : null,
 		percent_change_24h: data?.percent_change_24h ?? null,
 		error: (error as string) || null,
 		isLoading,
