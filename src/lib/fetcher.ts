@@ -5,6 +5,9 @@ const fetcher = async (url: string) => {
 			throw response
 		}
 		const data = await response.json()
+		if (data.error) {
+			throw new Error(data.error)
+		}
 		return data
 	} catch (error) {
 		let message = 'Fetch error'
