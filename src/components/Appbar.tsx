@@ -36,6 +36,10 @@ export default function Appbar() {
 
 	const isHome = pathname === '/'
 
+	if (priceError) {
+		console.error('[ERROR] USE PRICE:', priceError)
+	}
+
 	return (
 		<header
 			className={clsx(
@@ -65,18 +69,14 @@ export default function Appbar() {
 						<div className="whitespace-nowrap py-1 px-2 border border-slate-200 dark:border-zinc-800 rounded-full text-sm sm:text-base hidden sm:block">
 							1 XNO ={' '}
 							{priceError
-								? priceError
+								? 'ERROR'
 								: priceIsLoading
 								? '-- USD'
 								: `US$ ${price}`}
 						</div>
 						<div className="whitespace-nowrap py-1 px-2 border border-slate-200 dark:border-zinc-800 rounded-full text-sm sm:text-base sm:hidden">
 							1Ӿ ={' '}
-							{priceError
-								? priceError
-								: priceIsLoading
-								? '-- USD'
-								: `$${price}`}
+							{priceError ? 'ERROR' : priceIsLoading ? '-- USD' : `$${price}`}
 						</div>
 					</>
 				)}
