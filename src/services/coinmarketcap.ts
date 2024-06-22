@@ -21,7 +21,7 @@ export const getLatestPrice = async (
 	coinId = coinId.toString()
 
 	if (revalidate) {
-		revalidateTag('xno-price')
+		revalidateTag(`price-${coinId}-${convert}`)
 	}
 
 	const url = `https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest?id=${coinId}&convert=${convert}`
