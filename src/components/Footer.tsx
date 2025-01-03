@@ -110,11 +110,11 @@ export default function Footer() {
 				<div className="flex flex-col items-center border-t border-slate-200 dark:border-zinc-900 py-4 md:flex-row-reverse md:justify-between">
 					<Link
 						href={`mailto:${CONTACT_EMAIL}`}
-						className="text-xs  hover:text-nano"
+						className="text-xs hover:text-nano"
 					>
 						{CONTACT_EMAIL}
 					</Link>
-					<p className="mt-6 text-xs  md:mt-0">
+					<p className="mt-4 text-xs md:mt-0">
 						Ӿ {new Date().getFullYear()} NanoDrop by{' '}
 						<Link
 							target="_blank"
