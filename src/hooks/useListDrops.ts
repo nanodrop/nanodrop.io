@@ -37,7 +37,9 @@ export default function useListDrops({ limit = 50 }: UseListDropsProps = {}) {
 		isValidating,
 		size,
 		setSize,
-	} = useSWRInfinite<Drops>(getKey, fetcher)
+	} = useSWRInfinite<Drops>(getKey, fetcher, {
+		refreshInterval: 30 * 1000, // 30 seconds
+	})
 
 	const total = data[data.length - 1]?.total || 0
 
