@@ -46,7 +46,7 @@ export default function Drops() {
 	}
 	return (
 		<div className="flex flex-col flex-1 2xl:flex-row 2xl:justify-between 2xl:gap-4 overflow-hidden">
-			<div className="w-full flex flex-col flex-1 2xl:w-3/5 max-w-7xl max-h-[60%] 2xl:max-h-max">
+			<div className="w-full flex flex-col flex-1 2xl:w-3/5 max-w-7xl max-h-[60%] 2xl:max-h-max 2xl:min-h-full">
 				<DropsMap theme={darkMode ? 'dark' : 'light'} />
 			</div>
 			<div className="flex flex-col flex-1 px-4 2xl:py-4 overflow-hidden">
