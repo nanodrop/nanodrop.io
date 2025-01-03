@@ -1,6 +1,6 @@
 import './globals.css'
 
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import Footer from '@/components/Footer'
 import Appbar from '@/components/Appbar'
@@ -19,17 +19,6 @@ export const metadata: Metadata = {
 	},
 	description:
 		'Welcome to NanoDrop.io - a clean, easy, fast and open-source faucet to get started with Nano (XNO): a fee-less, instant and scalable cryptocurrency.',
-	viewport: 'width=device-width, initial-scale=1, viewport-fit=cover',
-	themeColor: [
-		{
-			color: '#209ce9',
-			media: '(prefers-color-scheme: light)',
-		},
-		{
-			color: '#101217',
-			media: '(prefers-color-scheme: dark)',
-		},
-	],
 	applicationName: 'Nanodrop.io',
 	authors: {
 		url: 'https://github.com/anarkrypto',
@@ -62,6 +51,23 @@ export const metadata: Metadata = {
 			'en-US': `${SITE_URL}/`,
 		},
 	},
+	metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL as string),
+}
+
+export const viewport: Viewport = {
+	width: 'device-width',
+	initialScale: 1,
+	viewportFit: 'cover',
+	themeColor: [
+		{
+			color: '#209ce9',
+			media: '(prefers-color-scheme: light)',
+		},
+		{
+			color: '#101217',
+			media: '(prefers-color-scheme: dark)',
+		},
+	],
 }
 
 export default function RootLayout({
