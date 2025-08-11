@@ -51,7 +51,7 @@ export const metadata: Metadata = {
 			'en-US': `${SITE_URL}/`,
 		},
 	},
-	metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL as string),
+	metadataBase: new URL(SITE_URL),
 }
 
 export const viewport: Viewport = {
