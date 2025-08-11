@@ -1,14 +1,12 @@
 'use client'
 
 import usePrice from '@/hooks/usePrice'
-import { ButtonBase } from '@mui/material'
 import clsx from 'clsx'
 import { Montserrat } from 'next/font/google'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import DropSVG from '@/components/DropSVG'
-import { MoonIcon, SunIcon } from '@heroicons/react/24/solid'
-import { usePreferences } from '@/contexts/PreferencesProvider'
+import { ThemeToggle } from './ThemeToggle'
 
 const montserrat = Montserrat({ subsets: ['latin'], weight: 'variable' })
 
@@ -30,7 +28,6 @@ export interface AppbarProps {
 
 export default function Appbar() {
 	const { price, error: priceError, isLoading: priceIsLoading } = usePrice()
-	const { darkMode, toggleDarkMode } = usePreferences()
 
 	const pathname = usePathname()
 
@@ -96,21 +93,7 @@ export default function Appbar() {
 							</Link>
 						))}
 					</nav>
-					<ButtonBase className="!rounded-full" onClick={toggleDarkMode}>
-						<div className="flex text-sm items-center sm:gap-1 text-white sm:text-slate-500 hover:text-nano hover:border-nano sm:border sm:border-slate-300 sm:dark:border-zinc-800 dark:border-zinc-800 px-2 py-1.5 rounded-full">
-							{darkMode ? (
-								<>
-									<span className="hidden sm:block">Dark</span>
-									<MoonIcon className="w-5 h-5" />
-								</>
-							) : (
-								<>
-									<span className="hidden sm:block">Light</span>
-									<SunIcon className="w-5 h-5" />
-								</>
-							)}
-						</div>
-					</ButtonBase>
+					<ThemeToggle />
 				</div>
 			</div>
 		</header>
