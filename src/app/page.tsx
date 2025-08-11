@@ -3,6 +3,7 @@
 import AddressInput from '@/components/AddressInput'
 import CheckBox from '@/components/Checkbox'
 import Hero from '@/components/Hero'
+import { Sponsor } from '@/components/Sponsor'
 import Link from 'next/link'
 import { useState } from 'react'
 
@@ -39,17 +40,7 @@ export default function Home() {
 					</p>
 				</div>
 			</section>
-			<div className="flex flex-col items-center border-t md:border-t-0 border-slate-200 dark:border-zinc-900 py-4 md:flex-row md:gap-4 justify-center">
-				<p className="text-xs">Sponsored by Nanswap:</p>
-				<p className="text-xs">
-					<Link
-						href="https://nanswap.com/swap/BTC/XNO?r=nanodrop"
-						className="text-nano"
-					>
-						Buy & Sell Nano with +400 cryptos
-					</Link>
-				</p>
-			</div>
+			<Sponsor />
 		</div>
 	)
 }
