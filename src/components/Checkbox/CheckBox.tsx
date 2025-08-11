@@ -131,7 +131,7 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 									</p>
 								</>
 							)) ||
-								(isVerifying && <>Proxy Verifying</>) ||
+								(isVerifying && <>Bot Verifying</>) ||
 								(isSent && dropData && (
 									<>
 										<span
