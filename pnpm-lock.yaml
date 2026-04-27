@@ -11,15 +11,15 @@ dependencies:
   '@emotion/styled':
     specifier: ^11.11.0
     version: 11.11.0(@emotion/react@11.11.1)(@types/react@18.2.21)(react@18.2.0)
+  '@hcaptcha/react-hcaptcha':
+    specifier: ^1.12.1
+    version: 1.17.4(react-dom@18.2.0)(react@18.2.0)
   '@headlessui/react':
     specifier: ^1.7.17
     version: 1.7.17(react-dom@18.2.0)(react@18.2.0)
   '@heroicons/react':
     specifier: ^2.0.18
     version: 2.0.18(react@18.2.0)
-  '@marsidev/react-turnstile':
-    specifier: ^0.3.1
-    version: 0.3.1(react-dom@18.2.0)(react@18.2.0)
   '@mui/material':
     specifier: ^5.14.8
     version: 5.14.8(@emotion/react@11.11.1)(@emotion/styled@11.11.0)(@types/react@18.2.21)(react-dom@18.2.0)(react@18.2.0)
@@ -360,6 +360,22 @@ packages:
     resolution: {integrity: sha512-m0G6wlnhm/AX0H12IOWtK8gASEMffnX08RtKkCgTdHb9JpHKGloI7icFfLg9ZmQeavcvR0PKmzxClyuFPSjKWw==}
     dev: false
 
+  /@hcaptcha/loader@2.3.0:
+    resolution: {integrity: sha512-i4lnNxKBe+COf3R1nFZEWaZoHIoJjvDgWqvcNrdZq8ehoSNMN6KVZ56dcQ02qKie2h3+BkbkwlJA9DOIuLlK/g==}
+    dev: false
+
+  /@hcaptcha/react-hcaptcha@1.17.4(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-rIvgesG1N7SS9sAYYHFoWm+nXqRrxq7RcA9z2pKkDWV+S1GdfmrTNYA1aPyVWVe3eowphTCwyDJvl97Swwy0mw==}
+    peerDependencies:
+      react: '>= 16.3.0'
+      react-dom: '>= 16.3.0'
+    dependencies:
+      '@babel/runtime': 7.22.15
+      '@hcaptcha/loader': 2.3.0
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+    dev: false
+
   /@headlessui/react@1.7.17(react-dom@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-4am+tzvkqDSSgiwrsEpGWqgGo9dz8qU5M3znCkC4PgkpY4HcCZzEDEvozltGGGHIKl9jbXbZPSH5TWn4sWJdow==}
     engines: {node: '>=10'}
@@ -436,16 +452,6 @@ packages:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.1
       '@jridgewell/sourcemap-codec': 1.4.15
-
-  /@marsidev/react-turnstile@0.3.1(react-dom@18.2.0)(react@18.2.0):
-    resolution: {integrity: sha512-XnpIUqufuZp2VoC14fmYztB2/8lSABh8eFG6TWAR7Loipdy0p2lZXzuvUOTcQl69j1XKvWu3WChFCBWx/Cbd1A==}
-    peerDependencies:
-      react: '>=16.8.0'
-      react-dom: '>=16.8.0'
-    dependencies:
-      react: 18.2.0
-      react-dom: 18.2.0(react@18.2.0)
-    dev: false
 
   /@mui/base@5.0.0-beta.14(@types/react@18.2.21)(react-dom@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-Je/9JzzYObsuLCIClgE8XvXNFb55IEz8n2NtStUfASfNiVrwiR8t6VVFFuhofehkyTIN34tq1qbBaOjCnOovBw==}

@@ -1,10 +1,10 @@
-import { API_URL, TURNSTILE_KEY } from '@/config'
+import { API_URL } from '@/config'
 import { checkAddress, checkAmount, checkHash } from 'nanocurrency'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
 import useSWRMutation from 'swr/mutation'
-import { Turnstile, TurnstileInstance } from '@marsidev/react-turnstile'
 import Logger from '@/lib/logger'
+import HCaptcha from '@hcaptcha/react-hcaptcha'
 
 export interface Ticket {
 	amount: string
@@ -17,7 +17,7 @@ export interface Ticket {
 export interface DropRequest {
 	account: string
 	ticket: string
-	turnstileToken?: string
+	captchaToken?: string
 }
 
 export interface DropData {
@@ -57,11 +57,11 @@ const getTicket = async (url: string): Promise<Ticket> => {
 // TODO: Move error handle logic to a fetcher
 const drop = async (
 	url: string,
-	{ arg: { account, ticket, turnstileToken } }: { arg: DropRequest },
+	{ arg: { account, ticket, captchaToken } }: { arg: DropRequest },
 ): Promise<DropData> => {
 	const response = await fetch(url, {
 		method: 'POST',
-		body: JSON.stringify({ account, ticket, turnstileToken }),
+		body: JSON.stringify({ account, ticket, captchaToken }),
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -89,39 +89,57 @@ const drop = async (
 export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 	const [isVerified, setIsVerified] = useState(false)
 	const [isVerifying, setIsVerifying] = useState(false)
-	const [turnstileToken, setTurnstileToken] = useState('')
+	const [captchaToken, setCaptchaToken] = useState('')
+	const [isCaptchaRendered, setIsCaptchaRendered] = useState(false)
 	const [error, setError] = useState<FaucetError | null>(null)
+	const [account, setAccount] = useState('')
 
-	const turnstile = useRef<TurnstileInstance>(null)
+	const captchaRef = useRef<HCaptcha>(null)
 
 	const logger = useMemo(() => new Logger('USE_FAUCET', debug), [debug])
 
-	const handleError = (title: string, message: string) => {
-		setError({ title, message })
-		logger.error(`${title}: ${message}`)
-	}
+	const handleError = useCallback(
+		(title: string, message: string) => {
+			setError({ title, message })
+			logger.error(`${title}: ${message}`)
+		},
+		[logger],
+	)
 
-	const handleTurstileVerified = (token: string) => {
-		logger.info('TURNSTILE VERIFIED')
-		setIsVerifying(false)
-		setIsVerified(true)
-		setTurnstileToken(token)
-	}
+	const onCaptchaLoad = useCallback(() => {
+		setIsCaptchaRendered(true)
+	}, [])
 
-	const handleTurnstileExpired = () => {
-		logger.warn('Turnstile expired')
+	const handleCaptchaVerify = useCallback(() => {
+		setIsVerifying(true)
+		captchaRef.current?.execute()
+	}, [])
+
+	const handleCaptchaVerified = useCallback(
+		(token: string) => {
+			logger.info('CAPTCHA VERIFIED')
+			setIsVerifying(false)
+			setIsVerified(true)
+			setCaptchaToken(token)
+		},
+		[logger],
+	)
+
+	const handleCaptchaExpired = useCallback(() => {
+		logger.warn('Captcha expired')
 		setIsVerified(false)
-		setTurnstileToken('')
-		turnstile.current?.reset()
-	}
+		setCaptchaToken('')
+	}, [logger])
 
-	const handleTurnstileError = () => {
+	const handleCaptchaClosed = useCallback(() => {
+		logger.warn('Captcha closed')
+		setIsVerified(false)
+		setCaptchaToken('')
+	}, [logger])
+
+	const handleCaptchaError = useCallback(() => {
 		handleError('Verification Error', 'Check your network')
-	}
-
-	const handleTurnstileUnsupported = () => {
-		handleError('Verification Error', 'Unsuported')
-	}
+	}, [handleError])
 
 	const {
 		data: ticket,
@@ -137,18 +155,6 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 			handleError('Ticket Error', error.message)
 		},
 	})
-
-	useEffect(() => {
-		if (!ticket?.verificationRequired) return
-		if (isVerifying || isVerified) return
-		if (turnstile.current) {
-			logger.info('Turnstile verifying')
-			setIsVerifying(true)
-			turnstile.current.execute()
-		} else {
-			handleError('Verification Error', 'Turnstile not rendered')
-		}
-	}, [turnstile.current, ticket, isVerifying])
 
 	const {
 		data: dropData,
@@ -184,39 +190,51 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 				handleError('Error Sending', 'Ticket is not ready!')
 				return
 			}
-			if (ticket.verificationRequired && !turnstileToken) {
-				handleError('Error Sending', 'Verification missing!')
-				turnstile.current?.reset()
-				return
+			if (ticket.verificationRequired && !captchaToken) {
+				setAccount(account)
+				handleCaptchaVerify()
+			} else {
+				logger.info(
+					`Dropping ${ticket.amount} to ${account} with ticket ${ticket.ticket}`,
+				)
+				dropTrigger({ account, ticket: ticket.ticket, captchaToken })
 			}
-			logger.info(
-				`Dropping ${ticket.amount} to ${account} with ticket ${ticket.ticket}`,
-			)
-			dropTrigger({ account, ticket: ticket.ticket, turnstileToken })
 		},
-		[ticket, turnstileToken],
+		[captchaToken, dropTrigger, handleCaptchaVerify, handleError, logger, ticket],
 	)
+
+	useEffect(() => {
+		if (captchaToken && account) {
+			void handleDrop(account)
+		}
+	}, [captchaToken, account, handleDrop])
 
 	const Verification = useCallback(() => {
 		return (
-			<Turnstile
-				options={{
-					execution: 'execute',
-					size: 'invisible',
-				}}
-				siteKey={TURNSTILE_KEY as string}
-				onSuccess={handleTurstileVerified}
-				onExpire={handleTurnstileExpired}
-				onError={handleTurnstileError}
-				onUnsupported={handleTurnstileUnsupported}
-				ref={turnstile}
+			<HCaptcha
+				size="invisible"
+				sitekey="96ef271f-d9f1-4d96-a362-d4b3921f6c33"
+				onLoad={onCaptchaLoad}
+				onVerify={handleCaptchaVerified}
+				onClose={handleCaptchaClosed}
+				onError={handleCaptchaError}
+				onExpire={handleCaptchaExpired}
+				onChalExpired={handleCaptchaExpired}
+				ref={captchaRef}
 			/>
 		)
-	}, [])
+	}, [
+		handleCaptchaClosed,
+		handleCaptchaError,
+		handleCaptchaExpired,
+		handleCaptchaVerified,
+		onCaptchaLoad,
+	])
 
 	return {
 		isReady: !isTicketLoading,
-		isLoading: isTicketLoading,
+		isLoading:
+			isTicketLoading || (ticket?.verificationRequired && !isCaptchaRendered),
 		ticketError,
 		amount: ticket?.amount,
 		expiresAt: ticket?.expiresAt,

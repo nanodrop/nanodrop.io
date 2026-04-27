@@ -13,9 +13,9 @@
 	"dependencies": {
 		"@emotion/react": "^11.11.1",
 		"@emotion/styled": "^11.11.0",
+		"@hcaptcha/react-hcaptcha": "^1.12.1",
 		"@headlessui/react": "^1.7.17",
 		"@heroicons/react": "^2.0.18",
-		"@marsidev/react-turnstile": "^0.3.1",
 		"@mui/material": "^5.14.8",
 		"@sentry/nextjs": "^7.73.0",
 		"clsx": "^2.0.0",
