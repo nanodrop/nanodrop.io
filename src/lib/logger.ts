@@ -70,7 +70,7 @@ export default class Logger {
 
 	private sendToSentry(...data: any[]) {
 		if (!this.enableSentry) return
-		const sentryIsInited = Sentry.getCurrentHub()?.getClient()?.getDsn()
+		const sentryIsInited = Sentry.getClient()?.getDsn()
 		if (sentryIsInited) {
 			Sentry.captureMessage(`${this.name} | ${data.join(' ')}`)
 		}

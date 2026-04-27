@@ -36,3 +36,12 @@ next-env.d.ts
 
 # Sentry Config File
 .sentryclirc
+
+# OpenNext
+.open-next
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example

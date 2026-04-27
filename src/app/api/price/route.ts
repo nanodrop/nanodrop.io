@@ -1,7 +1,5 @@
 import { getLatestPrice } from '@/services/coinmarketcap'
 
-export const runtime = 'edge'
-
 const COIN_ID = 1567
 
 export async function GET() {

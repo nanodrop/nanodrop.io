@@ -1,10 +1,7 @@
-'use client'
-
-import usePrice from '@/hooks/usePrice'
+import { headers } from 'next/headers'
 import clsx from 'clsx'
 import { Montserrat } from 'next/font/google'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import DropSVG from '@/components/DropSVG'
 import { ThemeToggle } from './ThemeToggle'
 
@@ -26,10 +23,15 @@ export interface AppbarProps {
 	showPrice?: boolean
 }
 
-export default function Appbar() {
-	const { price, error: priceError, isLoading: priceIsLoading } = usePrice()
+export default async function Appbar() {
+	// const { price, error: priceError, isLoading: priceIsLoading } = usePrice()
+	const price = 2
+	const priceError = false
+	const priceIsLoading = false
 
-	const pathname = usePathname()
+	const headersList = await headers()
+	const pathname = headersList.get('x-pathname')
+	console.log('pathname:', pathname)
 
 	const isHome = pathname === '/'
 
