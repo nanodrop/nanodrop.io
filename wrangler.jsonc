@@ -17,14 +17,14 @@
 	"durable_objects": {
 		"bindings": [
 			{
-				"name": "FAUCET_DO",
+				"name": "NANODROP_DO",
 				"class_name": "NanoDropDO",
 			},
 		],
 	},
 	"d1_databases": [
 		{
-			"binding": "FAUCET_DB",
+			"binding": "NANODROP_DB",
 			"database_name": "nanodrop-prod",
 			"database_id": "4150bedd-0180-4e7d-a561-c9a922ee1eb7",
 		},
@@ -45,7 +45,7 @@
 	},
 	"migrations": [
 		{
-			"tag": "v1-faucet-do",
+			"tag": "v1",
 			"new_sqlite_classes": ["NanoDropDO"],
 		},
 	],
@@ -60,14 +60,14 @@
 			"durable_objects": {
 				"bindings": [
 					{
-						"name": "FAUCET_DO",
+						"name": "NANODROP_DO",
 						"class_name": "NanoDropDO",
 					},
 				],
 			},
 			"d1_databases": [
 				{
-					"binding": "FAUCET_DB",
+					"binding": "NANODROP_DB",
 					"database_name": "nanodrop",
 					"database_id": "7b743cba-ec52-4a8d-be05-1d8a1e7859ab",
 				},

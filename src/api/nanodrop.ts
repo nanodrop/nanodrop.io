@@ -97,7 +97,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		super(state, env)
 		this.isDev = env.__DEV__ === 'true'
 		this.storage = state.storage
-		this.db = env.FAUCET_DB
+		this.db = env.NANODROP_DB
 		this.wallet = new NanoWallet({
 			rpcUrls: env.RPC_URLS.split(','),
 			workerUrls: env.WORKER_URLS.split(','),
@@ -135,13 +135,13 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				return c.json({ error: 'Country header is missing' }, 400)
 			}
 
-			const [dropsCount, ipInfo] = await env.FAUCET_DB.batch<
+			const [dropsCount, ipInfo] = await env.NANODROP_DB.batch<
 				Record<string, any>
 			>([
-				env.FAUCET_DB.prepare(
+				env.NANODROP_DB.prepare(
 					'SELECT COUNT(*) as count FROM drops WHERE ip = ?1 AND timestamp >= ?2',
 				).bind(ip, Date.now() - PERIOD),
-				env.FAUCET_DB.prepare(
+				env.NANODROP_DB.prepare(
 					'SELECT is_proxy FROM ip_info WHERE ip = ?1',
 				).bind(ip),
 			])
@@ -178,7 +178,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 					}
 				}
 
-				await env.FAUCET_DB.prepare(
+				await env.NANODROP_DB.prepare(
 					'INSERT INTO ip_info (ip, country_code, is_proxy, proxy_checked_by) VALUES (?1, ?2, ?3, ?4) ON CONFLICT do nothing',
 				)
 					.bind(ip, countryCode, canBeProxy ? 1 : 0, proxyCheckedBy)
@@ -400,7 +400,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		})
 
 		this.app.get('/drops/countries', async c => {
-			const { results } = await env.FAUCET_DB.prepare(
+			const { results } = await env.NANODROP_DB.prepare(
 				`
 				SELECT *
 				FROM drops_by_country

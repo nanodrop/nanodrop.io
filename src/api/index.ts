@@ -26,11 +26,11 @@ app.use('*', async c => {
 	const publicKey = derivePublicKey(c.env.PRIVATE_KEY)
 	const account = deriveAddress(publicKey)
 
-	const id = c.env.FAUCET_DO.idFromName(
+	const id = c.env.NANODROP_DO.idFromName(
 		`nanodrop-${NanoDropDO.version}-${account}`,
 	)
 
-	const obj = c.env.FAUCET_DO.get(id)
+	const obj = c.env.NANODROP_DO.get(id)
 
 	const response = await obj.fetch(new Request(c.req.url, c.req.raw))
 

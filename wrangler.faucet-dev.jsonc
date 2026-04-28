@@ -7,14 +7,14 @@
 	"durable_objects": {
 		"bindings": [
 			{
-				"name": "FAUCET_DO",
+				"name": "NANODROP_DO",
 				"class_name": "NanoDropDO",
 			},
 		],
 	},
 	"d1_databases": [
 		{
-			"binding": "FAUCET_DB",
+			"binding": "NANODROP_DB",
 			"database_name": "nanodrop-prod",
 			"database_id": "4150bedd-0180-4e7d-a561-c9a922ee1eb7",
 			"migrations_dir": "d1/migrations",

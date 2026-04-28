@@ -8,7 +8,7 @@ declare namespace Cloudflare {
 	}
 	interface StagingEnv {
 		NEXT_INC_CACHE_R2_BUCKET: R2Bucket;
-		FAUCET_DB: D1Database;
+		NANODROP_DB: D1Database;
 		IMAGES: ImagesBinding;
 		ASSETS: Fetcher;
 		__DEV__: "false";
@@ -21,12 +21,12 @@ declare namespace Cloudflare {
 		ADMIN_TOKEN: string;
 		DEBUG: string;
 		HCAPTCHA_SECRET: string;
-		FAUCET_DO: DurableObjectNamespace<import("./worker").NanoDropDO>;
+		NANODROP_DO: DurableObjectNamespace<import("./worker").NanoDropDO>;
 		WORKER_SELF_REFERENCE: Fetcher /* nanodrop-staging */;
 	}
 	interface Env {
 		NEXT_INC_CACHE_R2_BUCKET: R2Bucket;
-		FAUCET_DB: D1Database;
+		NANODROP_DB: D1Database;
 		IMAGES: ImagesBinding;
 		ASSETS: Fetcher;
 		__DEV__: "false";
@@ -39,7 +39,7 @@ declare namespace Cloudflare {
 		ADMIN_TOKEN: string;
 		DEBUG: string;
 		HCAPTCHA_SECRET: string;
-		FAUCET_DO: DurableObjectNamespace<import("./worker").NanoDropDO>;
+		NANODROP_DO: DurableObjectNamespace<import("./worker").NanoDropDO>;
 		WORKER_SELF_REFERENCE: Fetcher /* nanodrop-staging */ | Service<typeof import("./worker").default>;
 	}
 }

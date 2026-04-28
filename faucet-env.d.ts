@@ -1,7 +1,7 @@
 interface CloudflareEnv {
 	__DEV__: string
-	FAUCET_DO: DurableObjectNamespace
-	FAUCET_DB: D1Database
+	NANODROP_DO: DurableObjectNamespace
+	NANODROP_DB: D1Database
 	RPC_URLS: string
 	WORKER_URLS: string
 	PRIVATE_KEY: string
