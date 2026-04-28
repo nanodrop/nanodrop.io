@@ -1,4 +1,5 @@
 const path = require('node:path')
+const isNextDev = process.argv.includes('dev')
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -8,6 +9,23 @@ const nextConfig = {
 		fetches: {
 			fullUrl: true,
 		},
+	},
+	webpack: (config, { isServer }) => {
+		config.ignoreWarnings = config.ignoreWarnings || []
+		config.ignoreWarnings.push({
+			module: /require-in-the-middle/,
+			message:
+				/Critical dependency: require function is used in a way in which dependencies cannot be statically extracted/,
+		})
+
+		if (!isServer) {
+			config.resolve.alias['@sentry/nextjs$'] = path.join(
+				__dirname,
+				'node_modules/@sentry/nextjs/build/esm/index.client.js',
+			)
+		}
+
+		return config
 	},
 }
 
@@ -47,4 +65,8 @@ module.exports = nextConfig
 // 	},
 // )
 
-import('@opennextjs/cloudflare').then(m => m.initOpenNextCloudflareForDev());
+if (isNextDev && process.env.NEXT_DEV_USE_CF_BINDINGS === 'true') {
+	import('@opennextjs/cloudflare').then(({ initOpenNextCloudflareForDev }) => {
+		void initOpenNextCloudflareForDev()
+	})
+}

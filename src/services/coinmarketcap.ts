@@ -42,7 +42,9 @@ export const getLatestPrice = async (
 		throw new Error(`coinmarketcap status error: ${response.statusText}`)
 	}
 
-	const body = await response.json()
+	const body = (await response.json()) as {
+		data?: Record<string, { quote?: Record<string, unknown> }>
+	}
 
 	try {
 		const { price, percent_change_24h } = quoteSchema.parse(

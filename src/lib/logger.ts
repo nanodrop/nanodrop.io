@@ -69,7 +69,7 @@ export default class Logger {
 	}
 
 	private sendToSentry(...data: any[]) {
-		if (!this.enableSentry) return
+		if (!this.enableSentry || typeof window === 'undefined') return
 		const sentryIsInited = Sentry.getClient()?.getDsn()
 		if (sentryIsInited) {
 			Sentry.captureMessage(`${this.name} | ${data.join(' ')}`)
@@ -77,7 +77,7 @@ export default class Logger {
 	}
 
 	private get enabled() {
-		return this.debug || window.debug === true
+		return this.debug || (typeof window !== 'undefined' && window.debug === true)
 	}
 }
 

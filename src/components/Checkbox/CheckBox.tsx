@@ -43,7 +43,7 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 				await drop(nanoAddress as string)
 			}
 		},
-		[isSent, isError, nanoAddress],
+		[drop, isError, isSent, nanoAddress, refresh],
 	)
 
 	useEffect(() => {
@@ -55,9 +55,9 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 
 	useEffect(() => {
 		if (dropData && dropData?.account !== nanoAddress) {
-			refresh()
+			void refresh()
 		}
-	}, [dropData, nanoAddress])
+	}, [dropData, nanoAddress, refresh])
 
 	const isLoading = !isReady || isVerifying || isDropping
 

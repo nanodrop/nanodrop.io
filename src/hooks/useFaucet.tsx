@@ -31,6 +31,16 @@ export interface FaucetError {
 	message: string
 }
 
+interface ApiErrorBody {
+	message?: string
+	error?: string
+}
+
+interface DropResponseBody {
+	hash: string
+	amount: string
+}
+
 export interface UseFaucetProps {
 	debug?: boolean
 }
@@ -43,8 +53,8 @@ const getTicket = async (url: string): Promise<Ticket> => {
 	} else {
 		let message = response.statusText
 		try {
-			const body = await response.json()
-			if ('message' in body) {
+			const body = (await response.json()) as ApiErrorBody
+			if (typeof body.message === 'string') {
 				message = body.message
 			} else if ('error' in body && typeof body.error === 'string') {
 				message = body.error
@@ -67,7 +77,7 @@ const drop = async (
 		},
 	})
 	if (response.ok) {
-		const data = await response.json()
+		const data = (await response.json()) as DropResponseBody
 		if (!checkHash(data.hash) || !checkAmount(data.amount)) {
 			throw new Error('invalid response')
 		}
@@ -75,8 +85,8 @@ const drop = async (
 	} else {
 		let message = response.statusText
 		try {
-			const body = await response.json()
-			if ('message' in body) {
+			const body = (await response.json()) as ApiErrorBody
+			if (typeof body.message === 'string') {
 				message = body.message
 			} else if ('error' in body && typeof body.error === 'string') {
 				message = body.error

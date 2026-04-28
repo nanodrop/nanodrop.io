@@ -39,7 +39,7 @@ export default function QrScannerModal({
 		if (isReady) {
 			setCamera(facingMode)
 		}
-	}, [isReady, facingMode])
+	}, [isReady, facingMode, setCamera])
 
 	useEffect(() => {
 		if (!data) {
@@ -54,7 +54,7 @@ export default function QrScannerModal({
 		}
 		setInvalidAddress(false)
 		onScan && onScan(data)
-	}, [data])
+	}, [data, onScan, updateOverlayColor])
 
 	const handleClose = () => {
 		destroy()
