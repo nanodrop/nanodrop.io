@@ -34,6 +34,55 @@ const BAN_PROXIES = false
 const PROXY_AMOUNT_DIVIDE_BY = 10
 const LIMITED_COUNTRIES: string[] = []
 const MAX_DROPS_PER_IP_IN_LIMITED_COUNTRY = 2
+const LOCAL_REQUEST_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '::1'])
+
+const isLocalPreviewRequest = (request: Request) => {
+	return LOCAL_REQUEST_HOSTNAMES.has(new URL(request.url).hostname)
+}
+
+const getClientIp = (request: Request, isDev: boolean) => {
+	if (isDev) {
+		return '127.0.0.1'
+	}
+
+	const cfConnectingIp = request.headers.get('cf-connecting-ip')
+	if (cfConnectingIp) {
+		return cfConnectingIp
+	}
+
+	const realIp = request.headers.get('x-real-ip')
+	if (realIp) {
+		return realIp
+	}
+
+	const forwardedFor = request.headers.get('x-forwarded-for')
+	if (forwardedFor) {
+		return forwardedFor.split(',')[0]?.trim() || null
+	}
+
+	if (isLocalPreviewRequest(request)) {
+		return '127.0.0.1'
+	}
+
+	return null
+}
+
+const getCountryCode = (request: Request, isDev: boolean) => {
+	if (isDev) {
+		return '??'
+	}
+
+	const countryCode = request.headers.get('cf-ipcountry')
+	if (countryCode) {
+		return countryCode
+	}
+
+	if (isLocalPreviewRequest(request)) {
+		return '??'
+	}
+
+	return null
+}
 
 export class NanoDropDO extends DurableObject<Bindings> {
 	app = new Hono<{ Bindings: Bindings }>().onError(errorHandler)
@@ -70,12 +119,12 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				return c.json({ error: 'Origin mismatch' }, 400)
 			}
 
-			const ip = this.isDev ? '127.0.0.1' : c.req.header('x-real-ip')
+			const ip = getClientIp(c.req.raw, this.isDev)
 			if (!ip) {
 				return c.json({ error: 'IP header is missing' }, 400)
 			}
 
-			const countryCode = this.isDev ? '??' : c.req.header('cf-ipcountry')
+			const countryCode = getCountryCode(c.req.raw, this.isDev)
 			const origin = c.req.header('origin') || 'Unknown'
 
 			if (origin.includes('api.nanodrop.io')) {
@@ -120,7 +169,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			if (!ipInfo.results?.length) {
 				let proxyCheckedBy = 'none'
 
-				if (!this.isDev) {
+				if (!this.isDev && !isLocalPreviewRequest(c.req.raw)) {
 					try {
 						canBeProxy = await this.checkProxy(ip)
 						proxyCheckedBy = 'badip.xyz'
@@ -213,12 +262,12 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				}
 
 				if (!this.isDev) {
-					const realIp = c.req.header('x-real-ip')
-					if (!realIp) {
+					const clientIp = getClientIp(c.req.raw, this.isDev)
+					if (!clientIp) {
 						return c.json({ error: 'IP header is missing' }, 400)
 					}
-					if (realIp !== ip) {
-						if (!realIp) {
+					if (clientIp !== ip) {
+						if (!clientIp) {
 							return c.json({ error: 'Ticket IP mismatch' }, 400)
 						}
 					}
