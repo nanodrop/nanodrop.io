@@ -3,14 +3,18 @@
   "version": "2.0.0",
   "description": "Free Nano cryptocurrency (XNO) Faucet",
   "private": true,
-  "packageManager": "pnpm@10.25.0",
+  "packageManager": "npm@11.9.0",
   "scripts": {
     "build": "next build",
-    "dev": "next dev",
+    "dev": "concurrently --kill-others-on-fail --names web,api \"npm:dev:ui\" \"npm:dev:api\"",
+    "dev:ui": "next dev",
+    "dev:api": "npm run db:local:migrate && wrangler dev --config wrangler.faucet-dev.jsonc --port 8787",
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --config .prettierrc.json --write .",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "preview": "opennextjs-cloudflare build && wrangler dev",
+    "preview:populate-cache": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "db:local:migrate": "wrangler d1 migrations apply FAUCET_DB --local --config wrangler.faucet-dev.jsonc",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
@@ -24,8 +28,11 @@
     "@mui/material": "^5.14.8",
     "@opennextjs/cloudflare": "^1.19.3",
     "@sentry/nextjs": "^9.47.1",
+    "bignumber.js": "^11.0.0",
     "clsx": "^2.0.0",
+    "hono": "^4.12.15",
     "jsqr": "^1.4.0",
+    "nano-wallet-js": "^0.2.1",
     "nanocurrency": "^2.5.0",
     "next": "^15.5.15",
     "react": "^18",
@@ -41,6 +48,7 @@
     "zod": "^3.22.2"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18.2.7",
@@ -52,19 +60,10 @@
     "eslint-plugin-prettier": "^5.0.0",
     "postcss": "^8.4.29",
     "prettier": "^3.0.3",
-    "prettier-plugin-tailwind": "^2.2.12",
+    "prettier-plugin-tailwindcss": "^0.8.0",
     "tailwindcss": "^3.3.3",
     "tailwindcss-safe-area": "^0.4.0",
     "typescript": "^5.2.2",
     "wrangler": "^4.84.1"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@sentry/cli",
-      "esbuild",
-      "sharp",
-      "unrs-resolver",
-      "workerd"
-    ]
   }
 }
