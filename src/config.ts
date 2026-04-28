@@ -8,4 +8,4 @@ export const SOCIALS = {
 
 export const CONTACT_EMAIL = 'hello@nanodrop.io'
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL
+export const API_URL = '/api/faucet'

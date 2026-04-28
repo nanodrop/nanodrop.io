@@ -1,32 +1,94 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "main": ".open-next/worker.js",
-  "name": "nanodrop",
-  "compatibility_date": "2026-04-22",
-  "compatibility_flags": [
-    "nodejs_compat",
-    "global_fetch_strictly_public"
-  ],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
-  "services": [
-    {
-      "binding": "WORKER_SELF_REFERENCE",
-      "service": "nanodrop"
-    }
-  ],
-  "r2_buckets": [
-    {
-      "binding": "NEXT_INC_CACHE_R2_BUCKET",
-      "bucket_name": "nanodropio-opennext-cache"
-    }
-  ],
-  "images": {
-    "binding": "IMAGES"
-  },
-  "observability": {
-    "enabled": true
-  }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"main": "worker.ts",
+	"name": "nanodrop",
+	"compatibility_date": "2026-04-22",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS",
+	},
+	"services": [
+		{
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "nanodrop",
+		},
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "FAUCET_DO",
+				"class_name": "NanoDropDO",
+			},
+		],
+	},
+	"d1_databases": [
+		{
+			"binding": "FAUCET_DB",
+			"database_name": "nanodrop-prod",
+			"database_id": "4150bedd-0180-4e7d-a561-c9a922ee1eb7",
+		},
+	],
+	"r2_buckets": [
+		{
+			"binding": "NEXT_INC_CACHE_R2_BUCKET",
+			"bucket_name": "nanodropio-opennext-cache",
+		},
+	],
+	"images": {
+		"binding": "IMAGES",
+	},
+	"vars": {
+		"__DEV__": "false",
+		"DEBUG": "false",
+		"NEXT_INC_CACHE_R2_PREFIX": "incremental-cache",
+	},
+	"migrations": [
+		{
+			"tag": "v1-faucet-do",
+			"new_sqlite_classes": ["NanoDropDO"],
+		},
+	],
+	"env": {
+		"staging": {
+			"services": [
+				{
+					"binding": "WORKER_SELF_REFERENCE",
+					"service": "nanodrop-staging",
+				},
+			],
+			"durable_objects": {
+				"bindings": [
+					{
+						"name": "FAUCET_DO",
+						"class_name": "NanoDropDO",
+					},
+				],
+			},
+			"d1_databases": [
+				{
+					"binding": "FAUCET_DB",
+					"database_name": "nanodrop",
+					"database_id": "7b743cba-ec52-4a8d-be05-1d8a1e7859ab",
+				},
+			],
+			"r2_buckets": [
+				{
+					"binding": "NEXT_INC_CACHE_R2_BUCKET",
+					"bucket_name": "nanodropio-opennext-cache",
+				},
+			],
+			"images": {
+				"binding": "IMAGES",
+			},
+			"vars": {
+				"__DEV__": "false",
+				"DEBUG": "false",
+				"NEXT_INC_CACHE_R2_PREFIX": "incremental-cache-staging",
+			},
+		},
+	},
+	"observability": {
+		"enabled": true,
+	},
 }
