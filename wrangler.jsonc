@@ -25,7 +25,7 @@
 	"d1_databases": [
 		{
 			"binding": "NANODROP_DB",
-			"database_name": "nanodrop-prod",
+			"database_name": "nanodrop-db-production",
 			"database_id": "4150bedd-0180-4e7d-a561-c9a922ee1eb7",
 		},
 	],
@@ -61,7 +61,7 @@
 			"d1_databases": [
 				{
 					"binding": "NANODROP_DB",
-					"database_name": "nanodrop",
+					"database_name": "nanodrop-db-staging",
 					"database_id": "7b743cba-ec52-4a8d-be05-1d8a1e7859ab",
 				},
 			],
