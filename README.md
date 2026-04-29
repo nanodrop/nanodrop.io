@@ -29,7 +29,7 @@ It's built with **React**, **Next.JS**, **OpenNext**, **Cloudflare Workers**, **
 - XNO Price
 - Error tracking with Sentry
 - Anti-spam and anti-bot barriers such as:
-  - Cryptographically signed tickets with amount, ip and expiration
+  - Server-side faucet status checks before bot verification
   - Invisible anti-bot verification
   - Limit per Nano account
   - Limit per IP address
@@ -41,7 +41,7 @@ The faucet API is now internalized in this project and served from the same Work
 The internal API keeps the original architecture:
 
 - Hono for HTTP routing
-- Durable Objects for wallet state, ticket redemption and anti-spam coordination
+- Durable Objects for wallet state and anti-spam coordination
 - D1 for drop history and country/proxy metadata
 
 The custom Worker entrypoint lives in [`worker.ts`](/home/anarkrypto/workspace/nanodrop/nanodrop.io/worker.ts) and forwards all non-faucet traffic to the OpenNext-generated handler.

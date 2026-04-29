@@ -32,14 +32,17 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 		dropData,
 		refresh,
 		isRefreshing,
-	} = useFaucet()
+	} = useFaucet({ account: nanoAddress })
 
 	const handleClick = useCallback(
 		async (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
 			event.stopPropagation()
 			if (event.isTrusted) {
 				if (isSent) return
-				if (isError) await refresh()
+				if (isError) {
+					await refresh()
+					return
+				}
 				await drop(nanoAddress as string)
 			}
 		},
@@ -159,7 +162,7 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 												? convert(amount, {
 														from: Unit.raw,
 														to: Unit.NANO,
-												  })
+													})
 												: 'some'}
 										</span>{' '}
 										Nano
