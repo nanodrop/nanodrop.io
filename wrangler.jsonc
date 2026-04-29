@@ -29,19 +29,12 @@
 			"database_id": "4150bedd-0180-4e7d-a561-c9a922ee1eb7",
 		},
 	],
-	"r2_buckets": [
-		{
-			"binding": "NEXT_INC_CACHE_R2_BUCKET",
-			"bucket_name": "nanodropio-opennext-cache",
-		},
-	],
 	"images": {
 		"binding": "IMAGES",
 	},
 	"vars": {
 		"__DEV__": "false",
 		"DEBUG": "false",
-		"NEXT_INC_CACHE_R2_PREFIX": "incremental-cache",
 	},
 	"migrations": [
 		{
@@ -72,19 +65,12 @@
 					"database_id": "7b743cba-ec52-4a8d-be05-1d8a1e7859ab",
 				},
 			],
-			"r2_buckets": [
-				{
-					"binding": "NEXT_INC_CACHE_R2_BUCKET",
-					"bucket_name": "nanodropio-opennext-cache",
-				},
-			],
 			"images": {
 				"binding": "IMAGES",
 			},
 			"vars": {
 				"__DEV__": "false",
 				"DEBUG": "false",
-				"NEXT_INC_CACHE_R2_PREFIX": "incremental-cache-staging",
 			},
 		},
 	},

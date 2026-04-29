@@ -10,5 +10,4 @@ interface CloudflareEnv {
 	HCAPTCHA_SECRET?: string
 	ALLOW_ORIGIN?: string
 	DEBUG: string
-	NEXT_INC_CACHE_R2_PREFIX?: string
 }

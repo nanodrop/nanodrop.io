@@ -13,7 +13,6 @@
     "lint": "next lint",
     "format": "prettier --config .prettierrc.json --write .",
     "preview": "opennextjs-cloudflare build && wrangler dev",
-    "preview:populate-cache": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "db:local:migrate": "wrangler d1 migrations apply NANODROP_DB --local --config wrangler.faucet-dev.jsonc",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
