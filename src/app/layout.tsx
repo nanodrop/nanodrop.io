@@ -7,8 +7,7 @@ import Appbar from '@/components/Appbar'
 import clsx from 'clsx'
 import { PreferencesProvider } from '@/contexts/PreferencesProvider'
 import ThemeProvider from '@/contexts/ThemeProvider'
-
-const SITE_URL = new URL(process.env.NEXT_PUBLIC_SITE_URL as string).origin
+import { SITE_URL } from '@/config'
 
 const inter = Inter({ subsets: ['latin'] })
 
