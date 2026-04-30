@@ -14,6 +14,8 @@
     "format": "prettier --config .prettierrc.json --write .",
     "preview": "opennextjs-cloudflare build && wrangler dev",
     "db:local:migrate": "wrangler d1 migrations apply NANODROP_DB --local --config wrangler.faucet-dev.jsonc",
+    "db:staging:migrate": "wrangler d1 migrations apply NANODROP_DB --remote --env staging --config wrangler.jsonc",
+    "db:production:migrate": "wrangler d1 migrations apply NANODROP_DB --remote --config wrangler.jsonc",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
