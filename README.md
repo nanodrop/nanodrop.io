@@ -84,11 +84,12 @@ npm run db:local:migrate
 Setup checklist:
 
 1. Copy `example.env.local` to `.env.local`
-2. Copy `.dev.vars.example` to `.dev.vars` and fill the faucet secrets/vars
+2. Fill the Next.js values and faucet Worker vars/secrets in `.env.local`
+3. Do not keep an active `.dev.vars` file locally; Wrangler gives `.dev.vars` precedence and will not load `.env*` values into the local Worker env when it exists
 
 For runtime-accurate unified Worker validation, use preview mode:
 
-3. Start the Worker preview:
+Start the Worker preview:
 
 ```bash
 npm run preview
