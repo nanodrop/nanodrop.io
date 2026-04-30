@@ -37,14 +37,16 @@ It's built with **React**, **Next.JS**, **OpenNext**, **Cloudflare Workers**, **
 ### API
 
 The faucet API is now internalized in this project and served from the same Worker under `/api/faucet/*`.
+The price API is also Worker-owned and served from `/api/price`.
 
 The internal API keeps the original architecture:
 
 - Hono for HTTP routing
 - Durable Objects for wallet state and anti-spam coordination
 - D1 for drop history and country/proxy metadata
+- A SQL-backed `CoinMarketCapDO` Durable Object for XNO price cache state
 
-The custom Worker entrypoint lives in [`worker.ts`](/home/anarkrypto/workspace/nanodrop/nanodrop.io/worker.ts) and forwards all non-faucet traffic to the OpenNext-generated handler.
+The custom Worker entrypoint lives in [`worker.ts`](/home/anarkrypto/workspace/nanodrop/nanodrop.io/worker.ts) and forwards non-API traffic to the OpenNext-generated handler.
 
 ### Local development
 
@@ -62,6 +64,7 @@ This runs:
 
 During `npm run dev`, the browser still calls the same-origin faucet route at `/api/faucet`.
 The dev-only route handler at [`src/app/api/faucet/[[...path]]/route.ts`](/home/anarkrypto/workspace/nanodrop/nanodrop.io/src/app/api/faucet/[[...path]]/route.ts) proxies that path to the local faucet worker on `http://127.0.0.1:8787`.
+The same local Worker also serves `/api/price`; a Next dev rewrite proxies `/api/price` to `http://127.0.0.1:8787/api/price`.
 
 If you want to run only the UI, use:
 
@@ -96,6 +99,7 @@ npm run preview
 ```
 
 In production-like runtimes, the frontend also talks to the same-origin faucet route at `/api/faucet`.
+The frontend price ticker talks to the same-origin Worker route at `/api/price`.
 
 ### Donations
 

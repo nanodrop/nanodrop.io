@@ -20,6 +20,10 @@
 				"name": "NANODROP_DO",
 				"class_name": "NanoDropDO",
 			},
+			{
+				"name": "COINMARKETCAP_DO",
+				"class_name": "CoinMarketCapDO",
+			},
 		],
 	},
 	"d1_databases": [
@@ -42,6 +46,10 @@
 			"tag": "v1",
 			"new_sqlite_classes": ["NanoDropDO"],
 		},
+		{
+			"tag": "v2-coinmarketcap-do",
+			"new_sqlite_classes": ["CoinMarketCapDO"],
+		},
 	],
 	"env": {
 		"staging": {
@@ -56,6 +64,10 @@
 					{
 						"name": "NANODROP_DO",
 						"class_name": "NanoDropDO",
+					},
+					{
+						"name": "COINMARKETCAP_DO",
+						"class_name": "CoinMarketCapDO",
 					},
 				],
 			},
