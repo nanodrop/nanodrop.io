@@ -2,10 +2,12 @@ import { Hono } from 'hono'
 import { deriveAddress, derivePublicKey } from 'nanocurrency'
 
 import { errorHandler } from './middlewares'
+import { CoinMarketCapDO } from './coinmarketcap'
 import { NanoDropDO } from './nanodrop'
 import type { Bindings } from './types'
 
 export { NanoDropDO } from './nanodrop'
+export { CoinMarketCapDO } from './coinmarketcap'
 
 const app = new Hono<{ Bindings: Bindings }>().onError(errorHandler)
 
@@ -20,6 +22,15 @@ app.options('*', c => {
 			'Access-Control-Allow-Headers': 'Content-Type',
 		},
 	})
+})
+
+app.get('/api/price', async c => {
+	const id = c.env.COINMARKETCAP_DO.idFromName(
+		`coinmarketcap-${CoinMarketCapDO.version}`,
+	)
+	const obj = c.env.COINMARKETCAP_DO.get(id)
+
+	return obj.fetch(new Request(c.req.url, c.req.raw))
 })
 
 app.use('*', async c => {

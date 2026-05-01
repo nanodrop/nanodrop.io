@@ -1,6 +1,6 @@
 import useSWR from 'swr'
 import fetcher from '@/lib/fetcher'
-import { LatestPrice } from '@/services/coinmarketcap'
+import type { LatestPrice } from '@/types/price'
 
 const formatPrice = (value: number): string => {
 	const parts = value.toString().split('.')

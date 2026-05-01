@@ -1,6 +1,7 @@
-import faucetWorker, { NanoDropDO } from './src/api'
+import apiWorker, { CoinMarketCapDO, NanoDropDO } from './src/api'
 
 const FAUCET_PREFIX = '/api/faucet'
+const PRICE_PATH = '/api/price'
 
 type OpenNextWorkerModule = {
 	default: {
@@ -29,7 +30,11 @@ export default {
 			const rewrittenUrl = new URL(request.url)
 			rewrittenUrl.pathname = url.pathname.slice(FAUCET_PREFIX.length) || '/'
 
-			return faucetWorker.fetch(new Request(rewrittenUrl, request), env, ctx)
+			return apiWorker.fetch(new Request(rewrittenUrl, request), env, ctx)
+		}
+
+		if (url.pathname === PRICE_PATH) {
+			return apiWorker.fetch(request, env, ctx)
 		}
 
 		const { default: openNextWorker } = await loadOpenNextWorker()
@@ -38,3 +43,4 @@ export default {
 } satisfies ExportedHandler<CloudflareEnv>
 
 export { NanoDropDO }
+export { CoinMarketCapDO }

@@ -29,7 +29,7 @@ It's built with **React**, **Next.JS**, **OpenNext**, **Cloudflare Workers**, **
 - XNO Price
 - Error tracking with Sentry
 - Anti-spam and anti-bot barriers such as:
-  - Cryptographically signed tickets with amount, ip and expiration
+  - Server-side faucet status checks before bot verification
   - Invisible anti-bot verification
   - Limit per Nano account
   - Limit per IP address
@@ -37,14 +37,16 @@ It's built with **React**, **Next.JS**, **OpenNext**, **Cloudflare Workers**, **
 ### API
 
 The faucet API is now internalized in this project and served from the same Worker under `/api/faucet/*`.
+The price API is also Worker-owned and served from `/api/price`.
 
 The internal API keeps the original architecture:
 
 - Hono for HTTP routing
-- Durable Objects for wallet state, ticket redemption and anti-spam coordination
+- Durable Objects for wallet state and anti-spam coordination
 - D1 for drop history and country/proxy metadata
+- A SQL-backed `CoinMarketCapDO` Durable Object for XNO price cache state
 
-The custom Worker entrypoint lives in [`worker.ts`](/home/anarkrypto/workspace/nanodrop/nanodrop.io/worker.ts) and forwards all non-faucet traffic to the OpenNext-generated handler.
+The custom Worker entrypoint lives in [`worker.ts`](/home/anarkrypto/workspace/nanodrop/nanodrop.io/worker.ts) and forwards non-API traffic to the OpenNext-generated handler.
 
 ### Local development
 
@@ -62,6 +64,7 @@ This runs:
 
 During `npm run dev`, the browser still calls the same-origin faucet route at `/api/faucet`.
 The dev-only route handler at [`src/app/api/faucet/[[...path]]/route.ts`](/home/anarkrypto/workspace/nanodrop/nanodrop.io/src/app/api/faucet/[[...path]]/route.ts) proxies that path to the local faucet worker on `http://127.0.0.1:8787`.
+The same local Worker also serves `/api/price`; a Next dev rewrite proxies `/api/price` to `http://127.0.0.1:8787/api/price`.
 
 If you want to run only the UI, use:
 
@@ -84,17 +87,19 @@ npm run db:local:migrate
 Setup checklist:
 
 1. Copy `example.env.local` to `.env.local`
-2. Copy `.dev.vars.example` to `.dev.vars` and fill the faucet secrets/vars
+2. Fill the Next.js values and faucet Worker vars/secrets in `.env.local`
+3. Do not keep an active `.dev.vars` file locally; Wrangler gives `.dev.vars` precedence and will not load `.env*` values into the local Worker env when it exists
 
 For runtime-accurate unified Worker validation, use preview mode:
 
-3. Start the Worker preview:
+Start the Worker preview:
 
 ```bash
 npm run preview
 ```
 
 In production-like runtimes, the frontend also talks to the same-origin faucet route at `/api/faucet`.
+The frontend price ticker talks to the same-origin Worker route at `/api/price`.
 
 ### Donations
 

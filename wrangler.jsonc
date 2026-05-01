@@ -20,13 +20,18 @@
 				"name": "NANODROP_DO",
 				"class_name": "NanoDropDO",
 			},
+			{
+				"name": "COINMARKETCAP_DO",
+				"class_name": "CoinMarketCapDO",
+			},
 		],
 	},
 	"d1_databases": [
 		{
 			"binding": "NANODROP_DB",
-			"database_name": "nanodrop-prod",
-			"database_id": "4150bedd-0180-4e7d-a561-c9a922ee1eb7",
+			"database_name": "nanodrop-db-production",
+			"database_id": "7ce40cf8-00a8-42ce-aefd-c509f98cfc0d",
+			"migrations_dir": "d1/migrations",
 		},
 	],
 	"images": {
@@ -40,6 +45,10 @@
 		{
 			"tag": "v1",
 			"new_sqlite_classes": ["NanoDropDO"],
+		},
+		{
+			"tag": "v2-coinmarketcap-do",
+			"new_sqlite_classes": ["CoinMarketCapDO"],
 		},
 	],
 	"env": {
@@ -56,13 +65,18 @@
 						"name": "NANODROP_DO",
 						"class_name": "NanoDropDO",
 					},
+					{
+						"name": "COINMARKETCAP_DO",
+						"class_name": "CoinMarketCapDO",
+					},
 				],
 			},
 			"d1_databases": [
 				{
 					"binding": "NANODROP_DB",
-					"database_name": "nanodrop",
-					"database_id": "7b743cba-ec52-4a8d-be05-1d8a1e7859ab",
+					"database_name": "nanodrop-db-staging",
+					"database_id": "7ce40cf8-00a8-42ce-aefd-c509f98cfc0d",
+					"migrations_dir": "d1/migrations",
 				},
 			],
 			"images": {

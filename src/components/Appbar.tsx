@@ -3,6 +3,7 @@ import clsx from 'clsx'
 import { Montserrat } from 'next/font/google'
 import Link from 'next/link'
 import DropSVG from '@/components/DropSVG'
+import { PriceTicker } from './PriceTicker'
 import { ThemeToggle } from './ThemeToggle'
 
 const montserrat = Montserrat({ subsets: ['latin'], weight: 'variable' })
@@ -24,20 +25,11 @@ export interface AppbarProps {
 }
 
 export default async function Appbar() {
-	// const { price, error: priceError, isLoading: priceIsLoading } = usePrice()
-	const price = 2
-	const priceError = false
-	const priceIsLoading = false
-
 	const headersList = await headers()
 	const pathname = headersList.get('x-pathname')
 	console.log('pathname:', pathname)
 
 	const isHome = pathname === '/'
-
-	if (priceError) {
-		console.error('[ERROR] USE PRICE:', priceError)
-	}
 
 	return (
 		<header
@@ -63,22 +55,7 @@ export default async function Appbar() {
 						</Link>
 					</div>
 				)}
-				{isHome && (
-					<>
-						<div className="whitespace-nowrap py-1 px-2 border border-slate-200 dark:border-zinc-800 rounded-full text-sm sm:text-base hidden sm:block">
-							1 XNO ={' '}
-							{priceError
-								? 'ERROR'
-								: priceIsLoading
-								? '-- USD'
-								: `US$ ${price}`}
-						</div>
-						<div className="whitespace-nowrap py-1 px-2 border border-slate-200 dark:border-zinc-800 rounded-full text-sm sm:text-base sm:hidden">
-							1Ӿ ={' '}
-							{priceError ? 'ERROR' : priceIsLoading ? '-- USD' : `$${price}`}
-						</div>
-					</>
-				)}
+				{isHome && <PriceTicker />}
 				<div className="flex items-center gap-2 sm:gap-4 justify-end sm:w-auto">
 					<nav className="flex justify-center gap-1 sm:gap-2 w-full sm:w-auto">
 						{navigation.map(link => (

@@ -6,17 +6,14 @@ import useSWRMutation from 'swr/mutation'
 import Logger from '@/lib/logger'
 import HCaptcha from '@hcaptcha/react-hcaptcha'
 
-export interface Ticket {
+export interface FaucetStatus {
 	amount: string
-	ticket: string
-	createdAt: number
-	expiresAt: number
+	amountNano: string
 	verificationRequired: boolean
 }
 
 export interface DropRequest {
 	account: string
-	ticket: string
 	captchaToken?: string
 }
 
@@ -42,36 +39,43 @@ interface DropResponseBody {
 }
 
 export interface UseFaucetProps {
+	account?: string
 	debug?: boolean
 }
 
+const getErrorMessage = async (response: Response) => {
+	let message = response.statusText
+
+	try {
+		const body = (await response.json()) as ApiErrorBody
+		if (typeof body.message === 'string') {
+			message = body.message
+		} else if ('error' in body && typeof body.error === 'string') {
+			message = body.error
+		}
+	} catch {}
+
+	return message
+}
+
 // TODO: Move error handle logic to a fetcher
-const getTicket = async (url: string): Promise<Ticket> => {
+const getFaucetStatus = async (url: string): Promise<FaucetStatus> => {
 	const response = await fetch(url)
 	if (response.ok) {
 		return await response.json()
-	} else {
-		let message = response.statusText
-		try {
-			const body = (await response.json()) as ApiErrorBody
-			if (typeof body.message === 'string') {
-				message = body.message
-			} else if ('error' in body && typeof body.error === 'string') {
-				message = body.error
-			}
-		} catch (err) {}
-		throw new Error(message)
 	}
+
+	throw new Error(await getErrorMessage(response))
 }
 
 // TODO: Move error handle logic to a fetcher
 const drop = async (
 	url: string,
-	{ arg: { account, ticket, captchaToken } }: { arg: DropRequest },
+	{ arg: { account, captchaToken } }: { arg: DropRequest },
 ): Promise<DropData> => {
 	const response = await fetch(url, {
 		method: 'POST',
-		body: JSON.stringify({ account, ticket, captchaToken }),
+		body: JSON.stringify({ account, captchaToken }),
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -82,31 +86,34 @@ const drop = async (
 			throw new Error('invalid response')
 		}
 		return { hash: data.hash, amount: data.amount, account }
-	} else {
-		let message = response.statusText
-		try {
-			const body = (await response.json()) as ApiErrorBody
-			if (typeof body.message === 'string') {
-				message = body.message
-			} else if ('error' in body && typeof body.error === 'string') {
-				message = body.error
-			}
-		} catch (err) {}
-		throw new Error(message)
 	}
+
+	throw new Error(await getErrorMessage(response))
 }
 
-export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
+const getStatusUrl = (account?: string) => {
+	if (account && checkAddress(account)) {
+		return `${API_URL}/status?account=${encodeURIComponent(account)}`
+	}
+
+	return `${API_URL}/status`
+}
+
+export default function useFaucet({
+	account: activeAccount,
+	debug = true,
+}: UseFaucetProps = {}) {
 	const [isVerified, setIsVerified] = useState(false)
 	const [isVerifying, setIsVerifying] = useState(false)
 	const [captchaToken, setCaptchaToken] = useState('')
 	const [isCaptchaRendered, setIsCaptchaRendered] = useState(false)
 	const [error, setError] = useState<FaucetError | null>(null)
-	const [account, setAccount] = useState('')
+	const [pendingAccount, setPendingAccount] = useState('')
 
 	const captchaRef = useRef<HCaptcha>(null)
 
 	const logger = useMemo(() => new Logger('USE_FAUCET', debug), [debug])
+	const statusUrl = useMemo(() => getStatusUrl(activeAccount), [activeAccount])
 
 	const handleError = useCallback(
 		(title: string, message: string) => {
@@ -152,17 +159,19 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 	}, [handleError])
 
 	const {
-		data: ticket,
-		isLoading: isTicketLoading,
-		error: ticketError,
-		mutate: refreshTicket,
-		isValidating: isTicketValidating,
-	} = useSWR(`${API_URL}/ticket`, getTicket, {
-		refreshInterval: 1000 * 60 * 4, // 4 minutes
+		data: status,
+		isLoading: isStatusLoading,
+		error: statusError,
+		mutate: mutateStatus,
+		isValidating: isStatusValidating,
+	} = useSWR(statusUrl, getFaucetStatus, {
 		revalidateOnFocus: false,
 		revalidateOnReconnect: false,
 		onError: (error: Error) => {
-			handleError('Ticket Error', error.message)
+			handleError('Status Error', error.message)
+		},
+		onSuccess: () => {
+			setError(error => (error?.title === 'Status Error' ? null : error))
 		},
 	})
 
@@ -187,7 +196,7 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 		logger.info('Refreshing')
 		setError(null)
 		resetDrop()
-		await refreshTicket()
+		await mutateStatus()
 	}
 
 	const handleDrop = useCallback(
@@ -196,28 +205,45 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 				handleError('Error Sending', 'Invalid account!')
 				return
 			}
-			if (!ticket) {
-				handleError('Error Sending', 'Ticket is not ready!')
+
+			let currentStatus: FaucetStatus
+			try {
+				currentStatus = await getFaucetStatus(getStatusUrl(account))
+				await mutateStatus(currentStatus, { revalidate: false })
+				setError(error => (error?.title === 'Status Error' ? null : error))
+			} catch (error) {
+				handleError(
+					'Status Error',
+					error instanceof Error
+						? error.message
+						: 'Unable to check faucet status',
+				)
 				return
 			}
-			if (ticket.verificationRequired && !captchaToken) {
-				setAccount(account)
+
+			if (currentStatus.verificationRequired && !captchaToken) {
+				setPendingAccount(account)
 				handleCaptchaVerify()
 			} else {
-				logger.info(
-					`Dropping ${ticket.amount} to ${account} with ticket ${ticket.ticket}`,
-				)
-				dropTrigger({ account, ticket: ticket.ticket, captchaToken })
+				logger.info(`Dropping ${currentStatus.amount} to ${account}`)
+				dropTrigger({ account, captchaToken })
 			}
 		},
-		[captchaToken, dropTrigger, handleCaptchaVerify, handleError, logger, ticket],
+		[
+			captchaToken,
+			dropTrigger,
+			handleCaptchaVerify,
+			handleError,
+			logger,
+			mutateStatus,
+		],
 	)
 
 	useEffect(() => {
-		if (captchaToken && account) {
-			void handleDrop(account)
+		if (captchaToken && pendingAccount) {
+			void handleDrop(pendingAccount)
 		}
-	}, [captchaToken, account, handleDrop])
+	}, [captchaToken, pendingAccount, handleDrop])
 
 	const Verification = useCallback(() => {
 		return (
@@ -242,12 +268,11 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 	])
 
 	return {
-		isReady: !isTicketLoading,
+		isReady: !isStatusLoading,
 		isLoading:
-			isTicketLoading || (ticket?.verificationRequired && !isCaptchaRendered),
-		ticketError,
-		amount: ticket?.amount,
-		expiresAt: ticket?.expiresAt,
+			isStatusLoading || (status?.verificationRequired && !isCaptchaRendered),
+		statusError,
+		amount: status?.amount,
 		drop: handleDrop,
 		isDropping,
 		dropError,
@@ -259,6 +284,6 @@ export default function useFaucet({ debug }: UseFaucetProps = { debug: true }) {
 		isError: !!error,
 		error,
 		refresh,
-		isRefreshing: !isTicketLoading && isTicketValidating,
+		isRefreshing: !isStatusLoading && isStatusValidating,
 	}
 }

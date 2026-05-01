@@ -1,5 +1,6 @@
 const path = require('node:path')
 const isNextDev = process.argv.includes('dev')
+const workerDevOrigin = process.env.WORKER_DEV_ORIGIN || 'http://127.0.0.1:8787'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -9,6 +10,18 @@ const nextConfig = {
 		fetches: {
 			fullUrl: true,
 		},
+	},
+	rewrites: async () => {
+		if (!isNextDev) {
+			return []
+		}
+
+		return [
+			{
+				source: '/api/price',
+				destination: `${workerDevOrigin}/api/price`,
+			},
+		]
 	},
 	webpack: (config, { isServer }) => {
 		config.ignoreWarnings = config.ignoreWarnings || []

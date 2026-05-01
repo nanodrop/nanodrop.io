@@ -3,21 +3,13 @@ import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import type { NanoWalletState } from 'nano-wallet-js'
 import NanoWallet from 'nano-wallet-js'
-import {
-	Unit,
-	checkAddress,
-	checkAmount,
-	checkSignature,
-	convert,
-	signBlock,
-	verifyBlock,
-} from 'nanocurrency'
+import { Unit, checkAddress, convert } from 'nanocurrency'
 
 import { errorHandler } from './middlewares'
 import type { Bindings } from './types'
 import { TunedBigNumber, formatNanoAddress, isValidIPv4OrIpv6 } from './utils'
 
-const TICKET_EXPIRATION = 1000 * 60 * 5
+const TMP_IP_BLACKLIST_EXPIRATION = 1000 * 60 * 5
 const MIN_DROP_AMOUNT = 0.000001
 const MAX_DROP_AMOUNT = 0.01
 const DIVIDE_BALANCE_BY = 10000
@@ -35,6 +27,17 @@ const PROXY_AMOUNT_DIVIDE_BY = 10
 const LIMITED_COUNTRIES: string[] = []
 const MAX_DROPS_PER_IP_IN_LIMITED_COUNTRY = 2
 const LOCAL_REQUEST_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '::1'])
+
+type CountRow = { count: number }
+type WalletStateRow = { state: string }
+type IPWhitelistRow = { ip: string }
+type AccountWhitelistRow = { account: string }
+type DropReadiness = {
+	amount: string
+	amountNano: string
+	verificationRequired: boolean
+}
+type DropContext = DropReadiness & { ip: string }
 
 const isLocalPreviewRequest = (request: Request) => {
 	return LOCAL_REQUEST_HOSTNAMES.has(new URL(request.url).hostname)
@@ -87,16 +90,16 @@ const getCountryCode = (request: Request, isDev: boolean) => {
 export class NanoDropDO extends DurableObject<Bindings> {
 	app = new Hono<{ Bindings: Bindings }>().onError(errorHandler)
 	wallet: NanoWallet
-	storage: DurableObjectStorage
+	sql: SqlStorage
 	static version = 'v1.0.0'
 	db: D1Database
-	ipTicketQueue = new Map<string, Set<Promise<void>>>()
+	ipDropQueue = new Map<string, Set<Promise<void>>>()
 	isDev: boolean
 
 	constructor(state: DurableObjectState, env: Bindings) {
 		super(state, env)
 		this.isDev = env.__DEV__ === 'true'
-		this.storage = state.storage
+		this.sql = state.storage.sql
 		this.db = env.NANODROP_DB
 		this.wallet = new NanoWallet({
 			rpcUrls: env.RPC_URLS.split(','),
@@ -108,122 +111,30 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		})
 
 		state.blockConcurrencyWhile(async () => {
+			this.initSqlSchema()
 			await this.init()
 		})
 
-		this.app.get('/ticket', async c => {
-			if (
-				env.ALLOW_ORIGIN &&
-				new URL(env.ALLOW_ORIGIN).origin !== c.req.header('origin')
-			) {
-				return c.json({ error: 'Origin mismatch' }, 400)
+		this.app.get('/status', async c => {
+			const originError = this.getOriginError(c.req.raw, env)
+			if (originError) {
+				return c.json({ error: originError.message }, originError.status)
 			}
 
-			const ip = getClientIp(c.req.raw, this.isDev)
-			if (!ip) {
-				return c.json({ error: 'IP header is missing' }, 400)
-			}
+			const accountParam = c.req.query('account')
+			let account: string | undefined
 
-			const countryCode = getCountryCode(c.req.raw, this.isDev)
-			const origin = c.req.header('origin') || 'Unknown'
-
-			if (origin.includes('api.nanodrop.io')) {
-				return c.json({ error: 'Temporarily unavailable due spam' }, 403)
-			}
-
-			if (!countryCode) {
-				return c.json({ error: 'Country header is missing' }, 400)
-			}
-
-			const [dropsCount, ipInfo] = await env.NANODROP_DB.batch<
-				Record<string, any>
-			>([
-				env.NANODROP_DB.prepare(
-					'SELECT COUNT(*) as count FROM drops WHERE ip = ?1 AND timestamp >= ?2',
-				).bind(ip, Date.now() - PERIOD),
-				env.NANODROP_DB.prepare(
-					'SELECT is_proxy FROM ip_info WHERE ip = ?1',
-				).bind(ip),
-			])
-
-			const count = dropsCount.results
-				? (dropsCount.results[0].count as number)
-				: 0
-
-			const limitedByCountry = LIMITED_COUNTRIES.includes(countryCode)
-
-			if (
-				(count >= MAX_DROPS_PER_IP ||
-					(limitedByCountry && count >= MAX_DROPS_PER_IP_IN_LIMITED_COUNTRY)) &&
-				(!this.isDev || ENABLE_LIMIT_PER_IP_IN_DEV)
-			) {
-				const ipWhitelist =
-					(await this.storage.get<string[]>('ip-whitelist')) || []
-				if (!ipWhitelist.includes(ip)) {
-					return c.json({ error: 'Drop limit reached for your IP' }, 403)
+			if (accountParam) {
+				if (!checkAddress(accountParam)) {
+					return c.json({ error: 'Invalid account' }, 400)
 				}
+				account = formatNanoAddress(accountParam)
 			}
 
-			let canBeProxy = false
+			const { amount, amountNano, verificationRequired } =
+				await this.getDropReadiness(c.req.raw, account)
 
-			if (!ipInfo.results?.length) {
-				let proxyCheckedBy = 'none'
-
-				if (!this.isDev && !isLocalPreviewRequest(c.req.raw)) {
-					try {
-						canBeProxy = await this.checkProxy(ip)
-						proxyCheckedBy = 'badip.xyz'
-					} catch {
-						console.error(`Failed checking IP ${ip}`)
-					}
-				}
-
-				await env.NANODROP_DB.prepare(
-					'INSERT INTO ip_info (ip, country_code, is_proxy, proxy_checked_by) VALUES (?1, ?2, ?3, ?4) ON CONFLICT do nothing',
-				)
-					.bind(ip, countryCode, canBeProxy ? 1 : 0, proxyCheckedBy)
-					.run()
-			} else {
-				canBeProxy = ipInfo.results[0].is_proxy ? true : false
-			}
-
-			if (canBeProxy && BAN_PROXIES) {
-				return c.json({ error: 'Proxies are not allowed' }, 403)
-			}
-
-			if (canBeProxy && count >= MAX_DROPS_PER_PROXY_IP) {
-				return c.json({ error: 'Drop limit reached for your ip' }, 403)
-			}
-
-			const defaultAmount = this.getDropAmount()
-			if (defaultAmount === '0') {
-				return c.json({ error: 'Insufficient balance' }, 500)
-			}
-
-			const amount = canBeProxy
-				? TunedBigNumber(defaultAmount)
-						.dividedBy(PROXY_AMOUNT_DIVIDE_BY)
-						.toString(10)
-				: defaultAmount
-
-			const amountNano = convert(amount, { from: Unit.raw, to: Unit.NANO })
-			const expiresAt = Date.now() + TICKET_EXPIRATION
-			const verificationRequired =
-				VERIFICATION_REQUIRED_BY_DEFAULT || (canBeProxy && VERIFY_WHEN_PROXY)
-			const ticket = await this.generateTicket(
-				ip,
-				amount,
-				expiresAt,
-				verificationRequired,
-			)
-
-			return c.json({
-				ticket,
-				amount,
-				amountNano,
-				expiresAt,
-				verificationRequired,
-			})
+			return c.json({ amount, amountNano, verificationRequired })
 		})
 
 		this.app.post('/drop', async c => {
@@ -239,68 +150,18 @@ export class NanoDropDO extends DurableObject<Bindings> {
 					return c.json({ error: 'Invalid account' }, 400)
 				}
 
-				if (!payload.ticket) {
-					return c.json({ error: 'Ticket is required' }, 400)
-				}
-
 				const account = formatNanoAddress(payload.account)
 
-				if (account === this.wallet.account) {
-					return c.json({ error: 'I cannot send to myself' }, 400)
+				const originError = this.getOriginError(c.req.raw, env)
+				if (originError) {
+					return c.json({ error: originError.message }, originError.status)
 				}
 
-				const {
-					hash: ticketHash,
-					amount,
-					ip,
-					expiresAt,
-					verificationRequired,
-				} = await this.parseTicket(payload.ticket)
-
-				if (expiresAt < Date.now()) {
-					throw new Error('Ticket expired')
-				}
-
-				if (!this.isDev) {
-					const clientIp = getClientIp(c.req.raw, this.isDev)
-					if (!clientIp) {
-						return c.json({ error: 'IP header is missing' }, 400)
-					}
-					if (clientIp !== ip) {
-						if (!clientIp) {
-							return c.json({ error: 'Ticket IP mismatch' }, 400)
-						}
-					}
-				}
-
-				const redeemedTicketHashes = await this.storage.get<
-					Record<string, number>
-				>('redeemed_ticket_hashes')
-
-				if (redeemedTicketHashes) {
-					const tickets = Object.keys(redeemedTicketHashes)
-					if (tickets.includes(ticketHash)) {
-						return c.json({ error: 'Ticket already redeemed' }, 403)
-					}
-				}
-
-				const dequeue = await this.enqueueIPTicket(ip)
+				const { amount, verificationRequired, ip } =
+					await this.getDropReadiness(c.req.raw, account)
+				const dequeue = await this.enqueueIPDrop(ip)
 
 				try {
-					if (!this.isDev || ENABLE_LIMIT_PER_IP_IN_DEV) {
-						const ipIsInTmpBlacklist = await this.ipIsInTmpBlacklist(ip)
-						if (ipIsInTmpBlacklist) {
-							return c.json({ error: 'Limit reached for this IP' }, 403)
-						}
-					}
-
-					const accountIsInTmpBlacklist =
-						await this.accountIsInTmpBlacklist(account)
-
-					if (accountIsInTmpBlacklist) {
-						return c.json({ error: 'Limit reached for this account' }, 403)
-					}
-
 					if (verificationRequired) {
 						if (!payload.captchaToken) {
 							return c.json({ error: 'Captcha token is missing' }, 400)
@@ -329,8 +190,6 @@ export class NanoDropDO extends DurableObject<Bindings> {
 					const { hash } = await this.wallet.send(account, amount)
 					const timestamp = Date.now()
 					const took = timestamp - startedAt
-
-					this.redeemTicket({ hash: ticketHash, expiresAt })
 
 					this.saveDrop({
 						hash,
@@ -455,9 +314,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				return c.json({ error: 'Unauthorized' }, 401)
 			}
 
-			const ipWhitelist =
-				(await this.storage.get<string[]>('ip-whitelist')) || []
-			return c.json(ipWhitelist)
+			return c.json(this.getIPWhitelist())
 		})
 
 		this.app.put('/whitelist/ip/:ipAddress', async c => {
@@ -471,12 +328,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			}
 
 			this.removeIPFromTmpBlacklist(ip)
-
-			const ipWhitelist =
-				(await this.storage.get<string[]>('ip-whitelist')) || []
-			if (!ipWhitelist.includes(ip)) {
-				await this.storage.put('ip-whitelist', [...ipWhitelist, ip])
-			}
+			this.addIPToWhitelist(ip)
 
 			return c.json({ success: true })
 		})
@@ -491,14 +343,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				return c.json({ error: 'Invalid IP' }, 400)
 			}
 
-			const ipWhitelist =
-				(await this.storage.get<string[]>('ip-whitelist')) || []
-			if (ipWhitelist.includes(ip)) {
-				await this.storage.put(
-					'ip-whitelist',
-					ipWhitelist.filter(ipAddress => ipAddress !== ip),
-				)
-			}
+			this.removeIPFromWhitelist(ip)
 
 			return c.json({ success: true })
 		})
@@ -508,9 +353,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				return c.json({ error: 'Unauthorized' }, 401)
 			}
 
-			const accountWhitelist =
-				(await this.storage.get<string[]>('account-whitelist')) || []
-			return c.json(accountWhitelist)
+			return c.json(this.getAccountWhitelist())
 		})
 
 		this.app.put('/whitelist/account/:account', async c => {
@@ -524,16 +367,8 @@ export class NanoDropDO extends DurableObject<Bindings> {
 
 			const account = formatNanoAddress(c.req.param('account'))
 
-			await this.removeAccountFromTmpBlacklist(account)
-
-			const accountWhitelist =
-				(await this.storage.get<string[]>('account-whitelist')) || []
-			if (!accountWhitelist.includes(account)) {
-				await this.storage.put('account-whitelist', [
-					...accountWhitelist,
-					account,
-				])
-			}
+			this.removeAccountFromTmpBlacklist(account)
+			this.addAccountToWhitelist(account)
 
 			return c.json({ success: true })
 		})
@@ -549,21 +384,48 @@ export class NanoDropDO extends DurableObject<Bindings> {
 
 			const account = formatNanoAddress(c.req.param('account'))
 
-			const accountWhitelist =
-				(await this.storage.get<string[]>('account-whitelist')) || []
-			if (accountWhitelist.includes(account)) {
-				await this.storage.put(
-					'account-whitelist',
-					accountWhitelist.filter(accountAddress => accountAddress !== account),
-				)
-			}
+			this.removeAccountFromWhitelist(account)
 
 			return c.json({ success: true })
 		})
 	}
 
+	initSqlSchema() {
+		this.sql.exec(`
+			CREATE TABLE IF NOT EXISTS wallet_state (
+				id INTEGER PRIMARY KEY CHECK (id = 1),
+				state TEXT NOT NULL,
+				updated_at INTEGER NOT NULL
+			);
+
+			CREATE TABLE IF NOT EXISTS ip_whitelist (
+				ip TEXT PRIMARY KEY,
+				created_at INTEGER NOT NULL
+			);
+
+			CREATE TABLE IF NOT EXISTS account_whitelist (
+				account TEXT PRIMARY KEY,
+				created_at INTEGER NOT NULL
+			);
+
+			CREATE TABLE IF NOT EXISTS temporary_account_blacklist (
+				sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+				checksum TEXT UNIQUE NOT NULL,
+				created_at INTEGER NOT NULL
+			);
+
+			CREATE TABLE IF NOT EXISTS temporary_ip_blacklist (
+				ip TEXT PRIMARY KEY,
+				expires_at INTEGER NOT NULL
+			);
+
+			CREATE INDEX IF NOT EXISTS temporary_ip_blacklist_expires_at_index
+				ON temporary_ip_blacklist(expires_at);
+		`)
+	}
+
 	async init() {
-		const walletState = await this.storage.get<NanoWalletState>('wallet-state')
+		const walletState = this.getWalletState()
 		if (walletState) {
 			this.wallet.update(walletState)
 		} else {
@@ -571,8 +433,179 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		}
 
 		this.wallet.subscribe(state => {
-			this.storage.put('wallet-state', state)
+			this.saveWalletState(state)
 		})
+	}
+
+	getWalletState() {
+		const row = this.sql
+			.exec<WalletStateRow>('SELECT state FROM wallet_state WHERE id = 1')
+			.next()
+
+		if (row.done) {
+			return null
+		}
+
+		return JSON.parse(row.value.state) as NanoWalletState
+	}
+
+	saveWalletState(state: NanoWalletState) {
+		this.sql.exec(
+			`
+				INSERT INTO wallet_state (id, state, updated_at)
+				VALUES (1, ?, ?)
+				ON CONFLICT(id) DO UPDATE SET
+					state = excluded.state,
+					updated_at = excluded.updated_at
+			`,
+			JSON.stringify(state),
+			Date.now(),
+		)
+	}
+
+	getOriginError(request: Request, env: Bindings) {
+		if (
+			env.ALLOW_ORIGIN &&
+			new URL(env.ALLOW_ORIGIN).origin !== request.headers.get('origin')
+		) {
+			return { message: 'Origin mismatch', status: 400 as const }
+		}
+
+		const origin = request.headers.get('origin') || 'Unknown'
+		if (origin.includes('api.nanodrop.io')) {
+			return {
+				message: 'Temporarily unavailable due spam',
+				status: 403 as const,
+			}
+		}
+
+		return null
+	}
+
+	async getDropReadiness(
+		request: Request,
+		account?: string,
+	): Promise<DropContext> {
+		const ip = getClientIp(request, this.isDev)
+		if (!ip) {
+			throw new HTTPException(400, { message: 'IP header is missing' })
+		}
+
+		const countryCode = getCountryCode(request, this.isDev)
+		if (!countryCode) {
+			throw new HTTPException(400, { message: 'Country header is missing' })
+		}
+
+		const [dropsCount, ipInfo] = await this.db.batch<Record<string, any>>([
+			this.db
+				.prepare(
+					'SELECT COUNT(*) as count FROM drops WHERE ip = ?1 AND timestamp >= ?2',
+				)
+				.bind(ip, Date.now() - PERIOD),
+			this.db.prepare('SELECT is_proxy FROM ip_info WHERE ip = ?1').bind(ip),
+		])
+
+		const count = dropsCount.results
+			? (dropsCount.results[0].count as number)
+			: 0
+		const limitedByCountry = LIMITED_COUNTRIES.includes(countryCode)
+
+		if (
+			(count >= MAX_DROPS_PER_IP ||
+				(limitedByCountry && count >= MAX_DROPS_PER_IP_IN_LIMITED_COUNTRY)) &&
+			(!this.isDev || ENABLE_LIMIT_PER_IP_IN_DEV) &&
+			!this.ipIsWhitelisted(ip)
+		) {
+			throw new HTTPException(403, {
+				message: 'Drop limit reached for your IP',
+			})
+		}
+
+		if (
+			(!this.isDev || ENABLE_LIMIT_PER_IP_IN_DEV) &&
+			this.ipIsInTmpBlacklist(ip)
+		) {
+			throw new HTTPException(403, { message: 'Limit reached for this IP' })
+		}
+
+		let canBeProxy = false
+
+		if (!ipInfo.results?.length) {
+			let proxyCheckedBy = 'none'
+
+			if (!this.isDev && !isLocalPreviewRequest(request)) {
+				try {
+					canBeProxy = await this.checkProxy(ip)
+					proxyCheckedBy = 'badip.xyz'
+				} catch {
+					console.error(`Failed checking IP ${ip}`)
+				}
+			}
+
+			await this.db
+				.prepare(
+					'INSERT INTO ip_info (ip, country_code, is_proxy, proxy_checked_by) VALUES (?1, ?2, ?3, ?4) ON CONFLICT do nothing',
+				)
+				.bind(ip, countryCode, canBeProxy ? 1 : 0, proxyCheckedBy)
+				.run()
+		} else {
+			canBeProxy = ipInfo.results[0].is_proxy ? true : false
+		}
+
+		if (canBeProxy && BAN_PROXIES) {
+			throw new HTTPException(403, { message: 'Proxies are not allowed' })
+		}
+
+		if (canBeProxy && count >= MAX_DROPS_PER_PROXY_IP) {
+			throw new HTTPException(403, {
+				message: 'Drop limit reached for your ip',
+			})
+		}
+
+		if (account) {
+			if (account === this.wallet.account) {
+				throw new HTTPException(400, { message: 'I cannot send to myself' })
+			}
+
+			const accountWhitelisted = this.accountIsWhitelisted(account)
+			if (!accountWhitelisted && (!this.isDev || ENABLE_LIMIT_PER_IP_IN_DEV)) {
+				const { results } = await this.db
+					.prepare(
+						'SELECT COUNT(*) as count FROM drops WHERE account = ?1 AND timestamp >= ?2',
+					)
+					.bind(account, Date.now() - PERIOD)
+					.all<CountRow>()
+				const accountDropsCount = results?.[0]?.count || 0
+
+				if (accountDropsCount >= MAX_DROPS_PER_ACCOUNT) {
+					throw new HTTPException(403, {
+						message: 'Limit reached for this account',
+					})
+				}
+			}
+
+			if (!accountWhitelisted && this.accountIsInTmpBlacklist(account)) {
+				throw new HTTPException(403, {
+					message: 'Limit reached for this account',
+				})
+			}
+		}
+
+		const defaultAmount = this.getDropAmount()
+		if (defaultAmount === '0') {
+			throw new HTTPException(500, { message: 'Insufficient balance' })
+		}
+
+		const amount = canBeProxy
+			? TunedBigNumber(defaultAmount)
+					.dividedBy(PROXY_AMOUNT_DIVIDE_BY)
+					.toString(10)
+			: defaultAmount
+		const amountNano = convert(amount, { from: Unit.raw, to: Unit.NANO })
+		const verificationRequired =
+			VERIFICATION_REQUIRED_BY_DEFAULT || (canBeProxy && VERIFY_WHEN_PROXY)
+
+		return { ip, amount, amountNano, verificationRequired }
 	}
 
 	getDropAmount() {
@@ -601,115 +634,6 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		return TunedBigNumber(amountFixed).isGreaterThan(max) ? max : amountFixed
 	}
 
-	async generateTicket(
-		ip: string,
-		amount: string,
-		expiresAt: number,
-		verificationRequired: boolean,
-	) {
-		const version = 1
-		const data = {
-			ip,
-			amount,
-			version,
-			expiresAt,
-			verificationRequired,
-		}
-
-		const digest = await crypto.subtle.digest(
-			{ name: 'SHA-256' },
-			new TextEncoder().encode(JSON.stringify(data)),
-		)
-
-		const hash = Array.from(new Uint8Array(digest))
-			.map(b => b.toString(16).padStart(2, '0'))
-			.join('')
-
-		const signature = signBlock({
-			hash,
-			secretKey: this.wallet.config.privateKey,
-		})
-
-		return btoa(
-			JSON.stringify({
-				...data,
-				signature,
-			}),
-		)
-	}
-
-	async parseTicket(ticket: string) {
-		const isValidBase64 =
-			ticket.length % 4 === 0 && /^[A-Za-z0-9+/]+[=]{0,2}$/.test(ticket)
-
-		if (!isValidBase64) {
-			throw new Error('Invalid ticket')
-		}
-
-		let data
-
-		try {
-			data = JSON.parse(atob(ticket))
-		} catch {
-			throw new Error('Invalid ticket')
-		}
-
-		const { ip, amount, version, expiresAt, verificationRequired, signature } =
-			data
-
-		if (version !== 1) {
-			throw new Error('Invalid ticket version')
-		}
-
-		const isValidIP = isValidIPv4OrIpv6(ip)
-
-		if (
-			!isValidIP ||
-			!checkAmount(amount) ||
-			!checkSignature(signature) ||
-			typeof verificationRequired !== 'boolean'
-		) {
-			throw new Error('Invalid ticket')
-		}
-
-		const digest = await crypto.subtle.digest(
-			{ name: 'SHA-256' },
-			new TextEncoder().encode(
-				JSON.stringify({
-					ip,
-					amount,
-					version,
-					expiresAt,
-					verificationRequired,
-				}),
-			),
-		)
-
-		const hash = Array.from(new Uint8Array(digest))
-			.map(b => b.toString(16).padStart(2, '0'))
-			.join('')
-
-		const matchSignature = verifyBlock({
-			hash,
-			publicKey: this.wallet.publicKey,
-			signature,
-		})
-
-		if (!matchSignature) {
-			throw new Error('Invalid ticket')
-		}
-
-		return {
-			ip,
-			amount,
-			version,
-			expiresAt,
-			hash,
-			verificationRequired,
-			signature,
-		}
-	}
-
 	async checkProxy(ip: string) {
 		const response = await fetch(`https://api.badip.xyz/${ip}?strategy=quick`)
 		if (!response.ok) {
@@ -722,22 +646,6 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		}
 
 		return data.isBad as boolean
-	}
-
-	async redeemTicket({ hash, expiresAt }: { hash: string; expiresAt: number }) {
-		const redeemedTicketHashes = await this.storage.get<Record<string, number>>(
-			'redeemed_ticket_hashes',
-		)
-
-		const now = Date.now()
-		const nonExpiredTickets = Object.entries(redeemedTicketHashes || {}).filter(
-			([, ticketExpiresAt]) => ticketExpiresAt > now,
-		)
-
-		await this.storage.put('redeemed_ticket_hashes', {
-			...Object.fromEntries(nonExpiredTickets),
-			[hash]: expiresAt,
-		})
 	}
 
 	async saveDrop(data: {
@@ -783,10 +691,8 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			dropsCount + 1 >= MAX_DROPS_PER_ACCOUNT &&
 			(!this.isDev || ENABLE_LIMIT_PER_IP_IN_DEV)
 		) {
-			const accountWhitelist =
-				(await this.storage.get<string[]>('account-whitelist')) || []
-			if (!accountWhitelist.includes(data.account)) {
-				await this.addAccountToTmpBlacklist(data.account)
+			if (!this.accountIsWhitelisted(data.account)) {
+				this.addAccountToTmpBlacklist(data.account)
 			}
 		}
 
@@ -795,19 +701,17 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			: 0
 
 		if (ipCount + 1 >= MAX_DROPS_PER_IP) {
-			const ipWhitelist =
-				(await this.storage.get<string[]>('ip-whitelist')) || []
-			if (!ipWhitelist.includes(data.ip)) {
-				await this.addIPToTmpBlacklist(data.ip)
+			if (!this.ipIsWhitelisted(data.ip)) {
+				this.addIPToTmpBlacklist(data.ip)
 			}
 		}
 	}
 
-	async enqueueIPTicket(ip: string): Promise<() => void> {
-		let promises = this.ipTicketQueue.get(ip)
+	async enqueueIPDrop(ip: string): Promise<() => void> {
+		let promises = this.ipDropQueue.get(ip)
 		if (!promises) {
 			promises = new Set<Promise<void>>()
-			this.ipTicketQueue.set(ip, promises)
+			this.ipDropQueue.set(ip, promises)
 		}
 
 		if (promises.size >= MAX_DROP_PER_IP_SIMULTANEOUSLY) {
@@ -828,85 +732,172 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			resolve!()
 			promises.delete(promise)
 			if (promises.size === 0) {
-				this.ipTicketQueue.delete(ip)
+				this.ipDropQueue.delete(ip)
 			}
 		}
 	}
 
-	async accountIsInTmpBlacklist(account: string) {
-		const checksum = account.slice(-8)
-		const blacklistedAccounts =
-			(await this.storage.get<string[]>('temporary-account-blacklist')) || []
-
-		if (blacklistedAccounts.includes(checksum)) return true
-		return false
+	getIPWhitelist() {
+		return this.sql
+			.exec<IPWhitelistRow>(
+				'SELECT ip FROM ip_whitelist ORDER BY created_at ASC, ip ASC',
+			)
+			.toArray()
+			.map(({ ip }) => ip)
 	}
 
-	async addAccountToTmpBlacklist(account: string) {
-		const checksum = account.slice(-8)
-		const blacklistedAccounts =
-			(await this.storage.get<string[]>('temporary-account-blacklist')) || []
+	ipIsWhitelisted(ip: string) {
+		const row = this.sql
+			.exec<CountRow>(
+				'SELECT COUNT(*) as count FROM ip_whitelist WHERE ip = ?',
+				ip,
+			)
+			.one()
 
-		if (blacklistedAccounts.includes(checksum)) return
-		if (blacklistedAccounts.length === MAX_TMP_ACCOUNT_BLACKLIST_LENGTH) {
-			blacklistedAccounts.shift()
-		}
-
-		blacklistedAccounts.push(checksum)
-		await this.storage.put('temporary-account-blacklist', blacklistedAccounts)
+		return row.count > 0
 	}
 
-	async removeAccountFromTmpBlacklist(account: string) {
-		const checksum = account.slice(-8)
-		const blacklistedAccounts =
-			(await this.storage.get<string[]>('temporary-account-blacklist')) || []
-
-		if (!blacklistedAccounts.includes(checksum)) return
-
-		await this.storage.put(
-			'temporary-account-blacklist',
-			blacklistedAccounts.filter(a => a !== checksum),
+	addIPToWhitelist(ip: string) {
+		this.sql.exec(
+			'INSERT OR IGNORE INTO ip_whitelist (ip, created_at) VALUES (?, ?)',
+			ip,
+			Date.now(),
 		)
 	}
 
-	async ipIsInTmpBlacklist(ip: string): Promise<boolean> {
-		const blacklistedIPs =
-			(await this.storage.get<Record<string, number>>(
-				'temporary-ip-blacklist',
-			)) || {}
-
-		if (blacklistedIPs[ip] < Date.now()) return true
-		return false
+	removeIPFromWhitelist(ip: string) {
+		this.sql.exec('DELETE FROM ip_whitelist WHERE ip = ?', ip)
 	}
 
-	async addIPToTmpBlacklist(ip: string) {
-		const blacklistedIPs =
-			(await this.storage.get<Record<string, number>>(
-				'temporary-ip-blacklist',
-			)) || {}
+	getAccountWhitelist() {
+		return this.sql
+			.exec<AccountWhitelistRow>(
+				'SELECT account FROM account_whitelist ORDER BY created_at ASC, account ASC',
+			)
+			.toArray()
+			.map(({ account }) => account)
+	}
 
+	accountIsWhitelisted(account: string) {
+		const row = this.sql
+			.exec<CountRow>(
+				'SELECT COUNT(*) as count FROM account_whitelist WHERE account = ?',
+				account,
+			)
+			.one()
+
+		return row.count > 0
+	}
+
+	addAccountToWhitelist(account: string) {
+		this.sql.exec(
+			'INSERT OR IGNORE INTO account_whitelist (account, created_at) VALUES (?, ?)',
+			account,
+			Date.now(),
+		)
+	}
+
+	removeAccountFromWhitelist(account: string) {
+		this.sql.exec('DELETE FROM account_whitelist WHERE account = ?', account)
+	}
+
+	accountIsInTmpBlacklist(account: string) {
+		const checksum = account.slice(-8)
+		const row = this.sql
+			.exec<CountRow>(
+				'SELECT COUNT(*) as count FROM temporary_account_blacklist WHERE checksum = ?',
+				checksum,
+			)
+			.one()
+
+		return row.count > 0
+	}
+
+	addAccountToTmpBlacklist(account: string) {
+		const checksum = account.slice(-8)
+		this.sql.exec(
+			`
+				INSERT OR IGNORE INTO temporary_account_blacklist (checksum, created_at)
+				VALUES (?, ?)
+			`,
+			checksum,
+			Date.now(),
+		)
+
+		const { count } = this.sql
+			.exec<CountRow>(
+				'SELECT COUNT(*) as count FROM temporary_account_blacklist',
+			)
+			.one()
+		const excess = count - MAX_TMP_ACCOUNT_BLACKLIST_LENGTH
+
+		if (excess > 0) {
+			this.sql.exec(
+				`
+					DELETE FROM temporary_account_blacklist
+					WHERE sequence IN (
+						SELECT sequence
+						FROM temporary_account_blacklist
+						ORDER BY sequence ASC
+						LIMIT ?
+					)
+				`,
+				excess,
+			)
+		}
+	}
+
+	removeAccountFromTmpBlacklist(account: string) {
+		const checksum = account.slice(-8)
+		this.sql.exec(
+			'DELETE FROM temporary_account_blacklist WHERE checksum = ?',
+			checksum,
+		)
+	}
+
+	ipIsInTmpBlacklist(ip: string) {
 		const now = Date.now()
-		const nonExpiredIPs = Object.entries(blacklistedIPs).filter(
-			([, expiresAt]) => expiresAt > now,
-		)
-		const expiresAt = now + TICKET_EXPIRATION
+		this.pruneExpiredIPBlacklist(now)
+		const row = this.sql
+			.exec<CountRow>(
+				`
+					SELECT COUNT(*) as count
+					FROM temporary_ip_blacklist
+					WHERE ip = ? AND expires_at > ?
+				`,
+				ip,
+				now,
+			)
+			.one()
 
-		await this.storage.put('temporary-ip-blacklist', {
-			...Object.fromEntries(nonExpiredIPs),
-			[ip]: expiresAt,
-		})
+		return row.count > 0
 	}
 
-	async removeIPFromTmpBlacklist(ip: string) {
-		const blacklistedIPs =
-			(await this.storage.get<Record<string, number>>(
-				'temporary-ip-blacklist',
-			)) || {}
+	addIPToTmpBlacklist(ip: string) {
+		const now = Date.now()
+		this.pruneExpiredIPBlacklist(now)
+		const expiresAt = now + TMP_IP_BLACKLIST_EXPIRATION
 
-		if (ip in blacklistedIPs) {
-			delete blacklistedIPs[ip]
-			await this.storage.put('temporary-ip-blacklist', blacklistedIPs)
-		}
+		this.sql.exec(
+			`
+				INSERT INTO temporary_ip_blacklist (ip, expires_at)
+				VALUES (?, ?)
+				ON CONFLICT(ip) DO UPDATE SET expires_at = excluded.expires_at
+			`,
+			ip,
+			expiresAt,
+		)
+	}
+
+	removeIPFromTmpBlacklist(ip: string) {
+		this.sql.exec('DELETE FROM temporary_ip_blacklist WHERE ip = ?', ip)
+	}
+
+	pruneExpiredIPBlacklist(now = Date.now()) {
+		this.sql.exec(
+			'DELETE FROM temporary_ip_blacklist WHERE expires_at <= ?',
+			now,
+		)
 	}
 
 	fetch(request: Request) {
