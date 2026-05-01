@@ -4,7 +4,7 @@ import QrScanner, {
 	FacingMode,
 	ScanResult,
 } from './QrScanner'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export interface UseQrScannerOptions {
 	autoStart: boolean
@@ -14,15 +14,17 @@ export default function useQrScanner(
 	options: UseQrScannerOptions = { autoStart: true },
 ) {
 	const videoRef = useRef<HTMLVideoElement>(null)
+	const scannerRef = useRef<QrScanner | null>(null)
 
 	const [cameras, setCameras] = useState<Camera[]>([])
 	const [data, setData] = useState<string | null>(null)
+	const [isReady, setIsReady] = useState(false)
 
 	const onDecodeHandler = ({ data }: ScanResult) => {
-		scanner?.pause()
+		scannerRef.current?.pause()
 		setData(data)
 		setTimeout(() => {
-			scanner?.start()
+			void scannerRef.current?.start()
 		}, 3000)
 	}
 
@@ -44,23 +46,30 @@ export default function useQrScanner(
 		}
 	}
 
-	const scanner = useMemo(() => {
-		if (videoRef.current) {
-			const qrscanner = new QrScanner(videoRef.current, onDecodeHandler, {
-				preferredCamera: 'environment',
-				highlightScanRegion: true,
-				highlightCodeOutline: true,
-				calculateScanRegion,
-				onDecodeError: onDecodeErrorHandler,
-			})
-			if (options.autoStart) {
-				qrscanner.start()
-			}
-			return qrscanner
-		} else {
-			return null
+	useEffect(() => {
+		if (!videoRef.current || scannerRef.current) return
+
+		const scanner = new QrScanner(videoRef.current, onDecodeHandler, {
+			preferredCamera: 'environment',
+			highlightScanRegion: true,
+			highlightCodeOutline: true,
+			calculateScanRegion,
+			onDecodeError: onDecodeErrorHandler,
+		})
+
+		scannerRef.current = scanner
+		setIsReady(true)
+
+		if (options.autoStart) {
+			void scanner.start()
 		}
-	}, [videoRef.current])
+
+		return () => {
+			scanner.destroy()
+			scannerRef.current = null
+			setIsReady(false)
+		}
+	}, [options.autoStart])
 
 	const loadCameras = async () => {
 		const cameras = await QrScanner.listCameras()
@@ -75,21 +84,26 @@ export default function useQrScanner(
 
 	return {
 		ref: videoRef,
-		isReady: !!scanner,
-		start: () => scanner?.start(),
-		stop: () => scanner?.stop,
-		pause: () => scanner?.pause(),
+		isReady,
+		start: () => scannerRef.current?.start(),
+		stop: () => scannerRef.current?.stop(),
+		pause: () => scannerRef.current?.pause(),
 		data,
 		hasCamera,
 		listCameras: () => QrScanner.listCameras(),
 		cameras,
 		setCamera: (facingModeOrDeviceId: FacingMode | DeviceId) =>
-			scanner?.setCamera(facingModeOrDeviceId),
-		hasFlash: () => scanner?.hasFlash(),
-		isFlashOn: () => scanner?.isFlashOn(),
-		turnFlashOn: () => scanner?.turnFlashOn(),
-		turnFlashOff: () => scanner?.turnFlashOff(),
-		updateOverlayColor: (color: string) => scanner?.updateOverlayColor(color),
-		destroy: () => scanner?.destroy(),
+			scannerRef.current?.setCamera(facingModeOrDeviceId),
+		hasFlash: () => scannerRef.current?.hasFlash(),
+		isFlashOn: () => scannerRef.current?.isFlashOn(),
+		turnFlashOn: () => scannerRef.current?.turnFlashOn(),
+		turnFlashOff: () => scannerRef.current?.turnFlashOff(),
+		updateOverlayColor: (color: string) =>
+			scannerRef.current?.updateOverlayColor(color),
+		destroy: () => {
+			scannerRef.current?.destroy()
+			scannerRef.current = null
+			setIsReady(false)
+		},
 	}
 }

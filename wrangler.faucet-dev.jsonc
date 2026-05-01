@@ -1,0 +1,36 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"main": "src/api/index.ts",
+	"name": "nanodrop-faucet-dev",
+	"compatibility_date": "2026-04-22",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "NANODROP_DO",
+				"class_name": "NanoDropDO",
+			},
+		],
+	},
+	"d1_databases": [
+		{
+			"binding": "NANODROP_DB",
+			"database_name": "nanodrop-prod",
+			"database_id": "4150bedd-0180-4e7d-a561-c9a922ee1eb7",
+			"migrations_dir": "d1/migrations",
+		},
+	],
+	"vars": {
+		"__DEV__": "true",
+		"DEBUG": "true",
+	},
+	"migrations": [
+		{
+			"tag": "v1-faucet-do",
+			"new_sqlite_classes": ["NanoDropDO"],
+		},
+	],
+	"observability": {
+		"enabled": true,
+	},
+}
