@@ -19,8 +19,8 @@
 	"d1_databases": [
 		{
 			"binding": "NANODROP_DB",
-			"database_name": "nanodrop-prod",
-			"database_id": "4150bedd-0180-4e7d-a561-c9a922ee1eb7",
+			"database_name": "nanodrop-db-production",
+			"database_id": "7ce40cf8-00a8-42ce-aefd-c509f98cfc0d",
 			"migrations_dir": "d1/migrations",
 		},
 	],
