@@ -9,26 +9,50 @@ import { errorHandler } from './middlewares'
 import type { Bindings } from './types'
 import { TunedBigNumber, formatNanoAddress, isValidIPv4OrIpv6 } from './utils'
 
-const TMP_IP_BLACKLIST_EXPIRATION = 1000 * 60 * 5
-const MIN_DROP_AMOUNT = 0.000001
-const MAX_DROP_AMOUNT = 0.01
-const DIVIDE_BALANCE_BY = 10000
-const PERIOD = 1000 * 60 * 60 * 24 * 7
-const MAX_DROPS_PER_IP = 5
-const MAX_DROPS_PER_PROXY_IP = 3
-const MAX_DROP_PER_IP_SIMULTANEOUSLY = 3
+const MILLISECONDS_PER_MINUTE = 1000 * 60
+const MILLISECONDS_PER_DAY = MILLISECONDS_PER_MINUTE * 60 * 24
 const ENABLE_LIMIT_PER_IP_IN_DEV = false
-const MAX_DROPS_PER_ACCOUNT = 3
 const MAX_TMP_ACCOUNT_BLACKLIST_LENGTH = 10000
-const VERIFICATION_REQUIRED_BY_DEFAULT = true
-const VERIFY_WHEN_PROXY = true
-const BAN_PROXIES = false
-const PROXY_AMOUNT_DIVIDE_BY = 10
 const LIMITED_COUNTRIES: string[] = []
-const MAX_DROPS_PER_IP_IN_LIMITED_COUNTRY = 2
 const LOCAL_REQUEST_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '::1'])
-const DEFAULT_MIN_RECEIVABLE_AMOUNT = '0.0001'
-const MIN_RECEIVABLE_AMOUNT_SETTING_KEY = 'min_receivable_amount_raw'
+const MIN_PERIOD_DAYS = 1
+const MAX_PERIOD_DAYS = 30
+const MIN_IP_BLACKLIST_EXPIRATION_IN_MINUTES = 1
+const MAX_IP_BLACKLIST_EXPIRATION_IN_MINUTES = 1440
+const DEFAULT_FAUCET_CONFIG = {
+	minReceivableAmount: '0.0001',
+	minDropAmount: '0.000001',
+	maxDropAmount: '0.01',
+	divideBalanceBy: 10000,
+	periodDays: 7,
+	ipBlacklistExpirationInMinutes: 5,
+	maxDropPerIpSimultaneously: 3,
+	maxDropsPerAccount: 3,
+	maxDropsPerIp: 5,
+	maxDropsPerProxyIp: 3,
+	maxDropsPerIpInLimitedCountry: 2,
+	verificationRequiredByDefault: true,
+	verifyWhenProxy: true,
+	banProxies: false,
+	proxyAmountDivideBy: 10,
+}
+const FAUCET_CONFIG_SETTING_KEYS = {
+	minReceivableAmountRaw: 'min_receivable_amount_raw',
+	minDropAmount: 'min_drop_amount',
+	maxDropAmount: 'max_drop_amount',
+	divideBalanceBy: 'divide_balance_by',
+	periodDays: 'period_days',
+	ipBlacklistExpirationInMinutes: 'ip_blacklist_expiration_in_minutes',
+	maxDropPerIpSimultaneously: 'max_drop_per_ip_simultaneously',
+	maxDropsPerAccount: 'max_drops_per_account',
+	maxDropsPerIp: 'max_drops_per_ip',
+	maxDropsPerProxyIp: 'max_drops_per_proxy_ip',
+	maxDropsPerIpInLimitedCountry: 'max_drops_per_ip_in_limited_country',
+	verificationRequiredByDefault: 'verification_required_by_default',
+	verifyWhenProxy: 'verify_when_proxy',
+	banProxies: 'ban_proxies',
+	proxyAmountDivideBy: 'proxy_amount_divide_by',
+}
 
 type CountRow = { count: number }
 type AverageRow = { average: number | null }
@@ -39,6 +63,20 @@ type AdminSettingRow = { value: string }
 type CountryDropsRow = { country_code: string; count: number }
 type DailyDropsRow = { day: string; count: number }
 type ReceivableBlock = { blockHash: string; amount: string }
+type FaucetConfigValues = Omit<
+	typeof DEFAULT_FAUCET_CONFIG,
+	'minReceivableAmount'
+>
+type FaucetConfig = FaucetConfigValues & {
+	periodMs: number
+	ipBlacklistExpirationMs: number
+}
+type FaucetConfigParseResult =
+	| { config: FaucetConfigValues }
+	| { error: string }
+type StringParseResult = { value: string } | { error: string }
+type NumberParseResult = { value: number } | { error: string }
+type BooleanParseResult = { value: boolean } | { error: string }
 type DropReadiness = {
 	amount: string
 	amountNano: string
@@ -345,6 +383,31 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json(config)
 		})
 
+		this.app.get('/config', async c => {
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
+			}
+
+			return c.json(this.getFaucetConfig())
+		})
+
+		this.app.put('/config', async c => {
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
+			}
+
+			const payload = await c.req.json().catch(() => null)
+			const parsed = this.parseFaucetConfigPayload(payload)
+			if ('error' in parsed) {
+				return c.json({ error: parsed.error }, 400)
+			}
+
+			this.setFaucetConfig(parsed.config)
+			return c.json(this.getFaucetConfig())
+		})
+
 		this.app.post('/wallet/receive/:link', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
@@ -529,6 +592,427 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		return JSON.parse(row.value.state) as NanoWalletState
 	}
 
+	getFaucetConfig(): FaucetConfig {
+		const config = {
+			minDropAmount: this.getNanoAmountSetting(
+				FAUCET_CONFIG_SETTING_KEYS.minDropAmount,
+				DEFAULT_FAUCET_CONFIG.minDropAmount,
+			),
+			maxDropAmount: this.getNanoAmountSetting(
+				FAUCET_CONFIG_SETTING_KEYS.maxDropAmount,
+				DEFAULT_FAUCET_CONFIG.maxDropAmount,
+			),
+			divideBalanceBy: this.getIntegerSetting(
+				FAUCET_CONFIG_SETTING_KEYS.divideBalanceBy,
+				DEFAULT_FAUCET_CONFIG.divideBalanceBy,
+				1,
+			),
+			periodDays: this.getIntegerSetting(
+				FAUCET_CONFIG_SETTING_KEYS.periodDays,
+				DEFAULT_FAUCET_CONFIG.periodDays,
+				MIN_PERIOD_DAYS,
+				MAX_PERIOD_DAYS,
+			),
+			ipBlacklistExpirationInMinutes: this.getIntegerSetting(
+				FAUCET_CONFIG_SETTING_KEYS.ipBlacklistExpirationInMinutes,
+				DEFAULT_FAUCET_CONFIG.ipBlacklistExpirationInMinutes,
+				MIN_IP_BLACKLIST_EXPIRATION_IN_MINUTES,
+				MAX_IP_BLACKLIST_EXPIRATION_IN_MINUTES,
+			),
+			maxDropPerIpSimultaneously: this.getIntegerSetting(
+				FAUCET_CONFIG_SETTING_KEYS.maxDropPerIpSimultaneously,
+				DEFAULT_FAUCET_CONFIG.maxDropPerIpSimultaneously,
+				1,
+			),
+			maxDropsPerAccount: this.getIntegerSetting(
+				FAUCET_CONFIG_SETTING_KEYS.maxDropsPerAccount,
+				DEFAULT_FAUCET_CONFIG.maxDropsPerAccount,
+				0,
+			),
+			maxDropsPerIp: this.getIntegerSetting(
+				FAUCET_CONFIG_SETTING_KEYS.maxDropsPerIp,
+				DEFAULT_FAUCET_CONFIG.maxDropsPerIp,
+				0,
+			),
+			maxDropsPerProxyIp: this.getIntegerSetting(
+				FAUCET_CONFIG_SETTING_KEYS.maxDropsPerProxyIp,
+				DEFAULT_FAUCET_CONFIG.maxDropsPerProxyIp,
+				0,
+			),
+			maxDropsPerIpInLimitedCountry: this.getIntegerSetting(
+				FAUCET_CONFIG_SETTING_KEYS.maxDropsPerIpInLimitedCountry,
+				DEFAULT_FAUCET_CONFIG.maxDropsPerIpInLimitedCountry,
+				0,
+			),
+			verificationRequiredByDefault: this.getBooleanSetting(
+				FAUCET_CONFIG_SETTING_KEYS.verificationRequiredByDefault,
+				DEFAULT_FAUCET_CONFIG.verificationRequiredByDefault,
+			),
+			verifyWhenProxy: this.getBooleanSetting(
+				FAUCET_CONFIG_SETTING_KEYS.verifyWhenProxy,
+				DEFAULT_FAUCET_CONFIG.verifyWhenProxy,
+			),
+			banProxies: this.getBooleanSetting(
+				FAUCET_CONFIG_SETTING_KEYS.banProxies,
+				DEFAULT_FAUCET_CONFIG.banProxies,
+			),
+			proxyAmountDivideBy: this.getIntegerSetting(
+				FAUCET_CONFIG_SETTING_KEYS.proxyAmountDivideBy,
+				DEFAULT_FAUCET_CONFIG.proxyAmountDivideBy,
+				1,
+			),
+		}
+
+		return {
+			...config,
+			periodMs: config.periodDays * MILLISECONDS_PER_DAY,
+			ipBlacklistExpirationMs:
+				config.ipBlacklistExpirationInMinutes * MILLISECONDS_PER_MINUTE,
+		}
+	}
+
+	parseFaucetConfigPayload(payload: unknown): FaucetConfigParseResult {
+		const input =
+			payload && typeof payload === 'object'
+				? (payload as Record<string, unknown>)
+				: null
+
+		if (!input) {
+			return { error: 'Invalid config' }
+		}
+
+		const minDropAmount = this.parsePositiveNanoInput(
+			input.minDropAmount,
+			'minDropAmount',
+		)
+		if ('error' in minDropAmount) return minDropAmount
+
+		const maxDropAmount = this.parsePositiveNanoInput(
+			input.maxDropAmount,
+			'maxDropAmount',
+		)
+		if ('error' in maxDropAmount) return maxDropAmount
+
+		const minDropAmountRaw = convert(minDropAmount.value, {
+			from: Unit.NANO,
+			to: Unit.raw,
+		})
+		const maxDropAmountRaw = convert(maxDropAmount.value, {
+			from: Unit.NANO,
+			to: Unit.raw,
+		})
+		if (TunedBigNumber(maxDropAmountRaw).isLessThan(minDropAmountRaw)) {
+			return { error: 'maxDropAmount must be greater than minDropAmount' }
+		}
+
+		const divideBalanceBy = this.parseIntegerInput(
+			input.divideBalanceBy,
+			'divideBalanceBy',
+			1,
+		)
+		if ('error' in divideBalanceBy) return divideBalanceBy
+
+		const periodDays = this.parseIntegerInput(
+			input.periodDays,
+			'periodDays',
+			MIN_PERIOD_DAYS,
+			MAX_PERIOD_DAYS,
+		)
+		if ('error' in periodDays) return periodDays
+
+		const ipBlacklistExpirationInMinutes = this.parseIntegerInput(
+			input.ipBlacklistExpirationInMinutes,
+			'ipBlacklistExpirationInMinutes',
+			MIN_IP_BLACKLIST_EXPIRATION_IN_MINUTES,
+			MAX_IP_BLACKLIST_EXPIRATION_IN_MINUTES,
+		)
+		if ('error' in ipBlacklistExpirationInMinutes) {
+			return ipBlacklistExpirationInMinutes
+		}
+
+		const maxDropPerIpSimultaneously = this.parseIntegerInput(
+			input.maxDropPerIpSimultaneously,
+			'maxDropPerIpSimultaneously',
+			1,
+		)
+		if ('error' in maxDropPerIpSimultaneously) {
+			return maxDropPerIpSimultaneously
+		}
+
+		const maxDropsPerAccount = this.parseIntegerInput(
+			input.maxDropsPerAccount,
+			'maxDropsPerAccount',
+			0,
+		)
+		if ('error' in maxDropsPerAccount) return maxDropsPerAccount
+
+		const maxDropsPerIp = this.parseIntegerInput(
+			input.maxDropsPerIp,
+			'maxDropsPerIp',
+			0,
+		)
+		if ('error' in maxDropsPerIp) return maxDropsPerIp
+
+		const maxDropsPerProxyIp = this.parseIntegerInput(
+			input.maxDropsPerProxyIp,
+			'maxDropsPerProxyIp',
+			0,
+		)
+		if ('error' in maxDropsPerProxyIp) return maxDropsPerProxyIp
+
+		const maxDropsPerIpInLimitedCountry = this.parseIntegerInput(
+			input.maxDropsPerIpInLimitedCountry,
+			'maxDropsPerIpInLimitedCountry',
+			0,
+		)
+		if ('error' in maxDropsPerIpInLimitedCountry) {
+			return maxDropsPerIpInLimitedCountry
+		}
+
+		const verificationRequiredByDefault = this.parseBooleanInput(
+			input.verificationRequiredByDefault,
+			'verificationRequiredByDefault',
+		)
+		if ('error' in verificationRequiredByDefault) {
+			return verificationRequiredByDefault
+		}
+
+		const verifyWhenProxy = this.parseBooleanInput(
+			input.verifyWhenProxy,
+			'verifyWhenProxy',
+		)
+		if ('error' in verifyWhenProxy) {
+			return verifyWhenProxy
+		}
+
+		const banProxies = this.parseBooleanInput(input.banProxies, 'banProxies')
+		if ('error' in banProxies) {
+			return banProxies
+		}
+
+		const proxyAmountDivideBy = this.parseIntegerInput(
+			input.proxyAmountDivideBy,
+			'proxyAmountDivideBy',
+			1,
+		)
+		if ('error' in proxyAmountDivideBy) {
+			return proxyAmountDivideBy
+		}
+
+		return {
+			config: {
+				minDropAmount: minDropAmount.value,
+				maxDropAmount: maxDropAmount.value,
+				divideBalanceBy: divideBalanceBy.value,
+				periodDays: periodDays.value,
+				ipBlacklistExpirationInMinutes:
+					ipBlacklistExpirationInMinutes.value,
+				maxDropPerIpSimultaneously: maxDropPerIpSimultaneously.value,
+				maxDropsPerAccount: maxDropsPerAccount.value,
+				maxDropsPerIp: maxDropsPerIp.value,
+				maxDropsPerProxyIp: maxDropsPerProxyIp.value,
+				maxDropsPerIpInLimitedCountry: maxDropsPerIpInLimitedCountry.value,
+				verificationRequiredByDefault: verificationRequiredByDefault.value,
+				verifyWhenProxy: verifyWhenProxy.value,
+				banProxies: banProxies.value,
+				proxyAmountDivideBy: proxyAmountDivideBy.value,
+			},
+		}
+	}
+
+	setFaucetConfig(config: FaucetConfigValues) {
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.minDropAmount,
+			config.minDropAmount,
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.maxDropAmount,
+			config.maxDropAmount,
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.divideBalanceBy,
+			String(config.divideBalanceBy),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.periodDays,
+			String(config.periodDays),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.ipBlacklistExpirationInMinutes,
+			String(config.ipBlacklistExpirationInMinutes),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.maxDropPerIpSimultaneously,
+			String(config.maxDropPerIpSimultaneously),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.maxDropsPerAccount,
+			String(config.maxDropsPerAccount),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.maxDropsPerIp,
+			String(config.maxDropsPerIp),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.maxDropsPerProxyIp,
+			String(config.maxDropsPerProxyIp),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.maxDropsPerIpInLimitedCountry,
+			String(config.maxDropsPerIpInLimitedCountry),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.verificationRequiredByDefault,
+			String(config.verificationRequiredByDefault),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.verifyWhenProxy,
+			String(config.verifyWhenProxy),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.banProxies,
+			String(config.banProxies),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.proxyAmountDivideBy,
+			String(config.proxyAmountDivideBy),
+		)
+	}
+
+	getAdminSettingValue(key: string) {
+		const row = this.sql
+			.exec<AdminSettingRow>(
+				'SELECT value FROM admin_settings WHERE key = ?',
+				key,
+			)
+			.next()
+
+		return row.done ? null : row.value.value
+	}
+
+	setAdminSetting(key: string, value: string) {
+		this.sql.exec(
+			`
+				INSERT INTO admin_settings (key, value, updated_at)
+				VALUES (?, ?, ?)
+				ON CONFLICT(key) DO UPDATE SET
+					value = excluded.value,
+					updated_at = excluded.updated_at
+			`,
+			key,
+			value,
+			Date.now(),
+		)
+	}
+
+	getNanoAmountSetting(key: string, fallback: string) {
+		const value = this.getAdminSettingValue(key)
+		if (value && this.isValidPositiveNanoAmount(value)) {
+			return value
+		}
+
+		return fallback
+	}
+
+	getIntegerSetting(
+		key: string,
+		fallback: number,
+		min: number,
+		max = Number.MAX_SAFE_INTEGER,
+	) {
+		const value = this.getAdminSettingValue(key)
+		if (value === null) {
+			return fallback
+		}
+
+		if (!/^-?\d+$/.test(value.trim())) {
+			return fallback
+		}
+
+		const numberValue = Number(value)
+
+		if (
+			Number.isSafeInteger(numberValue) &&
+			numberValue >= min &&
+			numberValue <= max
+		) {
+			return numberValue
+		}
+
+		return fallback
+	}
+
+	getBooleanSetting(key: string, fallback: boolean) {
+		const value = this.getAdminSettingValue(key)
+		if (value === null) {
+			return fallback
+		}
+
+		if (value === 'true') return true
+		if (value === 'false') return false
+
+		return fallback
+	}
+
+	parsePositiveNanoInput(
+		value: unknown,
+		field: string,
+	): StringParseResult {
+		const amount =
+			typeof value === 'number'
+				? value.toString()
+				: typeof value === 'string'
+					? value.trim()
+					: ''
+
+		if (!this.isValidPositiveNanoAmount(amount)) {
+			return { error: `Invalid ${field}` }
+		}
+
+		return { value: amount }
+	}
+
+	parseIntegerInput(
+		value: unknown,
+		field: string,
+		min: number,
+		max = Number.MAX_SAFE_INTEGER,
+	): NumberParseResult {
+		const numberValue =
+			typeof value === 'number'
+				? value
+				: typeof value === 'string'
+					? Number(value.trim())
+					: NaN
+		const isIntegerString =
+			typeof value === 'string' && /^-?\d+$/.test(value.trim())
+
+		if (
+			!Number.isSafeInteger(numberValue) ||
+			(typeof value === 'string' && !isIntegerString) ||
+			numberValue < min ||
+			numberValue > max
+		) {
+			return { error: `Invalid ${field}` }
+		}
+
+		return { value: numberValue }
+	}
+
+	parseBooleanInput(value: unknown, field: string): BooleanParseResult {
+		if (typeof value === 'boolean') {
+			return { value }
+		}
+
+		if (typeof value === 'string') {
+			const normalized = value.trim()
+			if (normalized === 'true') return { value: true }
+			if (normalized === 'false') return { value: false }
+		}
+
+		return { error: `Invalid ${field}` }
+	}
+
 	getReceivableConfig() {
 		const minReceivableAmountRaw = this.getMinReceivableAmountRaw()
 
@@ -542,18 +1026,15 @@ export class NanoDropDO extends DurableObject<Bindings> {
 	}
 
 	getMinReceivableAmountRaw() {
-		const row = this.sql
-			.exec<AdminSettingRow>(
-				'SELECT value FROM admin_settings WHERE key = ?',
-				MIN_RECEIVABLE_AMOUNT_SETTING_KEY,
-			)
-			.next()
+		const value = this.getAdminSettingValue(
+			FAUCET_CONFIG_SETTING_KEYS.minReceivableAmountRaw,
+		)
 
-		if (!row.done) {
-			return row.value.value
+		if (value) {
+			return value
 		}
 
-		return convert(DEFAULT_MIN_RECEIVABLE_AMOUNT, {
+		return convert(DEFAULT_FAUCET_CONFIG.minReceivableAmount, {
 			from: Unit.NANO,
 			to: Unit.raw,
 		})
@@ -565,17 +1046,9 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			to: Unit.raw,
 		})
 
-		this.sql.exec(
-			`
-				INSERT INTO admin_settings (key, value, updated_at)
-				VALUES (?, ?, ?)
-				ON CONFLICT(key) DO UPDATE SET
-					value = excluded.value,
-					updated_at = excluded.updated_at
-			`,
-			MIN_RECEIVABLE_AMOUNT_SETTING_KEY,
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.minReceivableAmountRaw,
 			minReceivableAmountRaw,
-			Date.now(),
 		)
 
 		this.wallet.configure({ minAmountRaw: minReceivableAmountRaw })
@@ -592,6 +1065,23 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				!TunedBigNumber(amount).isNegative() &&
 				convert(amount, { from: Unit.NANO, to: Unit.raw }) !== ''
 			)
+		} catch {
+			return false
+		}
+	}
+
+	isValidPositiveNanoAmount(amount: string) {
+		try {
+			if (
+				amount.length === 0 ||
+				!TunedBigNumber(amount).isFinite() ||
+				!TunedBigNumber(amount).isGreaterThan(0)
+			) {
+				return false
+			}
+
+			const rawAmount = convert(amount, { from: Unit.NANO, to: Unit.raw })
+			return TunedBigNumber(rawAmount).isGreaterThan(0)
 		} catch {
 			return false
 		}
@@ -662,12 +1152,14 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			throw new HTTPException(400, { message: 'Country header is missing' })
 		}
 
+		const config = this.getFaucetConfig()
+
 		const [dropsCount, ipInfo] = await this.db.batch<Record<string, any>>([
 			this.db
 				.prepare(
 					'SELECT COUNT(*) as count FROM drops WHERE ip = ?1 AND timestamp >= ?2',
 				)
-				.bind(ip, Date.now() - PERIOD),
+				.bind(ip, Date.now() - config.periodMs),
 			this.db.prepare('SELECT is_proxy FROM ip_info WHERE ip = ?1').bind(ip),
 		])
 
@@ -677,8 +1169,9 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		const limitedByCountry = LIMITED_COUNTRIES.includes(countryCode)
 
 		if (
-			(count >= MAX_DROPS_PER_IP ||
-				(limitedByCountry && count >= MAX_DROPS_PER_IP_IN_LIMITED_COUNTRY)) &&
+			(count >= config.maxDropsPerIp ||
+				(limitedByCountry &&
+					count >= config.maxDropsPerIpInLimitedCountry)) &&
 			(!this.isDev || ENABLE_LIMIT_PER_IP_IN_DEV) &&
 			!this.ipIsWhitelisted(ip)
 		) {
@@ -718,11 +1211,11 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			canBeProxy = ipInfo.results[0].is_proxy ? true : false
 		}
 
-		if (canBeProxy && BAN_PROXIES) {
+		if (canBeProxy && config.banProxies) {
 			throw new HTTPException(403, { message: 'Proxies are not allowed' })
 		}
 
-		if (canBeProxy && count >= MAX_DROPS_PER_PROXY_IP) {
+		if (canBeProxy && count >= config.maxDropsPerProxyIp) {
 			throw new HTTPException(403, {
 				message: 'Drop limit reached for your ip',
 			})
@@ -739,11 +1232,11 @@ export class NanoDropDO extends DurableObject<Bindings> {
 					.prepare(
 						'SELECT COUNT(*) as count FROM drops WHERE account = ?1 AND timestamp >= ?2',
 					)
-					.bind(account, Date.now() - PERIOD)
+					.bind(account, Date.now() - config.periodMs)
 					.all<CountRow>()
 				const accountDropsCount = results?.[0]?.count || 0
 
-				if (accountDropsCount >= MAX_DROPS_PER_ACCOUNT) {
+				if (accountDropsCount >= config.maxDropsPerAccount) {
 					throw new HTTPException(403, {
 						message: 'Limit reached for this account',
 					})
@@ -757,30 +1250,31 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			}
 		}
 
-		const defaultAmount = this.getDropAmount()
+		const defaultAmount = this.getDropAmount(config)
 		if (defaultAmount === '0') {
 			throw new HTTPException(500, { message: 'Insufficient balance' })
 		}
 
 		const amount = canBeProxy
 			? TunedBigNumber(defaultAmount)
-					.dividedBy(PROXY_AMOUNT_DIVIDE_BY)
+					.dividedBy(config.proxyAmountDivideBy)
 					.toString(10)
 			: defaultAmount
 		const amountNano = convert(amount, { from: Unit.raw, to: Unit.NANO })
 		const verificationRequired =
-			VERIFICATION_REQUIRED_BY_DEFAULT || (canBeProxy && VERIFY_WHEN_PROXY)
+			config.verificationRequiredByDefault ||
+			(canBeProxy && config.verifyWhenProxy)
 
 		return { ip, amount, amountNano, verificationRequired }
 	}
 
-	getDropAmount() {
+	getDropAmount(config = this.getFaucetConfig()) {
 		const balance = this.wallet.balance
-		const min = convert(MIN_DROP_AMOUNT.toString(), {
+		const min = convert(config.minDropAmount, {
 			from: Unit.NANO,
 			to: Unit.raw,
 		})
-		const max = convert(MAX_DROP_AMOUNT.toString(), {
+		const max = convert(config.maxDropAmount, {
 			from: Unit.NANO,
 			to: Unit.raw,
 		})
@@ -788,7 +1282,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		if (TunedBigNumber(balance).isLessThan(min)) return '0'
 
 		const amount = TunedBigNumber(balance)
-			.dividedBy(DIVIDE_BALANCE_BY)
+			.dividedBy(config.divideBalanceBy)
 			.toString(10)
 		const amountFixed = TunedBigNumber(amount)
 			.minus(amount.substring(1, amount.length))
@@ -822,6 +1316,8 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		timestamp: number
 		took: number
 	}) {
+		const config = this.getFaucetConfig()
+
 		const [dropsCountResult, ipCountResult] = await this.db.batch<
 			Record<string, any>
 		>([
@@ -829,12 +1325,12 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				.prepare(
 					'SELECT COUNT(*) as count FROM drops WHERE account = ?1 AND timestamp >= ?2',
 				)
-				.bind(data.account, Date.now() - PERIOD),
+				.bind(data.account, Date.now() - config.periodMs),
 			this.db
 				.prepare(
 					'SELECT COUNT(*) as count FROM drops WHERE ip = ?1 AND timestamp >= ?2',
 				)
-				.bind(data.ip, Date.now() - PERIOD),
+				.bind(data.ip, Date.now() - config.periodMs),
 			this.db
 				.prepare(
 					'INSERT INTO drops (hash, account, amount, ip, timestamp, took) VALUES (?1, ?2, ?3, ?4, ?5, ?6)',
@@ -854,7 +1350,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			: 0
 
 		if (
-			dropsCount + 1 >= MAX_DROPS_PER_ACCOUNT &&
+			dropsCount + 1 >= config.maxDropsPerAccount &&
 			(!this.isDev || ENABLE_LIMIT_PER_IP_IN_DEV)
 		) {
 			if (!this.accountIsWhitelisted(data.account)) {
@@ -866,7 +1362,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			? (ipCountResult.results[0].count as number)
 			: 0
 
-		if (ipCount + 1 >= MAX_DROPS_PER_IP) {
+		if (ipCount + 1 >= config.maxDropsPerIp) {
 			if (!this.ipIsWhitelisted(data.ip)) {
 				this.addIPToTmpBlacklist(data.ip)
 			}
@@ -880,7 +1376,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			this.ipDropQueue.set(ip, promises)
 		}
 
-		if (promises.size >= MAX_DROP_PER_IP_SIMULTANEOUSLY) {
+		if (promises.size >= this.getFaucetConfig().maxDropPerIpSimultaneously) {
 			throw new HTTPException(403, { message: 'Many simultaneous requests' })
 		}
 
@@ -1042,7 +1538,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 	addIPToTmpBlacklist(ip: string) {
 		const now = Date.now()
 		this.pruneExpiredIPBlacklist(now)
-		const expiresAt = now + TMP_IP_BLACKLIST_EXPIRATION
+		const expiresAt = now + this.getFaucetConfig().ipBlacklistExpirationMs
 
 		this.sql.exec(
 			`
