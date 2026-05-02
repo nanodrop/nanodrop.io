@@ -1,7 +1,7 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"main": "src/api/index.ts",
-	"name": "nanodrop-faucet-dev",
+	"name": "nanodrop-dev",
 	"compatibility_date": "2026-04-22",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"durable_objects": {

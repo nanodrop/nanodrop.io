@@ -60,7 +60,7 @@ npm run dev
 This runs:
 
 - `next dev` for the UI
-- `wrangler dev --config wrangler.faucet-dev.jsonc` for the faucet API and Durable Object
+- `wrangler dev --config wrangler.dev.jsonc` for the faucet API and Durable Object
 
 During `npm run dev`, the browser still calls the same-origin faucet route at `/api/faucet`.
 The dev-only route handler at [`src/app/api/faucet/[[...path]]/route.ts`](/home/anarkrypto/workspace/nanodrop/nanodrop.io/src/app/api/faucet/[[...path]]/route.ts) proxies that path to the local faucet worker on `http://127.0.0.1:8787`.
