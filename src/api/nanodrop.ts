@@ -27,14 +27,18 @@ const PROXY_AMOUNT_DIVIDE_BY = 10
 const LIMITED_COUNTRIES: string[] = []
 const MAX_DROPS_PER_IP_IN_LIMITED_COUNTRY = 2
 const LOCAL_REQUEST_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '::1'])
+const DEFAULT_MIN_RECEIVABLE_AMOUNT = '0.0001'
+const MIN_RECEIVABLE_AMOUNT_SETTING_KEY = 'min_receivable_amount_raw'
 
 type CountRow = { count: number }
 type AverageRow = { average: number | null }
 type WalletStateRow = { state: string }
 type IPWhitelistRow = { ip: string }
 type AccountWhitelistRow = { account: string }
+type AdminSettingRow = { value: string }
 type CountryDropsRow = { country_code: string; count: number }
 type DailyDropsRow = { day: string; count: number }
+type ReceivableBlock = { blockHash: string; amount: string }
 type DropReadiness = {
 	amount: string
 	amountNano: string
@@ -309,7 +313,36 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		})
 
 		this.app.get('/wallet/receivables', async c => {
-			return c.json(this.wallet.receivableBlocks)
+			return c.json(this.getFilteredReceivableBlocks())
+		})
+
+		this.app.get('/wallet/receivables/config', async c => {
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
+			}
+
+			return c.json(this.getReceivableConfig())
+		})
+
+		this.app.put('/wallet/receivables/config', async c => {
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
+			}
+
+			const payload = await c.req.json().catch(() => null)
+			const minReceivableAmount =
+				typeof payload?.minReceivableAmount === 'string'
+					? payload.minReceivableAmount.trim()
+					: ''
+
+			if (!this.isValidNanoAmount(minReceivableAmount)) {
+				return c.json({ error: 'Invalid minReceivableAmount' }, 400)
+			}
+
+			const config = await this.setMinReceivableAmount(minReceivableAmount)
+			return c.json(config)
 		})
 
 		this.app.post('/wallet/receive/:link', async c => {
@@ -456,12 +489,22 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				expires_at INTEGER NOT NULL
 			);
 
+			CREATE TABLE IF NOT EXISTS admin_settings (
+				key TEXT PRIMARY KEY,
+				value TEXT NOT NULL,
+				updated_at INTEGER NOT NULL
+			);
+
 			CREATE INDEX IF NOT EXISTS temporary_ip_blacklist_expires_at_index
 				ON temporary_ip_blacklist(expires_at);
 		`)
 	}
 
 	async init() {
+		this.wallet.configure({
+			minAmountRaw: this.getMinReceivableAmountRaw(),
+		})
+
 		const walletState = this.getWalletState()
 		if (walletState) {
 			this.wallet.update(walletState)
@@ -484,6 +527,92 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		}
 
 		return JSON.parse(row.value.state) as NanoWalletState
+	}
+
+	getReceivableConfig() {
+		const minReceivableAmountRaw = this.getMinReceivableAmountRaw()
+
+		return {
+			minReceivableAmount: convert(minReceivableAmountRaw, {
+				from: Unit.raw,
+				to: Unit.NANO,
+			}),
+			minReceivableAmountRaw,
+		}
+	}
+
+	getMinReceivableAmountRaw() {
+		const row = this.sql
+			.exec<AdminSettingRow>(
+				'SELECT value FROM admin_settings WHERE key = ?',
+				MIN_RECEIVABLE_AMOUNT_SETTING_KEY,
+			)
+			.next()
+
+		if (!row.done) {
+			return row.value.value
+		}
+
+		return convert(DEFAULT_MIN_RECEIVABLE_AMOUNT, {
+			from: Unit.NANO,
+			to: Unit.raw,
+		})
+	}
+
+	async setMinReceivableAmount(minReceivableAmount: string) {
+		const minReceivableAmountRaw = convert(minReceivableAmount, {
+			from: Unit.NANO,
+			to: Unit.raw,
+		})
+
+		this.sql.exec(
+			`
+				INSERT INTO admin_settings (key, value, updated_at)
+				VALUES (?, ?, ?)
+				ON CONFLICT(key) DO UPDATE SET
+					value = excluded.value,
+					updated_at = excluded.updated_at
+			`,
+			MIN_RECEIVABLE_AMOUNT_SETTING_KEY,
+			minReceivableAmountRaw,
+			Date.now(),
+		)
+
+		this.wallet.configure({ minAmountRaw: minReceivableAmountRaw })
+		await this.wallet.getReceivable()
+
+		return this.getReceivableConfig()
+	}
+
+	isValidNanoAmount(amount: string) {
+		try {
+			return (
+				amount.length > 0 &&
+				TunedBigNumber(amount).isFinite() &&
+				!TunedBigNumber(amount).isNegative() &&
+				convert(amount, { from: Unit.NANO, to: Unit.raw }) !== ''
+			)
+		} catch {
+			return false
+		}
+	}
+
+	getFilteredReceivableBlocks() {
+		const minReceivableAmountRaw = this.getMinReceivableAmountRaw()
+
+		return this.wallet.receivableBlocks
+			.filter(block =>
+				TunedBigNumber(block.amount).isGreaterThanOrEqualTo(
+					minReceivableAmountRaw,
+				),
+			)
+			.sort((left: ReceivableBlock, right: ReceivableBlock) => {
+				const byAmount =
+					TunedBigNumber(right.amount).comparedTo(left.amount) || 0
+				if (byAmount !== 0) return byAmount
+
+				return left.blockHash.localeCompare(right.blockHash)
+			})
 	}
 
 	saveWalletState(state: NanoWalletState) {

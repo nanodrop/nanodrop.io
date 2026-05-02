@@ -5,6 +5,7 @@ import {
 	ArrowPathIcon,
 	ArrowRightOnRectangleIcon,
 	CheckCircleIcon,
+	Cog6ToothIcon,
 	KeyIcon,
 	PlusIcon,
 	ShieldCheckIcon,
@@ -64,17 +65,30 @@ type SessionResponse = {
 type ReceivableValue = {
 	amount?: string
 	balance?: string
+	blockHash?: string
 	link?: string
 	hash?: string
 	[key: string]: unknown
 }
 
 type ReceivablePayload = Record<string, ReceivableValue> | ReceivableValue[]
+type ReceivableConfig = {
+	minReceivableAmount: string
+	minReceivableAmountRaw: string
+}
+type ReceivableItem = {
+	key: string
+	link: string
+	amount?: string
+	value: ReceivableValue
+}
 
 type RequestOptions = Omit<RequestInit, 'body'> & {
 	body?: unknown
 }
 
+const DEFAULT_MIN_RECEIVABLE_AMOUNT = '0.0001'
+const RECEIVABLES_PAGE_SIZE = 10
 const countryNames = Countries as Record<string, string>
 
 const jsonRequest = async <T,>(url: string, options: RequestOptions = {}) => {
@@ -151,14 +165,49 @@ const formatDateTime = (timestamp: number) =>
 const resolveReceivableItems = (receivables: ReceivablePayload | null) => {
 	if (!receivables) return []
 
-	if (Array.isArray(receivables)) {
-		return receivables.map((value, index) => ({
-			key: value.link || value.hash || String(index),
+	const toItem = (
+		value: ReceivableValue,
+		fallbackKey: string,
+	): ReceivableItem => {
+		const link = value.blockHash || value.link || value.hash || fallbackKey
+
+		return {
+			key: link,
+			link,
+			amount: value.amount || value.balance,
 			value,
-		}))
+		}
 	}
 
-	return Object.entries(receivables).map(([key, value]) => ({ key, value }))
+	const sortByAmountDesc = (left: ReceivableItem, right: ReceivableItem) => {
+		const leftAmount = parseRawAmount(left.amount)
+		const rightAmount = parseRawAmount(right.amount)
+
+		if (leftAmount > rightAmount) return -1
+		if (leftAmount < rightAmount) return 1
+
+		return left.link.localeCompare(right.link)
+	}
+
+	if (Array.isArray(receivables)) {
+		return receivables
+			.map((value, index) => toItem(value, String(index)))
+			.sort(sortByAmountDesc)
+	}
+
+	return Object.entries(receivables)
+		.map(([key, value]) => toItem(value, key))
+		.sort(sortByAmountDesc)
+}
+
+const parseRawAmount = (amount?: string) => {
+	if (!amount || !/^\d+$/.test(amount)) return BigInt(0)
+
+	try {
+		return BigInt(amount)
+	} catch {
+		return BigInt(0)
+	}
 }
 
 function Metric({
@@ -246,6 +295,13 @@ export default function AdminDashboard() {
 	const [token, setToken] = useState('')
 	const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null)
 	const [receivables, setReceivables] = useState<ReceivablePayload | null>(null)
+	const [receivableConfig, setReceivableConfig] =
+		useState<ReceivableConfig | null>(null)
+	const [receivableConfigOpen, setReceivableConfigOpen] = useState(false)
+	const [minReceivableAmountInput, setMinReceivableAmountInput] = useState(
+		DEFAULT_MIN_RECEIVABLE_AMOUNT,
+	)
+	const [receivablePage, setReceivablePage] = useState(0)
 	const [ipWhitelist, setIpWhitelist] = useState<string[]>([])
 	const [accountWhitelist, setAccountWhitelist] = useState<string[]>([])
 	const [ipInput, setIpInput] = useState('')
@@ -261,16 +317,24 @@ export default function AdminDashboard() {
 		setError(null)
 
 		try {
-			const [analyticsData, receivableData, ipData, accountData] =
-				await Promise.all([
-					faucetRequest<AdminAnalytics>('/analytics'),
-					faucetRequest<ReceivablePayload>('/wallet/receivables'),
-					faucetRequest<string[]>('/whitelist/ip'),
-					faucetRequest<string[]>('/whitelist/account'),
-				])
+			const [
+				analyticsData,
+				receivableData,
+				receivableConfigData,
+				ipData,
+				accountData,
+			] = await Promise.all([
+				faucetRequest<AdminAnalytics>('/analytics'),
+				faucetRequest<ReceivablePayload>('/wallet/receivables'),
+				faucetRequest<ReceivableConfig>('/wallet/receivables/config'),
+				faucetRequest<string[]>('/whitelist/ip'),
+				faucetRequest<string[]>('/whitelist/account'),
+			])
 
 			setAnalytics(analyticsData)
 			setReceivables(receivableData)
+			setReceivableConfig(receivableConfigData)
+			setMinReceivableAmountInput(receivableConfigData.minReceivableAmount)
 			setIpWhitelist(ipData)
 			setAccountWhitelist(accountData)
 		} catch (requestError) {
@@ -312,6 +376,22 @@ export default function AdminDashboard() {
 		() => resolveReceivableItems(receivables),
 		[receivables],
 	)
+	const receivablePageCount = Math.max(
+		1,
+		Math.ceil(receivableItems.length / RECEIVABLES_PAGE_SIZE),
+	)
+	const paginatedReceivableItems = receivableItems.slice(
+		receivablePage * RECEIVABLES_PAGE_SIZE,
+		receivablePage * RECEIVABLES_PAGE_SIZE + RECEIVABLES_PAGE_SIZE,
+	)
+	const receivableStart =
+		receivableItems.length === 0
+			? 0
+			: receivablePage * RECEIVABLES_PAGE_SIZE + 1
+	const receivableEnd = Math.min(
+		receivableItems.length,
+		(receivablePage + 1) * RECEIVABLES_PAGE_SIZE,
+	)
 	const maxCountryDrops = Math.max(
 		1,
 		...(analytics?.topCountries.map(country => country.count) || []),
@@ -320,6 +400,12 @@ export default function AdminDashboard() {
 		1,
 		...(analytics?.dailyDrops.map(day => day.count) || []),
 	)
+
+	useEffect(() => {
+		if (receivablePage > receivablePageCount - 1) {
+			setReceivablePage(receivablePageCount - 1)
+		}
+	}, [receivablePage, receivablePageCount])
 
 	const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault()
@@ -350,6 +436,10 @@ export default function AdminDashboard() {
 		setAuthenticated(false)
 		setAnalytics(null)
 		setReceivables(null)
+		setReceivableConfig(null)
+		setReceivableConfigOpen(false)
+		setMinReceivableAmountInput(DEFAULT_MIN_RECEIVABLE_AMOUNT)
+		setReceivablePage(0)
 		setIpWhitelist([])
 		setAccountWhitelist([])
 		setNotice(null)
@@ -372,6 +462,32 @@ export default function AdminDashboard() {
 		} finally {
 			setSubmitting(false)
 		}
+	}
+
+	const openReceivableConfig = () => {
+		setMinReceivableAmountInput(
+			receivableConfig?.minReceivableAmount || DEFAULT_MIN_RECEIVABLE_AMOUNT,
+		)
+		setReceivableConfigOpen(true)
+	}
+
+	const saveReceivableConfig = async (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+		const minReceivableAmount = minReceivableAmountInput.trim()
+
+		await runAction(async () => {
+			const config = await faucetRequest<ReceivableConfig>(
+				'/wallet/receivables/config',
+				{
+					method: 'PUT',
+					body: { minReceivableAmount },
+				},
+			)
+			setReceivableConfig(config)
+			setMinReceivableAmountInput(config.minReceivableAmount)
+			setReceivablePage(0)
+			setReceivableConfigOpen(false)
+		}, 'Receivable config updated')
 	}
 
 	const syncWallet = async () => {
@@ -510,6 +626,65 @@ export default function AdminDashboard() {
 					{notice}
 				</div>
 			)}
+			{receivableConfigOpen && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4">
+					<form
+						onSubmit={saveReceivableConfig}
+						className="w-full max-w-sm rounded-md border border-slate-200 bg-white p-4 shadow-xl dark:border-zinc-800 dark:bg-midnight-2"
+					>
+						<div className="mb-4 flex items-center justify-between gap-4">
+							<h2 className="text-lg font-semibold text-slate-900 dark:text-zinc-100">
+								Receivables
+							</h2>
+							<button
+								type="button"
+								aria-label="Close receivables settings"
+								onClick={() => setReceivableConfigOpen(false)}
+								className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 text-slate-600 transition hover:border-nano hover:text-nano dark:border-zinc-700 dark:text-zinc-300"
+							>
+								<XCircleIcon className="h-5 w-5" />
+							</button>
+						</div>
+						<label
+							htmlFor="min-receivable-amount"
+							className="mb-2 block text-sm font-semibold text-slate-700 dark:text-zinc-300"
+						>
+							Min receivable amount
+						</label>
+						<div className="flex items-center rounded-md border border-slate-300 bg-white focus-within:border-nano focus-within:ring-2 focus-within:ring-nano/20 dark:border-zinc-700 dark:bg-midnight-1">
+							<input
+								id="min-receivable-amount"
+								type="number"
+								inputMode="decimal"
+								min="0"
+								step="0.000000000001"
+								value={minReceivableAmountInput}
+								onChange={event =>
+									setMinReceivableAmountInput(event.target.value)
+								}
+								className="h-11 min-w-0 flex-1 rounded-md bg-transparent px-3 text-slate-900 outline-none dark:text-zinc-100"
+							/>
+							<span className="px-3 text-sm font-semibold text-slate-500 dark:text-zinc-500">
+								XNO
+							</span>
+						</div>
+						<div className="mt-4 flex justify-end gap-2">
+							<IconButton
+								variant="neutral"
+								onClick={() => setReceivableConfigOpen(false)}
+							>
+								Cancel
+							</IconButton>
+							<IconButton
+								type="submit"
+								disabled={submitting || !minReceivableAmountInput.trim()}
+							>
+								Save
+							</IconButton>
+						</div>
+					</form>
+				</div>
+			)}
 
 			{analytics && (
 				<>
@@ -608,17 +783,27 @@ export default function AdminDashboard() {
 								</div>
 							</Panel>
 
-							<Panel title="Receivables">
+							<Panel
+								title="Receivables"
+								actions={
+									<button
+										type="button"
+										aria-label="Receivables settings"
+										title="Receivables settings"
+										onClick={openReceivableConfig}
+										className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 transition hover:border-nano hover:text-nano dark:border-zinc-700 dark:bg-midnight-1 dark:text-zinc-300"
+									>
+										<Cog6ToothIcon className="h-5 w-5" />
+									</button>
+								}
+							>
 								{receivableItems.length === 0 ? (
 									<p className="text-sm text-slate-500 dark:text-zinc-500">
 										No receivable blocks.
 									</p>
 								) : (
 									<div className="space-y-2">
-										{receivableItems.map(({ key, value }) => {
-											const link = value.link || value.hash || key
-											const amount = value.amount || value.balance
-
+										{paginatedReceivableItems.map(({ key, link, amount }) => {
 											return (
 												<div
 													key={key}
@@ -653,6 +838,34 @@ export default function AdminDashboard() {
 												</div>
 											)
 										})}
+										<div className="flex flex-col gap-3 border-t border-slate-100 pt-3 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
+											<div className="text-sm text-slate-500 dark:text-zinc-500">
+												{receivableStart}-{receivableEnd} of{' '}
+												{receivableItems.length}
+											</div>
+											<div className="flex gap-2">
+												<IconButton
+													variant="neutral"
+													disabled={receivablePage === 0}
+													onClick={() =>
+														setReceivablePage(page => Math.max(0, page - 1))
+													}
+												>
+													Previous
+												</IconButton>
+												<IconButton
+													variant="neutral"
+													disabled={receivablePage >= receivablePageCount - 1}
+													onClick={() =>
+														setReceivablePage(page =>
+															Math.min(receivablePageCount - 1, page + 1),
+														)
+													}
+												>
+													Next
+												</IconButton>
+											</div>
+										</div>
 									</div>
 								)}
 							</Panel>
