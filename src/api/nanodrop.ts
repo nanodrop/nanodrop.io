@@ -29,15 +29,27 @@ const MAX_DROPS_PER_IP_IN_LIMITED_COUNTRY = 2
 const LOCAL_REQUEST_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '::1'])
 
 type CountRow = { count: number }
+type AverageRow = { average: number | null }
 type WalletStateRow = { state: string }
 type IPWhitelistRow = { ip: string }
 type AccountWhitelistRow = { account: string }
+type CountryDropsRow = { country_code: string; count: number }
+type DailyDropsRow = { day: string; count: number }
 type DropReadiness = {
 	amount: string
 	amountNano: string
 	verificationRequired: boolean
 }
 type DropContext = DropReadiness & { ip: string }
+type RecentDropRow = {
+	hash: string
+	account: string
+	amount: string
+	took: number
+	timestamp: number
+	country_code: string
+	is_proxy: number
+}
 
 const isLocalPreviewRequest = (request: Request) => {
 	return LOCAL_REQUEST_HOSTNAMES.has(new URL(request.url).hostname)
@@ -287,8 +299,9 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		})
 
 		this.app.post('/wallet/sync', async c => {
-			if (c.req.header('Authorization') !== `Bearer ${env.ADMIN_TOKEN}`) {
-				return c.json({ error: 'Unauthorized' }, 401)
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
 			}
 
 			await this.wallet.sync()
@@ -300,8 +313,9 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		})
 
 		this.app.post('/wallet/receive/:link', async c => {
-			if (c.req.header('Authorization') !== `Bearer ${env.ADMIN_TOKEN}`) {
-				return c.json({ error: 'Unauthorized' }, 401)
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
 			}
 
 			const link = c.req.param('link')
@@ -310,16 +324,18 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		})
 
 		this.app.get('/whitelist/ip', async c => {
-			if (c.req.header('Authorization') !== `Bearer ${env.ADMIN_TOKEN}`) {
-				return c.json({ error: 'Unauthorized' }, 401)
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
 			}
 
 			return c.json(this.getIPWhitelist())
 		})
 
 		this.app.put('/whitelist/ip/:ipAddress', async c => {
-			if (c.req.header('Authorization') !== `Bearer ${env.ADMIN_TOKEN}`) {
-				return c.json({ error: 'Unauthorized' }, 401)
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
 			}
 
 			const ip = c.req.param('ipAddress')
@@ -334,8 +350,9 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		})
 
 		this.app.delete('/whitelist/ip/:ipAddress', async c => {
-			if (c.req.header('Authorization') !== `Bearer ${env.ADMIN_TOKEN}`) {
-				return c.json({ error: 'Unauthorized' }, 401)
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
 			}
 
 			const ip = c.req.param('ipAddress')
@@ -349,16 +366,18 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		})
 
 		this.app.get('/whitelist/account', async c => {
-			if (c.req.header('Authorization') !== `Bearer ${env.ADMIN_TOKEN}`) {
-				return c.json({ error: 'Unauthorized' }, 401)
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
 			}
 
 			return c.json(this.getAccountWhitelist())
 		})
 
 		this.app.put('/whitelist/account/:account', async c => {
-			if (c.req.header('Authorization') !== `Bearer ${env.ADMIN_TOKEN}`) {
-				return c.json({ error: 'Unauthorized' }, 401)
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
 			}
 
 			if (!checkAddress(c.req.param('account'))) {
@@ -374,8 +393,9 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		})
 
 		this.app.delete('/whitelist/account/:account', async c => {
-			if (c.req.header('Authorization') !== `Bearer ${env.ADMIN_TOKEN}`) {
-				return c.json({ error: 'Unauthorized' }, 401)
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
 			}
 
 			if (!checkAddress(c.req.param('account'))) {
@@ -388,6 +408,23 @@ export class NanoDropDO extends DurableObject<Bindings> {
 
 			return c.json({ success: true })
 		})
+
+		this.app.get('/analytics', async c => {
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
+			}
+
+			return c.json(await this.getAdminAnalytics())
+		})
+	}
+
+	getAdminAuthError(request: Request, env: Bindings) {
+		if (request.headers.get('Authorization') !== `Bearer ${env.ADMIN_TOKEN}`) {
+			return { message: 'Unauthorized', status: 401 as const }
+		}
+
+		return null
 	}
 
 	initSqlSchema() {
@@ -898,6 +935,132 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			'DELETE FROM temporary_ip_blacklist WHERE expires_at <= ?',
 			now,
 		)
+	}
+
+	async getAdminAnalytics() {
+		const now = Date.now()
+		const oneDayAgo = now - 1000 * 60 * 60 * 24
+		const sevenDaysAgo = now - 1000 * 60 * 60 * 24 * 7
+		const fourteenDaysAgo = now - 1000 * 60 * 60 * 24 * 14
+
+		this.pruneExpiredIPBlacklist(now)
+
+		const [
+			totalDrops,
+			last24hDrops,
+			last7dDrops,
+			uniqueAccounts,
+			uniqueIps,
+			proxyDrops,
+			avgTook,
+			topCountries,
+			dailyDrops,
+			recentDrops,
+		] = await this.db.batch<Record<string, any>>([
+			this.db.prepare('SELECT COUNT(*) as count FROM drops'),
+			this.db
+				.prepare('SELECT COUNT(*) as count FROM drops WHERE timestamp >= ?1')
+				.bind(oneDayAgo),
+			this.db
+				.prepare('SELECT COUNT(*) as count FROM drops WHERE timestamp >= ?1')
+				.bind(sevenDaysAgo),
+			this.db.prepare('SELECT COUNT(DISTINCT account) as count FROM drops'),
+			this.db.prepare('SELECT COUNT(DISTINCT ip) as count FROM drops'),
+			this.db.prepare(`
+				SELECT COUNT(*) as count
+				FROM drops
+				INNER JOIN ip_info ON drops.ip = ip_info.ip
+				WHERE ip_info.is_proxy = 1
+			`),
+			this.db.prepare('SELECT AVG(took) as average FROM drops'),
+			this.db.prepare(`
+				SELECT country_code, count
+				FROM drops_by_country
+				ORDER BY count DESC, country_code ASC
+				LIMIT 8
+			`),
+			this.db
+				.prepare(
+					`
+					SELECT date(timestamp / 1000, 'unixepoch') as day, COUNT(*) as count
+					FROM drops
+					WHERE timestamp >= ?1
+					GROUP BY day
+					ORDER BY day ASC
+				`,
+				)
+				.bind(fourteenDaysAgo),
+			this.db.prepare(`
+				SELECT hash, account, amount, took, timestamp, ip_info.country_code, ip_info.is_proxy
+				FROM drops
+				INNER JOIN ip_info ON drops.ip = ip_info.ip
+				ORDER BY timestamp DESC
+				LIMIT 10
+			`),
+		])
+
+		const ipWhitelistCount = this.sql
+			.exec<CountRow>('SELECT COUNT(*) as count FROM ip_whitelist')
+			.one().count
+		const accountWhitelistCount = this.sql
+			.exec<CountRow>('SELECT COUNT(*) as count FROM account_whitelist')
+			.one().count
+		const temporaryIpBlacklistCount = this.sql
+			.exec<CountRow>('SELECT COUNT(*) as count FROM temporary_ip_blacklist')
+			.one().count
+		const temporaryAccountBlacklistCount = this.sql
+			.exec<CountRow>(
+				'SELECT COUNT(*) as count FROM temporary_account_blacklist',
+			)
+			.one().count
+
+		const { balance, receivable, frontier, representative } = this.wallet.state
+
+		return {
+			generatedAt: now,
+			totalDrops: this.firstCount(totalDrops),
+			last24hDrops: this.firstCount(last24hDrops),
+			last7dDrops: this.firstCount(last7dDrops),
+			uniqueAccounts: this.firstCount(uniqueAccounts),
+			uniqueIps: this.firstCount(uniqueIps),
+			proxyDrops: this.firstCount(proxyDrops),
+			avgTookMs: (avgTook.results?.[0] as AverageRow | undefined)?.average || 0,
+			topCountries:
+				topCountries.results?.map(row => ({
+					country_code: (row as CountryDropsRow).country_code,
+					count: (row as CountryDropsRow).count,
+				})) || [],
+			dailyDrops:
+				dailyDrops.results?.map(row => ({
+					day: (row as DailyDropsRow).day,
+					count: (row as DailyDropsRow).count,
+				})) || [],
+			recentDrops:
+				recentDrops.results?.map(row => {
+					const drop = row as RecentDropRow
+					return {
+						...drop,
+						is_proxy: drop.is_proxy ? true : false,
+					}
+				}) || [],
+			wallet: {
+				account: this.wallet.account,
+				balance,
+				receivable,
+				frontier,
+				representative,
+			},
+			adminState: {
+				ipWhitelistCount,
+				accountWhitelistCount,
+				temporaryIpBlacklistCount,
+				temporaryAccountBlacklistCount,
+			},
+		}
+	}
+
+	firstCount(result: D1Result<Record<string, any>>) {
+		return result.results ? (result.results[0] as CountRow).count || 0 : 0
 	}
 
 	fetch(request: Request) {
