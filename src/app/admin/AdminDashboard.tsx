@@ -89,6 +89,7 @@ type FaucetConfig = {
 	verifyWhenProxy: boolean
 	banProxies: boolean
 	proxyAmountDivideBy: number
+	limitedCountries: string[]
 }
 type FaucetConfigInputs = {
 	minDropAmount: string
@@ -104,6 +105,7 @@ type FaucetConfigInputs = {
 	verifyWhenProxy: boolean
 	banProxies: boolean
 	proxyAmountDivideBy: string
+	limitedCountries: string
 }
 type ReceivableItem = {
 	key: string
@@ -130,6 +132,7 @@ const EMPTY_FAUCET_CONFIG_INPUTS: FaucetConfigInputs = {
 	verifyWhenProxy: false,
 	banProxies: false,
 	proxyAmountDivideBy: '',
+	limitedCountries: '',
 }
 const RECEIVABLES_PAGE_SIZE = 10
 const countryNames = Countries as Record<string, string>
@@ -205,6 +208,27 @@ const formatDateTime = (timestamp: number) =>
 		minute: '2-digit',
 	}).format(new Date(timestamp))
 
+const formatCountryCodes = (countries: string[]) => {
+	if (countries.length === 0) return 'None'
+
+	return countries
+		.map(country => {
+			const name = countryNames[country]
+			return name ? `${name} (${country})` : country
+		})
+		.join(', ')
+}
+
+const parseCountryCodesInput = (value: string) =>
+	Array.from(
+		new Set(
+			value
+				.split(/[\s,;]+/)
+				.map(country => country.trim().toUpperCase())
+				.filter(Boolean),
+		),
+	)
+
 const resolveReceivableItems = (receivables: ReceivablePayload | null) => {
 	if (!receivables) return []
 
@@ -272,6 +296,7 @@ const resolveFaucetConfigInputs = (
 		verifyWhenProxy: config.verifyWhenProxy,
 		banProxies: config.banProxies,
 		proxyAmountDivideBy: String(config.proxyAmountDivideBy),
+		limitedCountries: config.limitedCountries.join(', '),
 	}
 }
 
@@ -651,9 +676,20 @@ export default function AdminDashboard() {
 		setFaucetConfigOpen(true)
 	}
 
-	const faucetConfigInputComplete = Object.values(faucetConfigInputs).every(
-		value => typeof value !== 'string' || value.trim().length > 0,
-	)
+	const faucetConfigInputComplete = (
+		[
+			'minDropAmount',
+			'maxDropAmount',
+			'divideBalanceBy',
+			'periodDays',
+			'maxDropPerIpSimultaneously',
+			'maxDropsPerAccount',
+			'maxDropsPerIp',
+			'maxDropsPerProxyIp',
+			'maxDropsPerIpInLimitedCountry',
+			'proxyAmountDivideBy',
+		] as const
+	).every(field => faucetConfigInputs[field].trim().length > 0)
 
 	const saveFaucetConfig = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault()
@@ -678,6 +714,9 @@ export default function AdminDashboard() {
 					verifyWhenProxy: faucetConfigInputs.verifyWhenProxy,
 					banProxies: faucetConfigInputs.banProxies,
 					proxyAmountDivideBy: faucetConfigInputs.proxyAmountDivideBy.trim(),
+					limitedCountries: parseCountryCodesInput(
+						faucetConfigInputs.limitedCountries,
+					),
 				},
 			})
 			setFaucetConfig(config)
@@ -1006,6 +1045,27 @@ export default function AdminDashboard() {
 								min="0"
 								step="1"
 							/>
+							<div className="sm:col-span-2">
+								<label
+									htmlFor="limited-countries"
+									className="mb-2 block text-sm font-semibold text-slate-700 dark:text-zinc-300"
+								>
+									Limited countries
+								</label>
+								<textarea
+									id="limited-countries"
+									value={faucetConfigInputs.limitedCountries}
+									onChange={event =>
+										updateFaucetConfigInput(
+											'limitedCountries',
+											event.target.value,
+										)
+									}
+									rows={3}
+									placeholder="BR, US, IN"
+									className="w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-nano focus:ring-2 focus:ring-nano/20 dark:border-zinc-700 dark:bg-midnight-1 dark:text-zinc-100"
+								/>
+							</div>
 							<ConfigToggle
 								id="verification-required-by-default"
 								label="Verification required by default"
@@ -1398,6 +1458,14 @@ export default function AdminDashboard() {
 												{formatInteger(
 													faucetConfig.maxDropsPerIpInLimitedCountry,
 												)}
+											</div>
+										</div>
+										<div className="sm:col-span-2">
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												Limited countries
+											</div>
+											<div className="mt-1 text-slate-900 dark:text-zinc-100">
+												{formatCountryCodes(faucetConfig.limitedCountries)}
 											</div>
 										</div>
 										<div>

@@ -12,7 +12,6 @@ import { TunedBigNumber, formatNanoAddress, isValidIPv4OrIpv6 } from './utils'
 const MILLISECONDS_PER_MINUTE = 1000 * 60
 const MILLISECONDS_PER_DAY = MILLISECONDS_PER_MINUTE * 60 * 24
 const ENABLE_LIMIT_PER_IP_IN_DEV = false
-const LIMITED_COUNTRIES: string[] = []
 const LOCAL_REQUEST_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '::1'])
 const MIN_PERIOD_DAYS = 1
 const MAX_PERIOD_DAYS = 30
@@ -31,6 +30,7 @@ const DEFAULT_FAUCET_CONFIG = {
 	verifyWhenProxy: true,
 	banProxies: false,
 	proxyAmountDivideBy: 10,
+	limitedCountries: [] as string[],
 }
 const FAUCET_CONFIG_SETTING_KEYS = {
 	minReceivableAmountRaw: 'min_receivable_amount_raw',
@@ -47,6 +47,7 @@ const FAUCET_CONFIG_SETTING_KEYS = {
 	verifyWhenProxy: 'verify_when_proxy',
 	banProxies: 'ban_proxies',
 	proxyAmountDivideBy: 'proxy_amount_divide_by',
+	limitedCountries: 'limited_countries',
 }
 
 type CountRow = { count: number }
@@ -71,6 +72,7 @@ type FaucetConfigParseResult =
 type StringParseResult = { value: string } | { error: string }
 type NumberParseResult = { value: number } | { error: string }
 type BooleanParseResult = { value: boolean } | { error: string }
+type StringArrayParseResult = { value: string[] } | { error: string }
 type DropReadiness = {
 	amount: string
 	amountNano: string
@@ -633,6 +635,11 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				DEFAULT_FAUCET_CONFIG.proxyAmountDivideBy,
 				1,
 			),
+			limitedCountries: this.getStringArraySetting(
+				FAUCET_CONFIG_SETTING_KEYS.limitedCountries,
+				DEFAULT_FAUCET_CONFIG.limitedCountries,
+				this.isValidCountryCode,
+			),
 		}
 
 		return {
@@ -759,6 +766,17 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return proxyAmountDivideBy
 		}
 
+		const limitedCountries =
+			input.limitedCountries === undefined
+				? { value: this.getFaucetConfig().limitedCountries }
+				: this.parseCountryCodesInput(
+						input.limitedCountries,
+						'limitedCountries',
+					)
+		if ('error' in limitedCountries) {
+			return limitedCountries
+		}
+
 		return {
 			config: {
 				minDropAmount: minDropAmount.value,
@@ -774,6 +792,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				verifyWhenProxy: verifyWhenProxy.value,
 				banProxies: banProxies.value,
 				proxyAmountDivideBy: proxyAmountDivideBy.value,
+				limitedCountries: limitedCountries.value,
 			},
 		}
 	}
@@ -830,6 +849,10 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		this.setAdminSetting(
 			FAUCET_CONFIG_SETTING_KEYS.proxyAmountDivideBy,
 			String(config.proxyAmountDivideBy),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.limitedCountries,
+			JSON.stringify(config.limitedCountries),
 		)
 	}
 
@@ -908,6 +931,29 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		return fallback
 	}
 
+	getStringArraySetting(
+		key: string,
+		fallback: string[],
+		isValid: (value: string) => boolean,
+	) {
+		const value = this.getAdminSettingValue(key)
+		if (value === null) {
+			return fallback
+		}
+
+		try {
+			const parsed = JSON.parse(value) as unknown
+			if (
+				Array.isArray(parsed) &&
+				parsed.every(item => typeof item === 'string' && isValid(item))
+			) {
+				return Array.from(new Set(parsed as string[]))
+			}
+		} catch {}
+
+		return fallback
+	}
+
 	parsePositiveNanoInput(value: unknown, field: string): StringParseResult {
 		const amount =
 			typeof value === 'number'
@@ -962,6 +1008,29 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		}
 
 		return { error: `Invalid ${field}` }
+	}
+
+	parseCountryCodesInput(
+		value: unknown,
+		field: string,
+	): StringArrayParseResult {
+		if (!Array.isArray(value)) {
+			return { error: `Invalid ${field}` }
+		}
+
+		const countries = value.map(country =>
+			typeof country === 'string' ? country.trim().toUpperCase() : '',
+		)
+
+		if (countries.some(country => !this.isValidCountryCode(country))) {
+			return { error: `Invalid ${field}` }
+		}
+
+		return { value: Array.from(new Set(countries)) }
+	}
+
+	isValidCountryCode(countryCode: string) {
+		return /^[A-Z]{2}$/.test(countryCode)
 	}
 
 	getReceivableConfig() {
@@ -1117,7 +1186,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		const count = dropsCount.results
 			? (dropsCount.results[0].count as number)
 			: 0
-		const limitedByCountry = LIMITED_COUNTRIES.includes(countryCode)
+		const limitedByCountry = config.limitedCountries.includes(countryCode)
 
 		if (
 			(count >= config.maxDropsPerIp ||
