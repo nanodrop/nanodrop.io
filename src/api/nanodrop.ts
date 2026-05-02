@@ -12,20 +12,16 @@ import { TunedBigNumber, formatNanoAddress, isValidIPv4OrIpv6 } from './utils'
 const MILLISECONDS_PER_MINUTE = 1000 * 60
 const MILLISECONDS_PER_DAY = MILLISECONDS_PER_MINUTE * 60 * 24
 const ENABLE_LIMIT_PER_IP_IN_DEV = false
-const MAX_TMP_ACCOUNT_BLACKLIST_LENGTH = 10000
 const LIMITED_COUNTRIES: string[] = []
 const LOCAL_REQUEST_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '::1'])
 const MIN_PERIOD_DAYS = 1
 const MAX_PERIOD_DAYS = 30
-const MIN_IP_BLACKLIST_EXPIRATION_IN_MINUTES = 1
-const MAX_IP_BLACKLIST_EXPIRATION_IN_MINUTES = 1440
 const DEFAULT_FAUCET_CONFIG = {
 	minReceivableAmount: '0.0001',
 	minDropAmount: '0.000001',
 	maxDropAmount: '0.01',
 	divideBalanceBy: 10000,
 	periodDays: 7,
-	ipBlacklistExpirationInMinutes: 5,
 	maxDropPerIpSimultaneously: 3,
 	maxDropsPerAccount: 3,
 	maxDropsPerIp: 5,
@@ -42,7 +38,6 @@ const FAUCET_CONFIG_SETTING_KEYS = {
 	maxDropAmount: 'max_drop_amount',
 	divideBalanceBy: 'divide_balance_by',
 	periodDays: 'period_days',
-	ipBlacklistExpirationInMinutes: 'ip_blacklist_expiration_in_minutes',
 	maxDropPerIpSimultaneously: 'max_drop_per_ip_simultaneously',
 	maxDropsPerAccount: 'max_drops_per_account',
 	maxDropsPerIp: 'max_drops_per_ip',
@@ -69,7 +64,6 @@ type FaucetConfigValues = Omit<
 >
 type FaucetConfig = FaucetConfigValues & {
 	periodMs: number
-	ipBlacklistExpirationMs: number
 }
 type FaucetConfigParseResult =
 	| { config: FaucetConfigValues }
@@ -439,7 +433,6 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				return c.json({ error: 'Invalid IP' }, 400)
 			}
 
-			this.removeIPFromTmpBlacklist(ip)
 			this.addIPToWhitelist(ip)
 
 			return c.json({ success: true })
@@ -482,7 +475,6 @@ export class NanoDropDO extends DurableObject<Bindings> {
 
 			const account = formatNanoAddress(c.req.param('account'))
 
-			this.removeAccountFromTmpBlacklist(account)
 			this.addAccountToWhitelist(account)
 
 			return c.json({ success: true })
@@ -541,25 +533,11 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				created_at INTEGER NOT NULL
 			);
 
-			CREATE TABLE IF NOT EXISTS temporary_account_blacklist (
-				sequence INTEGER PRIMARY KEY AUTOINCREMENT,
-				checksum TEXT UNIQUE NOT NULL,
-				created_at INTEGER NOT NULL
-			);
-
-			CREATE TABLE IF NOT EXISTS temporary_ip_blacklist (
-				ip TEXT PRIMARY KEY,
-				expires_at INTEGER NOT NULL
-			);
-
 			CREATE TABLE IF NOT EXISTS admin_settings (
 				key TEXT PRIMARY KEY,
 				value TEXT NOT NULL,
 				updated_at INTEGER NOT NULL
 			);
-
-			CREATE INDEX IF NOT EXISTS temporary_ip_blacklist_expires_at_index
-				ON temporary_ip_blacklist(expires_at);
 		`)
 	}
 
@@ -613,12 +591,6 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				MIN_PERIOD_DAYS,
 				MAX_PERIOD_DAYS,
 			),
-			ipBlacklistExpirationInMinutes: this.getIntegerSetting(
-				FAUCET_CONFIG_SETTING_KEYS.ipBlacklistExpirationInMinutes,
-				DEFAULT_FAUCET_CONFIG.ipBlacklistExpirationInMinutes,
-				MIN_IP_BLACKLIST_EXPIRATION_IN_MINUTES,
-				MAX_IP_BLACKLIST_EXPIRATION_IN_MINUTES,
-			),
 			maxDropPerIpSimultaneously: this.getIntegerSetting(
 				FAUCET_CONFIG_SETTING_KEYS.maxDropPerIpSimultaneously,
 				DEFAULT_FAUCET_CONFIG.maxDropPerIpSimultaneously,
@@ -666,8 +638,6 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		return {
 			...config,
 			periodMs: config.periodDays * MILLISECONDS_PER_DAY,
-			ipBlacklistExpirationMs:
-				config.ipBlacklistExpirationInMinutes * MILLISECONDS_PER_MINUTE,
 		}
 	}
 
@@ -719,16 +689,6 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			MAX_PERIOD_DAYS,
 		)
 		if ('error' in periodDays) return periodDays
-
-		const ipBlacklistExpirationInMinutes = this.parseIntegerInput(
-			input.ipBlacklistExpirationInMinutes,
-			'ipBlacklistExpirationInMinutes',
-			MIN_IP_BLACKLIST_EXPIRATION_IN_MINUTES,
-			MAX_IP_BLACKLIST_EXPIRATION_IN_MINUTES,
-		)
-		if ('error' in ipBlacklistExpirationInMinutes) {
-			return ipBlacklistExpirationInMinutes
-		}
 
 		const maxDropPerIpSimultaneously = this.parseIntegerInput(
 			input.maxDropPerIpSimultaneously,
@@ -805,8 +765,6 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				maxDropAmount: maxDropAmount.value,
 				divideBalanceBy: divideBalanceBy.value,
 				periodDays: periodDays.value,
-				ipBlacklistExpirationInMinutes:
-					ipBlacklistExpirationInMinutes.value,
 				maxDropPerIpSimultaneously: maxDropPerIpSimultaneously.value,
 				maxDropsPerAccount: maxDropsPerAccount.value,
 				maxDropsPerIp: maxDropsPerIp.value,
@@ -836,10 +794,6 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		this.setAdminSetting(
 			FAUCET_CONFIG_SETTING_KEYS.periodDays,
 			String(config.periodDays),
-		)
-		this.setAdminSetting(
-			FAUCET_CONFIG_SETTING_KEYS.ipBlacklistExpirationInMinutes,
-			String(config.ipBlacklistExpirationInMinutes),
 		)
 		this.setAdminSetting(
 			FAUCET_CONFIG_SETTING_KEYS.maxDropPerIpSimultaneously,
@@ -954,10 +908,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		return fallback
 	}
 
-	parsePositiveNanoInput(
-		value: unknown,
-		field: string,
-	): StringParseResult {
+	parsePositiveNanoInput(value: unknown, field: string): StringParseResult {
 		const amount =
 			typeof value === 'number'
 				? value.toString()
@@ -1170,21 +1121,13 @@ export class NanoDropDO extends DurableObject<Bindings> {
 
 		if (
 			(count >= config.maxDropsPerIp ||
-				(limitedByCountry &&
-					count >= config.maxDropsPerIpInLimitedCountry)) &&
+				(limitedByCountry && count >= config.maxDropsPerIpInLimitedCountry)) &&
 			(!this.isDev || ENABLE_LIMIT_PER_IP_IN_DEV) &&
 			!this.ipIsWhitelisted(ip)
 		) {
 			throw new HTTPException(403, {
 				message: 'Drop limit reached for your IP',
 			})
-		}
-
-		if (
-			(!this.isDev || ENABLE_LIMIT_PER_IP_IN_DEV) &&
-			this.ipIsInTmpBlacklist(ip)
-		) {
-			throw new HTTPException(403, { message: 'Limit reached for this IP' })
 		}
 
 		let canBeProxy = false
@@ -1241,12 +1184,6 @@ export class NanoDropDO extends DurableObject<Bindings> {
 						message: 'Limit reached for this account',
 					})
 				}
-			}
-
-			if (!accountWhitelisted && this.accountIsInTmpBlacklist(account)) {
-				throw new HTTPException(403, {
-					message: 'Limit reached for this account',
-				})
 			}
 		}
 
@@ -1316,57 +1253,19 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		timestamp: number
 		took: number
 	}) {
-		const config = this.getFaucetConfig()
-
-		const [dropsCountResult, ipCountResult] = await this.db.batch<
-			Record<string, any>
-		>([
-			this.db
-				.prepare(
-					'SELECT COUNT(*) as count FROM drops WHERE account = ?1 AND timestamp >= ?2',
-				)
-				.bind(data.account, Date.now() - config.periodMs),
-			this.db
-				.prepare(
-					'SELECT COUNT(*) as count FROM drops WHERE ip = ?1 AND timestamp >= ?2',
-				)
-				.bind(data.ip, Date.now() - config.periodMs),
-			this.db
-				.prepare(
-					'INSERT INTO drops (hash, account, amount, ip, timestamp, took) VALUES (?1, ?2, ?3, ?4, ?5, ?6)',
-				)
-				.bind(
-					data.hash,
-					data.account,
-					data.amount,
-					data.ip,
-					data.timestamp,
-					data.took,
-				),
-		])
-
-		const dropsCount = dropsCountResult.results
-			? (dropsCountResult.results[0].count as number)
-			: 0
-
-		if (
-			dropsCount + 1 >= config.maxDropsPerAccount &&
-			(!this.isDev || ENABLE_LIMIT_PER_IP_IN_DEV)
-		) {
-			if (!this.accountIsWhitelisted(data.account)) {
-				this.addAccountToTmpBlacklist(data.account)
-			}
-		}
-
-		const ipCount = ipCountResult.results
-			? (ipCountResult.results[0].count as number)
-			: 0
-
-		if (ipCount + 1 >= config.maxDropsPerIp) {
-			if (!this.ipIsWhitelisted(data.ip)) {
-				this.addIPToTmpBlacklist(data.ip)
-			}
-		}
+		await this.db
+			.prepare(
+				'INSERT INTO drops (hash, account, amount, ip, timestamp, took) VALUES (?1, ?2, ?3, ?4, ?5, ?6)',
+			)
+			.bind(
+				data.hash,
+				data.account,
+				data.amount,
+				data.ip,
+				data.timestamp,
+				data.took,
+			)
+			.run()
 	}
 
 	async enqueueIPDrop(ip: string): Promise<() => void> {
@@ -1463,112 +1362,11 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		this.sql.exec('DELETE FROM account_whitelist WHERE account = ?', account)
 	}
 
-	accountIsInTmpBlacklist(account: string) {
-		const checksum = account.slice(-8)
-		const row = this.sql
-			.exec<CountRow>(
-				'SELECT COUNT(*) as count FROM temporary_account_blacklist WHERE checksum = ?',
-				checksum,
-			)
-			.one()
-
-		return row.count > 0
-	}
-
-	addAccountToTmpBlacklist(account: string) {
-		const checksum = account.slice(-8)
-		this.sql.exec(
-			`
-				INSERT OR IGNORE INTO temporary_account_blacklist (checksum, created_at)
-				VALUES (?, ?)
-			`,
-			checksum,
-			Date.now(),
-		)
-
-		const { count } = this.sql
-			.exec<CountRow>(
-				'SELECT COUNT(*) as count FROM temporary_account_blacklist',
-			)
-			.one()
-		const excess = count - MAX_TMP_ACCOUNT_BLACKLIST_LENGTH
-
-		if (excess > 0) {
-			this.sql.exec(
-				`
-					DELETE FROM temporary_account_blacklist
-					WHERE sequence IN (
-						SELECT sequence
-						FROM temporary_account_blacklist
-						ORDER BY sequence ASC
-						LIMIT ?
-					)
-				`,
-				excess,
-			)
-		}
-	}
-
-	removeAccountFromTmpBlacklist(account: string) {
-		const checksum = account.slice(-8)
-		this.sql.exec(
-			'DELETE FROM temporary_account_blacklist WHERE checksum = ?',
-			checksum,
-		)
-	}
-
-	ipIsInTmpBlacklist(ip: string) {
-		const now = Date.now()
-		this.pruneExpiredIPBlacklist(now)
-		const row = this.sql
-			.exec<CountRow>(
-				`
-					SELECT COUNT(*) as count
-					FROM temporary_ip_blacklist
-					WHERE ip = ? AND expires_at > ?
-				`,
-				ip,
-				now,
-			)
-			.one()
-
-		return row.count > 0
-	}
-
-	addIPToTmpBlacklist(ip: string) {
-		const now = Date.now()
-		this.pruneExpiredIPBlacklist(now)
-		const expiresAt = now + this.getFaucetConfig().ipBlacklistExpirationMs
-
-		this.sql.exec(
-			`
-				INSERT INTO temporary_ip_blacklist (ip, expires_at)
-				VALUES (?, ?)
-				ON CONFLICT(ip) DO UPDATE SET expires_at = excluded.expires_at
-			`,
-			ip,
-			expiresAt,
-		)
-	}
-
-	removeIPFromTmpBlacklist(ip: string) {
-		this.sql.exec('DELETE FROM temporary_ip_blacklist WHERE ip = ?', ip)
-	}
-
-	pruneExpiredIPBlacklist(now = Date.now()) {
-		this.sql.exec(
-			'DELETE FROM temporary_ip_blacklist WHERE expires_at <= ?',
-			now,
-		)
-	}
-
 	async getAdminAnalytics() {
 		const now = Date.now()
 		const oneDayAgo = now - 1000 * 60 * 60 * 24
 		const sevenDaysAgo = now - 1000 * 60 * 60 * 24 * 7
 		const fourteenDaysAgo = now - 1000 * 60 * 60 * 24 * 14
-
-		this.pruneExpiredIPBlacklist(now)
 
 		const [
 			totalDrops,
@@ -1630,14 +1428,6 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		const accountWhitelistCount = this.sql
 			.exec<CountRow>('SELECT COUNT(*) as count FROM account_whitelist')
 			.one().count
-		const temporaryIpBlacklistCount = this.sql
-			.exec<CountRow>('SELECT COUNT(*) as count FROM temporary_ip_blacklist')
-			.one().count
-		const temporaryAccountBlacklistCount = this.sql
-			.exec<CountRow>(
-				'SELECT COUNT(*) as count FROM temporary_account_blacklist',
-			)
-			.one().count
 
 		const { balance, receivable, frontier, representative } = this.wallet.state
 
@@ -1678,8 +1468,6 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			adminState: {
 				ipWhitelistCount,
 				accountWhitelistCount,
-				temporaryIpBlacklistCount,
-				temporaryAccountBlacklistCount,
 			},
 		}
 	}

@@ -52,8 +52,6 @@ type AdminAnalytics = {
 	adminState: {
 		ipWhitelistCount: number
 		accountWhitelistCount: number
-		temporaryIpBlacklistCount: number
-		temporaryAccountBlacklistCount: number
 	}
 }
 
@@ -82,8 +80,6 @@ type FaucetConfig = {
 	divideBalanceBy: number
 	periodDays: number
 	periodMs: number
-	ipBlacklistExpirationInMinutes: number
-	ipBlacklistExpirationMs: number
 	maxDropPerIpSimultaneously: number
 	maxDropsPerAccount: number
 	maxDropsPerIp: number
@@ -99,7 +95,6 @@ type FaucetConfigInputs = {
 	maxDropAmount: string
 	divideBalanceBy: string
 	periodDays: string
-	ipBlacklistExpirationInMinutes: string
 	maxDropPerIpSimultaneously: string
 	maxDropsPerAccount: string
 	maxDropsPerIp: string
@@ -126,7 +121,6 @@ const EMPTY_FAUCET_CONFIG_INPUTS: FaucetConfigInputs = {
 	maxDropAmount: '',
 	divideBalanceBy: '',
 	periodDays: '',
-	ipBlacklistExpirationInMinutes: '',
 	maxDropPerIpSimultaneously: '',
 	maxDropsPerAccount: '',
 	maxDropsPerIp: '',
@@ -269,16 +263,11 @@ const resolveFaucetConfigInputs = (
 		maxDropAmount: config.maxDropAmount,
 		divideBalanceBy: String(config.divideBalanceBy),
 		periodDays: String(config.periodDays),
-		ipBlacklistExpirationInMinutes: String(
-			config.ipBlacklistExpirationInMinutes,
-		),
 		maxDropPerIpSimultaneously: String(config.maxDropPerIpSimultaneously),
 		maxDropsPerAccount: String(config.maxDropsPerAccount),
 		maxDropsPerIp: String(config.maxDropsPerIp),
 		maxDropsPerProxyIp: String(config.maxDropsPerProxyIp),
-		maxDropsPerIpInLimitedCountry: String(
-			config.maxDropsPerIpInLimitedCountry,
-		),
+		maxDropsPerIpInLimitedCountry: String(config.maxDropsPerIpInLimitedCountry),
 		verificationRequiredByDefault: config.verificationRequiredByDefault,
 		verifyWhenProxy: config.verifyWhenProxy,
 		banProxies: config.banProxies,
@@ -677,8 +666,6 @@ export default function AdminDashboard() {
 					maxDropAmount: faucetConfigInputs.maxDropAmount.trim(),
 					divideBalanceBy: faucetConfigInputs.divideBalanceBy.trim(),
 					periodDays: faucetConfigInputs.periodDays.trim(),
-					ipBlacklistExpirationInMinutes:
-						faucetConfigInputs.ipBlacklistExpirationInMinutes.trim(),
 					maxDropPerIpSimultaneously:
 						faucetConfigInputs.maxDropPerIpSimultaneously.trim(),
 					maxDropsPerAccount: faucetConfigInputs.maxDropsPerAccount.trim(),
@@ -950,38 +937,18 @@ export default function AdminDashboard() {
 								id="period-days"
 								label="Period"
 								value={faucetConfigInputs.periodDays}
-								onChange={value =>
-									updateFaucetConfigInput('periodDays', value)
-								}
+								onChange={value => updateFaucetConfigInput('periodDays', value)}
 								min="1"
 								max="30"
 								step="1"
 								suffix="days"
 							/>
 							<ConfigInput
-								id="ip-blacklist-expiration"
-								label="IP blacklist expiration"
-								value={faucetConfigInputs.ipBlacklistExpirationInMinutes}
-								onChange={value =>
-									updateFaucetConfigInput(
-										'ipBlacklistExpirationInMinutes',
-										value,
-									)
-								}
-								min="1"
-								max="1440"
-								step="1"
-								suffix="min"
-							/>
-							<ConfigInput
 								id="max-drop-per-ip-simultaneously"
 								label="Max simultaneous IP drops"
 								value={faucetConfigInputs.maxDropPerIpSimultaneously}
 								onChange={value =>
-									updateFaucetConfigInput(
-										'maxDropPerIpSimultaneously',
-										value,
-									)
+									updateFaucetConfigInput('maxDropPerIpSimultaneously', value)
 								}
 								min="1"
 								step="1"
@@ -1332,22 +1299,6 @@ export default function AdminDashboard() {
 											{analytics.adminState.accountWhitelistCount}
 										</div>
 									</div>
-									<div className="flex items-center justify-between gap-4 py-3">
-										<div className="text-slate-500 dark:text-zinc-500">
-											Temp IP blocks
-										</div>
-										<div className="text-xl font-semibold text-slate-900 dark:text-zinc-100">
-											{analytics.adminState.temporaryIpBlacklistCount}
-										</div>
-									</div>
-									<div className="flex items-center justify-between gap-4 py-3">
-										<div className="text-slate-500 dark:text-zinc-500">
-											Temp account blocks
-										</div>
-										<div className="text-xl font-semibold text-slate-900 dark:text-zinc-100">
-											{analytics.adminState.temporaryAccountBlacklistCount}
-										</div>
-									</div>
 								</div>
 							</Panel>
 
@@ -1401,20 +1352,10 @@ export default function AdminDashboard() {
 										</div>
 										<div>
 											<div className="font-semibold text-slate-500 dark:text-zinc-500">
-												IP blacklist expiration
-											</div>
-											<div className="mt-1 text-slate-900 dark:text-zinc-100">
-												{faucetConfig.ipBlacklistExpirationInMinutes} min
-											</div>
-										</div>
-										<div>
-											<div className="font-semibold text-slate-500 dark:text-zinc-500">
 												Simultaneous IP drops
 											</div>
 											<div className="mt-1 text-slate-900 dark:text-zinc-100">
-												{formatInteger(
-													faucetConfig.maxDropPerIpSimultaneously,
-												)}
+												{formatInteger(faucetConfig.maxDropPerIpSimultaneously)}
 											</div>
 										</div>
 										<div>
