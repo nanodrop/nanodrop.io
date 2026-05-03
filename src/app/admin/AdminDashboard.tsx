@@ -409,13 +409,13 @@ function Metric({
 }) {
 	return (
 		<div
-			className={`rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-midnight-2 ${accent}`}
+			className={`rounded-md border border-slate-200 bg-white p-3 shadow-sm sm:p-4 dark:border-zinc-800 dark:bg-midnight-2 ${accent}`}
 		>
-			<div className="flex items-center gap-1.5 text-xs font-semibold uppercase text-slate-500 dark:text-zinc-500">
+			<div className="flex min-w-0 items-center gap-1.5 text-[0.68rem] font-semibold uppercase leading-4 text-slate-500 sm:text-xs dark:text-zinc-500">
 				<span>{label}</span>
 				{description && <InfoTooltip label={label}>{description}</InfoTooltip>}
 			</div>
-			<div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-zinc-100">
+			<div className="mt-2 break-words text-xl font-semibold text-slate-900 sm:text-2xl dark:text-zinc-100">
 				{value}
 			</div>
 		</div>
@@ -580,7 +580,7 @@ function Panel({
 	description?: React.ReactNode
 }) {
 	return (
-		<section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-midnight-2">
+		<section className="w-full min-w-0 rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-midnight-2">
 			<div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<CardTitle title={title} description={description} />
 				{actions}
@@ -1528,7 +1528,7 @@ export default function AdminDashboard() {
 
 			{analytics && (
 				<>
-					<div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+					<div className="mb-6 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
 						<Metric
 							label="Total drops"
 							value={formatInteger(analytics.totalDrops)}
@@ -1579,8 +1579,8 @@ export default function AdminDashboard() {
 						/>
 					</div>
 
-					<div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
-						<div className="space-y-4">
+					<div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
+						<div className="min-w-0 space-y-4">
 							<Panel
 								title="Wallet"
 								description="Shows the faucet wallet account, balance, frontier, representative, and proof-of-work readiness. Sync refreshes wallet state from the network."
@@ -1596,16 +1596,16 @@ export default function AdminDashboard() {
 									</IconButton>
 								}
 							>
-								<div className="grid gap-3 text-sm sm:grid-cols-2">
-									<div>
+								<div className="grid min-w-0 gap-3 text-sm sm:grid-cols-2">
+									<div className="min-w-0">
 										<div className="font-semibold text-slate-500 dark:text-zinc-500">
 											Account
 										</div>
-										<div className="mt-1 break-all text-slate-900 dark:text-zinc-100">
+										<div className="mt-1 break-words text-slate-900 [overflow-wrap:anywhere] dark:text-zinc-100">
 											{analytics.wallet.account}
 										</div>
 									</div>
-									<div>
+									<div className="min-w-0">
 										<div className="font-semibold text-slate-500 dark:text-zinc-500">
 											Balance
 										</div>
@@ -1613,23 +1613,23 @@ export default function AdminDashboard() {
 											{formatNano(analytics.wallet.balance)}
 										</div>
 									</div>
-									<div>
+									<div className="min-w-0">
 										<div className="font-semibold text-slate-500 dark:text-zinc-500">
 											Frontier
 										</div>
-										<div className="mt-1 break-all text-slate-900 dark:text-zinc-100">
+										<div className="mt-1 break-words text-slate-900 [overflow-wrap:anywhere] dark:text-zinc-100">
 											{analytics.wallet.frontier || '-'}
 										</div>
 									</div>
-									<div>
+									<div className="min-w-0">
 										<div className="font-semibold text-slate-500 dark:text-zinc-500">
 											Representative
 										</div>
-										<div className="mt-1 break-all text-slate-900 dark:text-zinc-100">
+										<div className="mt-1 break-words text-slate-900 [overflow-wrap:anywhere] dark:text-zinc-100">
 											{analytics.wallet.representative || '-'}
 										</div>
 									</div>
-									<div>
+									<div className="min-w-0">
 										<div className="font-semibold text-slate-500 dark:text-zinc-500">
 											Proof of Work
 										</div>
@@ -1732,7 +1732,82 @@ export default function AdminDashboard() {
 								title="Recent drops"
 								description="Shows the most recent faucet drops with account, IP, amount, country, proxy signal, and quick moderation actions."
 							>
-								<div className="overflow-x-auto">
+								<div className="space-y-3 md:hidden">
+									{analytics.recentDrops.map(drop => (
+										<div
+											key={drop.hash}
+											className="rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-zinc-800 dark:bg-midnight-1"
+										>
+											<div className="flex items-start justify-between gap-3">
+												<div className="min-w-0 flex-1">
+													<div className="text-xs font-semibold uppercase text-slate-500 dark:text-zinc-500">
+														Account
+													</div>
+													<div className="mt-1 break-words text-sm font-semibold text-slate-900 [overflow-wrap:anywhere] dark:text-zinc-100">
+														{drop.account}
+													</div>
+												</div>
+												<button
+													type="button"
+													aria-label="Open drop actions"
+													disabled={
+														submitting ||
+														(ipBlacklist.includes(drop.ip) &&
+															accountBlacklist.includes(drop.account))
+													}
+													onClick={() => setDropActionTarget(drop)}
+													className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-700 transition enabled:hover:bg-rose-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-300 dark:disabled:border-zinc-800 dark:disabled:bg-zinc-900 dark:disabled:text-zinc-600"
+												>
+													<NoSymbolIcon className="h-5 w-5" />
+												</button>
+											</div>
+											<div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+												<div className="min-w-0">
+													<div className="text-xs font-semibold uppercase text-slate-500 dark:text-zinc-500">
+														IP
+													</div>
+													<div className="mt-1 break-words text-slate-800 [overflow-wrap:anywhere] dark:text-zinc-200">
+														{drop.ip}
+													</div>
+												</div>
+												<div className="min-w-0">
+													<div className="text-xs font-semibold uppercase text-slate-500 dark:text-zinc-500">
+														Amount
+													</div>
+													<div className="mt-1 text-slate-800 dark:text-zinc-200">
+														{formatNano(drop.amount)}
+													</div>
+												</div>
+												<div className="min-w-0">
+													<div className="text-xs font-semibold uppercase text-slate-500 dark:text-zinc-500">
+														Country
+													</div>
+													<div className="mt-1 text-slate-800 dark:text-zinc-200">
+														{countryNames[drop.country_code] ||
+															drop.country_code}
+													</div>
+												</div>
+												<div className="min-w-0">
+													<div className="text-xs font-semibold uppercase text-slate-500 dark:text-zinc-500">
+														Time
+													</div>
+													<div className="mt-1 text-slate-800 dark:text-zinc-200">
+														{formatDateTime(drop.timestamp)}
+													</div>
+												</div>
+												<div className="min-w-0">
+													<div className="text-xs font-semibold uppercase text-slate-500 dark:text-zinc-500">
+														Proxy
+													</div>
+													<div className="mt-1 text-slate-800 dark:text-zinc-200">
+														{drop.is_proxy ? 'Yes' : 'No'}
+													</div>
+												</div>
+											</div>
+										</div>
+									))}
+								</div>
+								<div className="hidden overflow-x-auto md:block">
 									<table className="min-w-full text-left text-sm">
 										<thead className="border-b border-slate-200 text-xs uppercase text-slate-500 dark:border-zinc-800 dark:text-zinc-500">
 											<tr>
@@ -1793,7 +1868,7 @@ export default function AdminDashboard() {
 							</Panel>
 						</div>
 
-						<div className="space-y-4">
+						<div className="min-w-0 space-y-4">
 							<Panel
 								title="Admin state"
 								description="Summarizes the current allowlist and blocklist sizes used by drop readiness checks."
@@ -2093,7 +2168,7 @@ export default function AdminDashboard() {
 						</div>
 					</div>
 
-					<div className="mt-4 grid gap-4 lg:grid-cols-2">
+					<div className="mt-4 grid w-full min-w-0 gap-4 lg:grid-cols-2">
 						<Panel
 							title="IP whitelist"
 							description="IP addresses in this list bypass regular faucet limits for normal traffic. Blacklist rules still block matching IPs."
