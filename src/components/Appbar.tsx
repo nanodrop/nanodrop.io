@@ -1,7 +1,9 @@
-import { headers } from 'next/headers'
+'use client'
+
 import clsx from 'clsx'
 import { Montserrat } from 'next/font/google'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import DropSVG from '@/components/DropSVG'
 import { PriceTicker } from './PriceTicker'
 import { ThemeToggle } from './ThemeToggle'
@@ -24,11 +26,8 @@ export interface AppbarProps {
 	showPrice?: boolean
 }
 
-export default async function Appbar() {
-	const headersList = await headers()
-	const pathname = headersList.get('x-pathname')
-	console.log('pathname:', pathname)
-
+export default function Appbar() {
+	const pathname = usePathname()
 	const isHome = pathname === '/'
 
 	return (
