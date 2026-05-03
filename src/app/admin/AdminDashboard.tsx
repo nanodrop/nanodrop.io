@@ -6,6 +6,7 @@ import {
 	ArrowRightOnRectangleIcon,
 	CheckCircleIcon,
 	Cog6ToothIcon,
+	InformationCircleIcon,
 	KeyIcon,
 	NoSymbolIcon,
 	PlusIcon,
@@ -342,21 +343,77 @@ const resolveWalletNetworkConfigInputs = (
 	}
 }
 
+function InfoTooltip({
+	label,
+	children,
+}: {
+	label: string
+	children: React.ReactNode
+}) {
+	const [open, setOpen] = useState(false)
+
+	return (
+		<span className="relative inline-flex">
+			<button
+				type="button"
+				aria-label={`About ${label}`}
+				aria-expanded={open}
+				onClick={() => setOpen(true)}
+				onBlur={() => setOpen(false)}
+				onFocus={() => setOpen(true)}
+				onMouseEnter={() => setOpen(true)}
+				onMouseLeave={() => setOpen(false)}
+				className="inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition hover:text-nano focus:outline-none focus:ring-2 focus:ring-nano/30 dark:text-zinc-500 dark:hover:text-sky-300"
+			>
+				<InformationCircleIcon className="h-5 w-5" />
+			</button>
+			<span
+				role="tooltip"
+				className={`pointer-events-none absolute left-0 top-full z-30 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-md border border-slate-200 bg-white px-3 py-2 text-left text-xs font-medium normal-case leading-5 text-slate-600 shadow-lg transition dark:border-zinc-700 dark:bg-midnight-1 dark:text-zinc-300 ${
+					open ? 'visible opacity-100' : 'invisible opacity-0'
+				}`}
+			>
+				{children}
+			</span>
+		</span>
+	)
+}
+
+function CardTitle({
+	title,
+	description,
+}: {
+	title: string
+	description?: React.ReactNode
+}) {
+	return (
+		<div className="flex min-w-0 items-center gap-2">
+			<h2 className="text-lg font-semibold text-slate-900 dark:text-zinc-100">
+				{title}
+			</h2>
+			{description && <InfoTooltip label={title}>{description}</InfoTooltip>}
+		</div>
+	)
+}
+
 function Metric({
 	label,
 	value,
 	accent,
+	description,
 }: {
 	label: string
 	value: string
 	accent: string
+	description?: React.ReactNode
 }) {
 	return (
 		<div
 			className={`rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-midnight-2 ${accent}`}
 		>
-			<div className="text-xs font-semibold uppercase text-slate-500 dark:text-zinc-500">
-				{label}
+			<div className="flex items-center gap-1.5 text-xs font-semibold uppercase text-slate-500 dark:text-zinc-500">
+				<span>{label}</span>
+				{description && <InfoTooltip label={label}>{description}</InfoTooltip>}
 			</div>
 			<div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-zinc-100">
 				{value}
@@ -515,17 +572,17 @@ function Panel({
 	title,
 	children,
 	actions,
+	description,
 }: {
 	title: string
 	children: React.ReactNode
 	actions?: React.ReactNode
+	description?: React.ReactNode
 }) {
 	return (
 		<section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-midnight-2">
 			<div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<h2 className="text-lg font-semibold text-slate-900 dark:text-zinc-100">
-					{title}
-				</h2>
+				<CardTitle title={title} description={description} />
 				{actions}
 			</div>
 			{children}
@@ -1476,41 +1533,49 @@ export default function AdminDashboard() {
 							label="Total drops"
 							value={formatInteger(analytics.totalDrops)}
 							accent="border-l-4 border-l-nano"
+							description="Total faucet drops recorded in analytics."
 						/>
 						<Metric
 							label="Last 24h"
 							value={formatInteger(analytics.last24hDrops)}
 							accent="border-l-4 border-l-emerald-500"
+							description="Drops completed during the last 24 hours."
 						/>
 						<Metric
 							label="Last 7d"
 							value={formatInteger(analytics.last7dDrops)}
 							accent="border-l-4 border-l-amber-500"
+							description="Drops completed during the last 7 days."
 						/>
 						<Metric
 							label="Avg latency"
 							value={formatMs(analytics.avgTookMs)}
 							accent="border-l-4 border-l-fuchsia-500"
+							description="Average request time recorded for recent drops."
 						/>
 						<Metric
 							label="Unique accounts"
 							value={formatInteger(analytics.uniqueAccounts)}
 							accent="border-l-4 border-l-indigo-500"
+							description="Distinct Nano accounts that received drops."
 						/>
 						<Metric
 							label="Unique IPs"
 							value={formatInteger(analytics.uniqueIps)}
 							accent="border-l-4 border-l-cyan-500"
+							description="Distinct IP addresses that requested drops."
 						/>
 						<Metric
 							label="Proxy drops"
 							value={formatInteger(analytics.proxyDrops)}
 							accent="border-l-4 border-l-rose-500"
+							description="Drops where the request was identified as proxy traffic."
 						/>
 						<Metric
 							label="Receivable"
 							value={formatNano(analytics.wallet.receivable)}
 							accent="border-l-4 border-l-lime-500"
+							description="Pending incoming wallet balance that can be received."
 						/>
 					</div>
 
@@ -1518,6 +1583,7 @@ export default function AdminDashboard() {
 						<div className="space-y-4">
 							<Panel
 								title="Wallet"
+								description="Shows the faucet wallet account, balance, frontier, representative, and proof-of-work readiness. Sync refreshes wallet state from the network."
 								actions={
 									<IconButton
 										disabled={submitting}
@@ -1576,6 +1642,7 @@ export default function AdminDashboard() {
 
 							<Panel
 								title="Receivables"
+								description="Lists pending incoming blocks for the faucet wallet. Use Receive to pull a block into the wallet, or settings to change the minimum receivable amount."
 								actions={
 									<button
 										type="button"
@@ -1661,7 +1728,10 @@ export default function AdminDashboard() {
 								)}
 							</Panel>
 
-							<Panel title="Recent drops">
+							<Panel
+								title="Recent drops"
+								description="Shows the most recent faucet drops with account, IP, amount, country, proxy signal, and quick moderation actions."
+							>
 								<div className="overflow-x-auto">
 									<table className="min-w-full text-left text-sm">
 										<thead className="border-b border-slate-200 text-xs uppercase text-slate-500 dark:border-zinc-800 dark:text-zinc-500">
@@ -1724,7 +1794,10 @@ export default function AdminDashboard() {
 						</div>
 
 						<div className="space-y-4">
-							<Panel title="Admin state">
+							<Panel
+								title="Admin state"
+								description="Summarizes the current allowlist and blocklist sizes used by drop readiness checks."
+							>
 								<div className="divide-y divide-slate-100 text-sm dark:divide-zinc-800">
 									<div className="flex items-center justify-between gap-4 py-3 first:pt-0">
 										<div className="flex items-center gap-2 text-slate-500 dark:text-zinc-500">
@@ -1768,6 +1841,7 @@ export default function AdminDashboard() {
 							{walletNetworkConfig && (
 								<Panel
 									title="Wallet network"
+									description="Controls the RPC endpoints, work server endpoints, and representative used by faucet wallet operations."
 									actions={
 										<button
 											type="button"
@@ -1826,6 +1900,7 @@ export default function AdminDashboard() {
 							{faucetConfig && (
 								<Panel
 									title="Faucet config"
+									description="Controls live faucet limits, period rules, verification defaults, proxy behavior, and limited-country handling."
 									actions={
 										<button
 											type="button"
@@ -1959,7 +2034,10 @@ export default function AdminDashboard() {
 								</Panel>
 							)}
 
-							<Panel title="Drops by country">
+							<Panel
+								title="Drops by country"
+								description="Breaks down completed drops by detected country from the analytics dataset."
+							>
 								<div className="space-y-3">
 									{analytics.topCountries.map(country => (
 										<div key={country.country_code}>
@@ -1985,7 +2063,10 @@ export default function AdminDashboard() {
 								</div>
 							</Panel>
 
-							<Panel title="Daily drops">
+							<Panel
+								title="Daily drops"
+								description="Shows recent daily drop volume so traffic changes are easy to spot."
+							>
 								<div className="flex h-44 items-end gap-2">
 									{analytics.dailyDrops.map(day => (
 										<div
@@ -2013,7 +2094,10 @@ export default function AdminDashboard() {
 					</div>
 
 					<div className="mt-4 grid gap-4 lg:grid-cols-2">
-						<Panel title="IP whitelist">
+						<Panel
+							title="IP whitelist"
+							description="IP addresses in this list bypass regular faucet limits for normal traffic. Blacklist rules still block matching IPs."
+						>
 							<form onSubmit={addIp} className="mb-4 flex gap-2">
 								<input
 									value={ipInput}
@@ -2065,7 +2149,10 @@ export default function AdminDashboard() {
 							</div>
 						</Panel>
 
-						<Panel title="Account whitelist">
+						<Panel
+							title="Account whitelist"
+							description="Nano accounts in this list bypass regular faucet limits for normal accounts. Blacklist rules still block matching accounts."
+						>
 							<form onSubmit={addAccount} className="mb-4 flex gap-2">
 								<input
 									value={accountInput}
@@ -2119,7 +2206,10 @@ export default function AdminDashboard() {
 							</div>
 						</Panel>
 
-						<Panel title="IP blacklist">
+						<Panel
+							title="IP blacklist"
+							description="IP addresses in this list are blocked from receiving drops. This check runs before whitelist exemptions."
+						>
 							<form onSubmit={addBlockedIp} className="mb-4 flex gap-2">
 								<input
 									value={blockedIpInput}
@@ -2172,7 +2262,10 @@ export default function AdminDashboard() {
 							</div>
 						</Panel>
 
-						<Panel title="Account blacklist">
+						<Panel
+							title="Account blacklist"
+							description="Nano accounts in this list are blocked from receiving drops. This check runs before whitelist exemptions."
+						>
 							<form onSubmit={addBlockedAccount} className="mb-4 flex gap-2">
 								<input
 									value={blockedAccountInput}
