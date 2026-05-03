@@ -4,10 +4,10 @@ export type Bindings = {
 	COINMARKETCAP_DO: DurableObjectNamespace
 	NANODROP_DB: D1Database
 	CMC_PRO_API_KEY?: string
-	RPC_URLS: string
-	WORKER_URLS: string
+	DEFAULT_RPC_URLS: string
+	DEFAULT_WORKER_URLS: string
 	PRIVATE_KEY: string
-	REPRESENTATIVE: string
+	DEFAULT_REPRESENTATIVE: string
 	ADMIN_TOKEN: string
 	HCAPTCHA_SECRET?: string
 	ALLOW_ORIGIN?: string

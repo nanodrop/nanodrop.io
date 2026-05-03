@@ -18,10 +18,10 @@ declare namespace Cloudflare {
 		SENTRY_ORG: string;
 		SENTRY_PROJECT: string;
 		NEXTJS_ENV: string;
-		RPC_URLS: string;
-		WORKER_URLS: string;
+		DEFAULT_RPC_URLS: string;
+		DEFAULT_WORKER_URLS: string;
 		PRIVATE_KEY: string;
-		REPRESENTATIVE: string;
+		DEFAULT_REPRESENTATIVE: string;
 		ADMIN_TOKEN: string;
 		DEBUG: string;
 		HCAPTCHA_SECRET: string;
@@ -41,10 +41,10 @@ declare namespace Cloudflare {
 		SENTRY_ORG: string;
 		SENTRY_PROJECT: string;
 		NEXTJS_ENV: string;
-		RPC_URLS: string;
-		WORKER_URLS: string;
+		DEFAULT_RPC_URLS: string;
+		DEFAULT_WORKER_URLS: string;
 		PRIVATE_KEY: string;
-		REPRESENTATIVE: string;
+		DEFAULT_REPRESENTATIVE: string;
 		ADMIN_TOKEN: string;
 		DEBUG: string;
 		HCAPTCHA_SECRET: string;
@@ -58,7 +58,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "__DEV__" | "NEXT_PUBLIC_SITE_URL" | "CMC_PRO_API_KEY" | "NEXT_PUBLIC_DONATION_ADDRESS" | "NEXT_PUBLIC_SENTRY_DSN" | "SENTRY_ORG" | "SENTRY_PROJECT" | "NEXTJS_ENV" | "RPC_URLS" | "WORKER_URLS" | "PRIVATE_KEY" | "REPRESENTATIVE" | "ADMIN_TOKEN" | "DEBUG" | "HCAPTCHA_SECRET">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "__DEV__" | "NEXT_PUBLIC_SITE_URL" | "CMC_PRO_API_KEY" | "NEXT_PUBLIC_DONATION_ADDRESS" | "NEXT_PUBLIC_SENTRY_DSN" | "SENTRY_ORG" | "SENTRY_PROJECT" | "NEXTJS_ENV" | "DEFAULT_RPC_URLS" | "DEFAULT_WORKER_URLS" | "PRIVATE_KEY" | "DEFAULT_REPRESENTATIVE" | "ADMIN_TOKEN" | "DEBUG" | "HCAPTCHA_SECRET">> {}
 }
 
 // Begin runtime types

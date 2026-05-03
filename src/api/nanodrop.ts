@@ -49,6 +49,11 @@ const FAUCET_CONFIG_SETTING_KEYS = {
 	proxyAmountDivideBy: 'proxy_amount_divide_by',
 	limitedCountries: 'limited_countries',
 }
+const WALLET_NETWORK_CONFIG_SETTING_KEYS = {
+	rpcUrls: 'rpc_urls',
+	workerUrls: 'worker_urls',
+	representative: 'representative',
+}
 
 type CountRow = { count: number }
 type AverageRow = { average: number | null }
@@ -73,6 +78,14 @@ type StringParseResult = { value: string } | { error: string }
 type NumberParseResult = { value: number } | { error: string }
 type BooleanParseResult = { value: boolean } | { error: string }
 type StringArrayParseResult = { value: string[] } | { error: string }
+type WalletNetworkConfig = {
+	rpcUrls: string[]
+	workerUrls: string[]
+	representative: string
+}
+type WalletNetworkConfigParseResult =
+	| { config: WalletNetworkConfig }
+	| { error: string }
 type DropReadiness = {
 	amount: string
 	amountNano: string
@@ -139,30 +152,26 @@ const getCountryCode = (request: Request, isDev: boolean) => {
 
 export class NanoDropDO extends DurableObject<Bindings> {
 	app = new Hono<{ Bindings: Bindings }>().onError(errorHandler)
-	wallet: NanoWallet
+	wallet!: NanoWallet
 	sql: SqlStorage
 	static version = 'v1.0.0'
 	db: D1Database
 	ipDropQueue = new Map<string, Set<Promise<void>>>()
 	isDev: boolean
+	private readonly persistWalletState = (state: NanoWalletState) => {
+		this.saveWalletState(state)
+	}
 
 	constructor(state: DurableObjectState, env: Bindings) {
 		super(state, env)
 		this.isDev = env.__DEV__ === 'true'
 		this.sql = state.storage.sql
 		this.db = env.NANODROP_DB
-		this.wallet = new NanoWallet({
-			rpcUrls: env.RPC_URLS.split(','),
-			workerUrls: env.WORKER_URLS.split(','),
-			privateKey: env.PRIVATE_KEY,
-			representative: env.REPRESENTATIVE,
-			debug: env.DEBUG === 'true',
-			timeout: 30000,
-		})
+		this.wallet = this.createWallet(this.getEnvWalletNetworkConfig(env), env)
 
 		state.blockConcurrencyWhile(async () => {
 			this.initSqlSchema()
-			await this.init()
+			await this.init(env)
 		})
 
 		this.app.get('/status', async c => {
@@ -379,6 +388,31 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json(config)
 		})
 
+		this.app.get('/wallet/network-config', async c => {
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
+			}
+
+			return c.json(this.getWalletNetworkConfig(env))
+		})
+
+		this.app.put('/wallet/network-config', async c => {
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
+			}
+
+			const payload = await c.req.json().catch(() => null)
+			const parsed = this.parseWalletNetworkConfigPayload(payload)
+			if ('error' in parsed) {
+				return c.json({ error: parsed.error }, 400)
+			}
+
+			this.setWalletNetworkConfig(parsed.config, env)
+			return c.json(this.getWalletNetworkConfig(env))
+		})
+
 		this.app.get('/config', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
@@ -543,21 +577,12 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		`)
 	}
 
-	async init() {
-		this.wallet.configure({
-			minAmountRaw: this.getMinReceivableAmountRaw(),
-		})
-
+	async init(env: Bindings) {
 		const walletState = this.getWalletState()
-		if (walletState) {
-			this.wallet.update(walletState)
-		} else {
+		this.replaceWallet(env, walletState)
+		if (!walletState) {
 			this.wallet.sync()
 		}
-
-		this.wallet.subscribe(state => {
-			this.saveWalletState(state)
-		})
 	}
 
 	getWalletState() {
@@ -645,6 +670,69 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		return {
 			...config,
 			periodMs: config.periodDays * MILLISECONDS_PER_DAY,
+		}
+	}
+
+	getEnvWalletNetworkConfig(env: Bindings): WalletNetworkConfig {
+		return {
+			rpcUrls: this.parseUrlList(env.DEFAULT_RPC_URLS),
+			workerUrls: this.parseUrlList(env.DEFAULT_WORKER_URLS),
+			representative: env.DEFAULT_REPRESENTATIVE.trim(),
+		}
+	}
+
+	getWalletNetworkConfig(env: Bindings): WalletNetworkConfig {
+		const fallback = this.getEnvWalletNetworkConfig(env)
+
+		return {
+			rpcUrls: this.getUrlListSetting(
+				WALLET_NETWORK_CONFIG_SETTING_KEYS.rpcUrls,
+				fallback.rpcUrls,
+			),
+			workerUrls: this.getUrlListSetting(
+				WALLET_NETWORK_CONFIG_SETTING_KEYS.workerUrls,
+				fallback.workerUrls,
+			),
+			representative: this.getRepresentativeSetting(
+				WALLET_NETWORK_CONFIG_SETTING_KEYS.representative,
+				fallback.representative,
+			),
+		}
+	}
+
+	parseWalletNetworkConfigPayload(
+		payload: unknown,
+	): WalletNetworkConfigParseResult {
+		const input =
+			payload && typeof payload === 'object'
+				? (payload as Record<string, unknown>)
+				: null
+
+		if (!input) {
+			return { error: 'Invalid network config' }
+		}
+
+		const rpcUrls = this.parseUrlListInput(input.rpcUrls, 'rpcUrls')
+		if ('error' in rpcUrls) return rpcUrls
+
+		const workerUrls = this.parseUrlListInput(input.workerUrls, 'workerUrls')
+		if ('error' in workerUrls) return workerUrls
+
+		const representative =
+			typeof input.representative === 'string'
+				? input.representative.trim()
+				: ''
+
+		if (!checkAddress(representative)) {
+			return { error: 'Invalid representative' }
+		}
+
+		return {
+			config: {
+				rpcUrls: rpcUrls.value,
+				workerUrls: workerUrls.value,
+				representative: formatNanoAddress(representative),
+			},
 		}
 	}
 
@@ -856,6 +944,56 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		)
 	}
 
+	setWalletNetworkConfig(config: WalletNetworkConfig, env: Bindings) {
+		this.setAdminSetting(
+			WALLET_NETWORK_CONFIG_SETTING_KEYS.rpcUrls,
+			JSON.stringify(config.rpcUrls),
+		)
+		this.setAdminSetting(
+			WALLET_NETWORK_CONFIG_SETTING_KEYS.workerUrls,
+			JSON.stringify(config.workerUrls),
+		)
+		this.setAdminSetting(
+			WALLET_NETWORK_CONFIG_SETTING_KEYS.representative,
+			config.representative,
+		)
+		this.replaceWallet(env, this.wallet.state)
+	}
+
+	replaceWallet(env: Bindings, walletState: NanoWalletState | null) {
+		if (this.wallet) {
+			this.wallet.unsubscribe(this.persistWalletState)
+		}
+
+		this.wallet = this.createWallet(
+			this.getWalletNetworkConfig(env),
+			env,
+			walletState,
+		)
+		this.wallet.configure({
+			minAmountRaw: this.getMinReceivableAmountRaw(),
+		})
+		this.wallet.subscribe(this.persistWalletState)
+	}
+
+	createWallet(
+		config: WalletNetworkConfig,
+		env: Bindings,
+		state?: NanoWalletState | null,
+	) {
+		return new NanoWallet(
+			{
+				rpcUrls: config.rpcUrls,
+				workerUrls: config.workerUrls,
+				privateKey: env.PRIVATE_KEY,
+				representative: config.representative,
+				debug: env.DEBUG === 'true',
+				timeout: 30000,
+			},
+			state,
+		)
+	}
+
 	getAdminSettingValue(key: string) {
 		const row = this.sql
 			.exec<AdminSettingRow>(
@@ -952,6 +1090,73 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		} catch {}
 
 		return fallback
+	}
+
+	getUrlListSetting(key: string, fallback: string[]) {
+		const value = this.getAdminSettingValue(key)
+		if (value === null) {
+			return fallback
+		}
+
+		try {
+			const parsed = JSON.parse(value) as unknown
+			const urls = this.parseUrlListInput(parsed, key)
+			if ('value' in urls) {
+				return urls.value
+			}
+		} catch {}
+
+		return fallback
+	}
+
+	getRepresentativeSetting(key: string, fallback: string) {
+		const value = this.getAdminSettingValue(key)
+		if (value && checkAddress(value)) {
+			return formatNanoAddress(value)
+		}
+
+		return fallback
+	}
+
+	parseUrlList(value: unknown) {
+		const items = Array.isArray(value)
+			? value
+			: typeof value === 'string'
+				? value.split(/[,\n]+/)
+				: []
+
+		return Array.from(
+			new Set(
+				items
+					.map(item => (typeof item === 'string' ? item.trim() : ''))
+					.filter(Boolean),
+			),
+		)
+	}
+
+	parseUrlListInput(value: unknown, field: string): StringArrayParseResult {
+		const urls = this.parseUrlList(value)
+
+		if (urls.length === 0) {
+			return { error: `Invalid ${field}` }
+		}
+
+		for (const url of urls) {
+			if (!this.isValidHttpUrl(url)) {
+				return { error: `Invalid ${field}` }
+			}
+		}
+
+		return { value: urls }
+	}
+
+	isValidHttpUrl(value: string) {
+		try {
+			const url = new URL(value)
+			return url.protocol === 'http:' || url.protocol === 'https:'
+		} catch {
+			return false
+		}
 	}
 
 	parsePositiveNanoInput(value: unknown, field: string): StringParseResult {

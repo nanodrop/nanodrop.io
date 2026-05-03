@@ -91,6 +91,11 @@ type FaucetConfig = {
 	proxyAmountDivideBy: number
 	limitedCountries: string[]
 }
+type WalletNetworkConfig = {
+	rpcUrls: string[]
+	workerUrls: string[]
+	representative: string
+}
 type FaucetConfigInputs = {
 	minDropAmount: string
 	maxDropAmount: string
@@ -106,6 +111,11 @@ type FaucetConfigInputs = {
 	banProxies: boolean
 	proxyAmountDivideBy: string
 	limitedCountries: string
+}
+type WalletNetworkConfigInputs = {
+	rpcUrls: string
+	workerUrls: string
+	representative: string
 }
 type ReceivableItem = {
 	key: string
@@ -133,6 +143,11 @@ const EMPTY_FAUCET_CONFIG_INPUTS: FaucetConfigInputs = {
 	banProxies: false,
 	proxyAmountDivideBy: '',
 	limitedCountries: '',
+}
+const EMPTY_WALLET_NETWORK_CONFIG_INPUTS: WalletNetworkConfigInputs = {
+	rpcUrls: '',
+	workerUrls: '',
+	representative: '',
 }
 const RECEIVABLES_PAGE_SIZE = 10
 const countryNames = Countries as Record<string, string>
@@ -229,6 +244,16 @@ const parseCountryCodesInput = (value: string) =>
 		),
 	)
 
+const resolveUrlListInput = (value: string) =>
+	Array.from(
+		new Set(
+			value
+				.split(/[,\n]+/)
+				.map(url => url.trim())
+				.filter(Boolean),
+		),
+	)
+
 const resolveReceivableItems = (receivables: ReceivablePayload | null) => {
 	if (!receivables) return []
 
@@ -297,6 +322,18 @@ const resolveFaucetConfigInputs = (
 		banProxies: config.banProxies,
 		proxyAmountDivideBy: String(config.proxyAmountDivideBy),
 		limitedCountries: config.limitedCountries.join(', '),
+	}
+}
+
+const resolveWalletNetworkConfigInputs = (
+	config: WalletNetworkConfig | null,
+): WalletNetworkConfigInputs => {
+	if (!config) return EMPTY_WALLET_NETWORK_CONFIG_INPUTS
+
+	return {
+		rpcUrls: config.rpcUrls.join('\n'),
+		workerUrls: config.workerUrls.join('\n'),
+		representative: config.representative,
 	}
 }
 
@@ -406,6 +443,41 @@ function ConfigInput({
 	)
 }
 
+function ConfigTextarea({
+	id,
+	label,
+	value,
+	onChange,
+	placeholder,
+	rows = 3,
+}: {
+	id: string
+	label: string
+	value: string
+	onChange: (value: string) => void
+	placeholder?: string
+	rows?: number
+}) {
+	return (
+		<div>
+			<label
+				htmlFor={id}
+				className="mb-2 block text-sm font-semibold text-slate-700 dark:text-zinc-300"
+			>
+				{label}
+			</label>
+			<textarea
+				id={id}
+				value={value}
+				onChange={event => onChange(event.target.value)}
+				rows={rows}
+				placeholder={placeholder}
+				className="w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-nano focus:ring-2 focus:ring-nano/20 dark:border-zinc-700 dark:bg-midnight-1 dark:text-zinc-100"
+			/>
+		</div>
+	)
+}
+
 function ConfigToggle({
 	id,
 	label,
@@ -470,6 +542,11 @@ export default function AdminDashboard() {
 	const [faucetConfigOpen, setFaucetConfigOpen] = useState(false)
 	const [faucetConfigInputs, setFaucetConfigInputs] =
 		useState<FaucetConfigInputs>(EMPTY_FAUCET_CONFIG_INPUTS)
+	const [walletNetworkConfig, setWalletNetworkConfig] =
+		useState<WalletNetworkConfig | null>(null)
+	const [walletNetworkConfigOpen, setWalletNetworkConfigOpen] = useState(false)
+	const [walletNetworkConfigInputs, setWalletNetworkConfigInputs] =
+		useState<WalletNetworkConfigInputs>(EMPTY_WALLET_NETWORK_CONFIG_INPUTS)
 	const [receivablePage, setReceivablePage] = useState(0)
 	const [ipWhitelist, setIpWhitelist] = useState<string[]>([])
 	const [accountWhitelist, setAccountWhitelist] = useState<string[]>([])
@@ -491,6 +568,7 @@ export default function AdminDashboard() {
 				receivableData,
 				receivableConfigData,
 				faucetConfigData,
+				walletNetworkConfigData,
 				ipData,
 				accountData,
 			] = await Promise.all([
@@ -498,6 +576,7 @@ export default function AdminDashboard() {
 				faucetRequest<ReceivablePayload>('/wallet/receivables'),
 				faucetRequest<ReceivableConfig>('/wallet/receivables/config'),
 				faucetRequest<FaucetConfig>('/config'),
+				faucetRequest<WalletNetworkConfig>('/wallet/network-config'),
 				faucetRequest<string[]>('/whitelist/ip'),
 				faucetRequest<string[]>('/whitelist/account'),
 			])
@@ -508,6 +587,10 @@ export default function AdminDashboard() {
 			setMinReceivableAmountInput(receivableConfigData.minReceivableAmount)
 			setFaucetConfig(faucetConfigData)
 			setFaucetConfigInputs(resolveFaucetConfigInputs(faucetConfigData))
+			setWalletNetworkConfig(walletNetworkConfigData)
+			setWalletNetworkConfigInputs(
+				resolveWalletNetworkConfigInputs(walletNetworkConfigData),
+			)
 			setIpWhitelist(ipData)
 			setAccountWhitelist(accountData)
 		} catch (requestError) {
@@ -615,6 +698,9 @@ export default function AdminDashboard() {
 		setFaucetConfig(null)
 		setFaucetConfigOpen(false)
 		setFaucetConfigInputs(EMPTY_FAUCET_CONFIG_INPUTS)
+		setWalletNetworkConfig(null)
+		setWalletNetworkConfigOpen(false)
+		setWalletNetworkConfigInputs(EMPTY_WALLET_NETWORK_CONFIG_INPUTS)
 		setReceivablePage(0)
 		setIpWhitelist([])
 		setAccountWhitelist([])
@@ -723,6 +809,50 @@ export default function AdminDashboard() {
 			setFaucetConfigInputs(resolveFaucetConfigInputs(config))
 			setFaucetConfigOpen(false)
 		}, 'Faucet config updated')
+	}
+
+	const updateWalletNetworkConfigInput = <
+		Field extends keyof WalletNetworkConfigInputs,
+	>(
+		field: Field,
+		value: WalletNetworkConfigInputs[Field],
+	) => {
+		setWalletNetworkConfigInputs(inputs => ({ ...inputs, [field]: value }))
+	}
+
+	const openWalletNetworkConfig = () => {
+		setWalletNetworkConfigInputs(
+			resolveWalletNetworkConfigInputs(walletNetworkConfig),
+		)
+		setWalletNetworkConfigOpen(true)
+	}
+
+	const walletNetworkConfigInputComplete =
+		resolveUrlListInput(walletNetworkConfigInputs.rpcUrls).length > 0 &&
+		resolveUrlListInput(walletNetworkConfigInputs.workerUrls).length > 0 &&
+		walletNetworkConfigInputs.representative.trim().length > 0
+
+	const saveWalletNetworkConfig = async (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+
+		await runAction(async () => {
+			const config = await faucetRequest<WalletNetworkConfig>(
+				'/wallet/network-config',
+				{
+					method: 'PUT',
+					body: {
+						rpcUrls: resolveUrlListInput(walletNetworkConfigInputs.rpcUrls),
+						workerUrls: resolveUrlListInput(
+							walletNetworkConfigInputs.workerUrls,
+						),
+						representative: walletNetworkConfigInputs.representative.trim(),
+					},
+				},
+			)
+			setWalletNetworkConfig(config)
+			setWalletNetworkConfigInputs(resolveWalletNetworkConfigInputs(config))
+			setWalletNetworkConfigOpen(false)
+		}, 'Wallet network config updated')
 	}
 
 	const syncWallet = async () => {
@@ -1111,6 +1241,84 @@ export default function AdminDashboard() {
 					</form>
 				</div>
 			)}
+			{walletNetworkConfigOpen && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 px-4 py-6">
+					<form
+						onSubmit={saveWalletNetworkConfig}
+						className="w-full max-w-2xl rounded-md border border-slate-200 bg-white p-4 shadow-xl dark:border-zinc-800 dark:bg-midnight-2"
+					>
+						<div className="mb-4 flex items-center justify-between gap-4">
+							<h2 className="text-lg font-semibold text-slate-900 dark:text-zinc-100">
+								Wallet network
+							</h2>
+							<button
+								type="button"
+								aria-label="Close wallet network settings"
+								onClick={() => setWalletNetworkConfigOpen(false)}
+								className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 text-slate-600 transition hover:border-nano hover:text-nano dark:border-zinc-700 dark:text-zinc-300"
+							>
+								<XCircleIcon className="h-5 w-5" />
+							</button>
+						</div>
+						<div className="space-y-4">
+							<ConfigTextarea
+								id="rpc-urls"
+								label="RPC URLs"
+								value={walletNetworkConfigInputs.rpcUrls}
+								onChange={value =>
+									updateWalletNetworkConfigInput('rpcUrls', value)
+								}
+								placeholder="https://node.example.com"
+								rows={4}
+							/>
+							<ConfigTextarea
+								id="worker-urls"
+								label="Worker URLs"
+								value={walletNetworkConfigInputs.workerUrls}
+								onChange={value =>
+									updateWalletNetworkConfigInput('workerUrls', value)
+								}
+								placeholder="https://work.example.com"
+								rows={4}
+							/>
+							<div>
+								<label
+									htmlFor="wallet-representative"
+									className="mb-2 block text-sm font-semibold text-slate-700 dark:text-zinc-300"
+								>
+									Representative
+								</label>
+								<input
+									id="wallet-representative"
+									value={walletNetworkConfigInputs.representative}
+									onChange={event =>
+										updateWalletNetworkConfigInput(
+											'representative',
+											event.target.value,
+										)
+									}
+									placeholder="nano_..."
+									className="h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-nano focus:ring-2 focus:ring-nano/20 dark:border-zinc-700 dark:bg-midnight-1 dark:text-zinc-100"
+								/>
+							</div>
+						</div>
+						<div className="mt-4 flex justify-end gap-2">
+							<IconButton
+								variant="neutral"
+								onClick={() => setWalletNetworkConfigOpen(false)}
+							>
+								Cancel
+							</IconButton>
+							<IconButton
+								type="submit"
+								disabled={submitting || !walletNetworkConfigInputComplete}
+							>
+								Save
+							</IconButton>
+						</div>
+					</form>
+				</div>
+			)}
 
 			{analytics && (
 				<>
@@ -1361,6 +1569,64 @@ export default function AdminDashboard() {
 									</div>
 								</div>
 							</Panel>
+
+							{walletNetworkConfig && (
+								<Panel
+									title="Wallet network"
+									actions={
+										<button
+											type="button"
+											aria-label="Wallet network settings"
+											title="Wallet network settings"
+											onClick={openWalletNetworkConfig}
+											className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 transition hover:border-nano hover:text-nano dark:border-zinc-700 dark:bg-midnight-1 dark:text-zinc-300"
+										>
+											<Cog6ToothIcon className="h-5 w-5" />
+										</button>
+									}
+								>
+									<div className="space-y-3 text-sm">
+										<div>
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												RPC URLs
+											</div>
+											<div className="mt-1 space-y-1">
+												{walletNetworkConfig.rpcUrls.map(url => (
+													<div
+														key={url}
+														className="break-all text-slate-900 dark:text-zinc-100"
+													>
+														{url}
+													</div>
+												))}
+											</div>
+										</div>
+										<div>
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												Worker URLs
+											</div>
+											<div className="mt-1 space-y-1">
+												{walletNetworkConfig.workerUrls.map(url => (
+													<div
+														key={url}
+														className="break-all text-slate-900 dark:text-zinc-100"
+													>
+														{url}
+													</div>
+												))}
+											</div>
+										</div>
+										<div>
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												Representative
+											</div>
+											<div className="mt-1 break-all text-slate-900 dark:text-zinc-100">
+												{walletNetworkConfig.representative}
+											</div>
+										</div>
+									</div>
+								</Panel>
+							)}
 
 							{faucetConfig && (
 								<Panel
