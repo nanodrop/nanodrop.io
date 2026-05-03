@@ -60,6 +60,8 @@ type AverageRow = { average: number | null }
 type WalletStateRow = { state: string }
 type IPWhitelistRow = { ip: string }
 type AccountWhitelistRow = { account: string }
+type IPBlacklistRow = { ip: string }
+type AccountBlacklistRow = { account: string }
 type AdminSettingRow = { value: string }
 type CountryDropsRow = { country_code: string; count: number }
 type DailyDropsRow = { day: string; count: number }
@@ -97,6 +99,7 @@ type RecentDropRow = {
 	hash: string
 	account: string
 	amount: string
+	ip: string
 	took: number
 	timestamp: number
 	country_code: string
@@ -538,6 +541,90 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json({ success: true })
 		})
 
+		this.app.get('/blacklist/ip', async c => {
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
+			}
+
+			return c.json(this.getIPBlacklist())
+		})
+
+		this.app.put('/blacklist/ip/:ipAddress', async c => {
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
+			}
+
+			const ip = c.req.param('ipAddress')
+			if (!isValidIPv4OrIpv6(ip)) {
+				return c.json({ error: 'Invalid IP' }, 400)
+			}
+
+			this.addIPToBlacklist(ip)
+
+			return c.json({ success: true })
+		})
+
+		this.app.delete('/blacklist/ip/:ipAddress', async c => {
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
+			}
+
+			const ip = c.req.param('ipAddress')
+			if (!isValidIPv4OrIpv6(ip)) {
+				return c.json({ error: 'Invalid IP' }, 400)
+			}
+
+			this.removeIPFromBlacklist(ip)
+
+			return c.json({ success: true })
+		})
+
+		this.app.get('/blacklist/account', async c => {
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
+			}
+
+			return c.json(this.getAccountBlacklist())
+		})
+
+		this.app.put('/blacklist/account/:account', async c => {
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
+			}
+
+			if (!checkAddress(c.req.param('account'))) {
+				return c.json({ error: 'Invalid account' }, 400)
+			}
+
+			const account = formatNanoAddress(c.req.param('account'))
+
+			this.addAccountToBlacklist(account)
+
+			return c.json({ success: true })
+		})
+
+		this.app.delete('/blacklist/account/:account', async c => {
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
+			}
+
+			if (!checkAddress(c.req.param('account'))) {
+				return c.json({ error: 'Invalid account' }, 400)
+			}
+
+			const account = formatNanoAddress(c.req.param('account'))
+
+			this.removeAccountFromBlacklist(account)
+
+			return c.json({ success: true })
+		})
+
 		this.app.get('/analytics', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
@@ -570,6 +657,16 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			);
 
 			CREATE TABLE IF NOT EXISTS account_whitelist (
+				account TEXT PRIMARY KEY,
+				created_at INTEGER NOT NULL
+			);
+
+			CREATE TABLE IF NOT EXISTS ip_blacklist (
+				ip TEXT PRIMARY KEY,
+				created_at INTEGER NOT NULL
+			);
+
+			CREATE TABLE IF NOT EXISTS account_blacklist (
 				account TEXT PRIMARY KEY,
 				created_at INTEGER NOT NULL
 			);
@@ -1393,6 +1490,14 @@ export class NanoDropDO extends DurableObject<Bindings> {
 
 		const config = this.getFaucetConfig()
 
+		if (this.ipIsBlacklisted(ip)) {
+			throw new HTTPException(403, { message: 'This IP is blocked' })
+		}
+
+		if (account && this.accountIsBlacklisted(account)) {
+			throw new HTTPException(403, { message: 'This account is blocked' })
+		}
+
 		const [dropsCount, ipInfo] = await this.db.batch<Record<string, any>>([
 			this.db
 				.prepare(
@@ -1650,6 +1755,70 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		this.sql.exec('DELETE FROM account_whitelist WHERE account = ?', account)
 	}
 
+	getIPBlacklist() {
+		return this.sql
+			.exec<IPBlacklistRow>(
+				'SELECT ip FROM ip_blacklist ORDER BY created_at ASC, ip ASC',
+			)
+			.toArray()
+			.map(({ ip }) => ip)
+	}
+
+	ipIsBlacklisted(ip: string) {
+		const row = this.sql
+			.exec<CountRow>(
+				'SELECT COUNT(*) as count FROM ip_blacklist WHERE ip = ?',
+				ip,
+			)
+			.one()
+
+		return row.count > 0
+	}
+
+	addIPToBlacklist(ip: string) {
+		this.sql.exec(
+			'INSERT OR IGNORE INTO ip_blacklist (ip, created_at) VALUES (?, ?)',
+			ip,
+			Date.now(),
+		)
+	}
+
+	removeIPFromBlacklist(ip: string) {
+		this.sql.exec('DELETE FROM ip_blacklist WHERE ip = ?', ip)
+	}
+
+	getAccountBlacklist() {
+		return this.sql
+			.exec<AccountBlacklistRow>(
+				'SELECT account FROM account_blacklist ORDER BY created_at ASC, account ASC',
+			)
+			.toArray()
+			.map(({ account }) => account)
+	}
+
+	accountIsBlacklisted(account: string) {
+		const row = this.sql
+			.exec<CountRow>(
+				'SELECT COUNT(*) as count FROM account_blacklist WHERE account = ?',
+				account,
+			)
+			.one()
+
+		return row.count > 0
+	}
+
+	addAccountToBlacklist(account: string) {
+		this.sql.exec(
+			'INSERT OR IGNORE INTO account_blacklist (account, created_at) VALUES (?, ?)',
+			account,
+			Date.now(),
+		)
+	}
+
+	removeAccountFromBlacklist(account: string) {
+		this.sql.exec('DELETE FROM account_blacklist WHERE account = ?', account)
+	}
+
 	async getAdminAnalytics() {
 		const now = Date.now()
 		const oneDayAgo = now - 1000 * 60 * 60 * 24
@@ -1702,7 +1871,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				)
 				.bind(fourteenDaysAgo),
 			this.db.prepare(`
-				SELECT hash, account, amount, took, timestamp, ip_info.country_code, ip_info.is_proxy
+				SELECT hash, account, amount, drops.ip, took, timestamp, ip_info.country_code, ip_info.is_proxy
 				FROM drops
 				INNER JOIN ip_info ON drops.ip = ip_info.ip
 				ORDER BY timestamp DESC
@@ -1715,6 +1884,12 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			.one().count
 		const accountWhitelistCount = this.sql
 			.exec<CountRow>('SELECT COUNT(*) as count FROM account_whitelist')
+			.one().count
+		const ipBlacklistCount = this.sql
+			.exec<CountRow>('SELECT COUNT(*) as count FROM ip_blacklist')
+			.one().count
+		const accountBlacklistCount = this.sql
+			.exec<CountRow>('SELECT COUNT(*) as count FROM account_blacklist')
 			.one().count
 
 		const { balance, receivable, frontier, representative } = this.wallet.state
@@ -1757,6 +1932,8 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			adminState: {
 				ipWhitelistCount,
 				accountWhitelistCount,
+				ipBlacklistCount,
+				accountBlacklistCount,
 			},
 		}
 	}

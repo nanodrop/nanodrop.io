@@ -33,6 +33,7 @@ It's built with **React**, **Next.JS**, **OpenNext**, **Cloudflare Workers**, **
   - Invisible anti-bot verification
   - Limit per Nano account
   - Limit per IP address
+  - Admin-managed IP and account blacklists
 
 ### API
 
@@ -47,6 +48,14 @@ The internal API keeps the original architecture:
 - A SQL-backed `CoinMarketCapDO` Durable Object for XNO price cache state
 
 The custom Worker entrypoint lives in [`worker.ts`](/home/anarkrypto/workspace/nanodrop/nanodrop.io/worker.ts) and forwards non-API traffic to the OpenNext-generated handler.
+
+### Admin moderation
+
+The admin dashboard is served at `/admin` and authenticates through `ADMIN_TOKEN`.
+Privileged dashboard requests proxy to `/api/faucet/*` with the same bearer token contract used by the Worker API.
+
+The faucet Durable Object stores admin-managed whitelist and blacklist entries in its local SQL storage.
+Blacklist checks run before drop-limit whitelist exemptions, so a blocked IP address or Nano account cannot receive faucet status or drops until it is removed from the blacklist.
 
 ### Local development
 

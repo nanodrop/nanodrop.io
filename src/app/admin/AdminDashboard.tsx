@@ -7,6 +7,7 @@ import {
 	CheckCircleIcon,
 	Cog6ToothIcon,
 	KeyIcon,
+	NoSymbolIcon,
 	PlusIcon,
 	ShieldCheckIcon,
 	TrashIcon,
@@ -31,6 +32,7 @@ type Drop = {
 	hash: string
 	account: string
 	amount: string
+	ip: string
 	took: number
 	timestamp: number
 	country_code: string
@@ -53,6 +55,8 @@ type AdminAnalytics = {
 	adminState: {
 		ipWhitelistCount: number
 		accountWhitelistCount: number
+		ipBlacklistCount: number
+		accountBlacklistCount: number
 	}
 }
 
@@ -551,8 +555,12 @@ export default function AdminDashboard() {
 	const [receivablePage, setReceivablePage] = useState(0)
 	const [ipWhitelist, setIpWhitelist] = useState<string[]>([])
 	const [accountWhitelist, setAccountWhitelist] = useState<string[]>([])
+	const [ipBlacklist, setIpBlacklist] = useState<string[]>([])
+	const [accountBlacklist, setAccountBlacklist] = useState<string[]>([])
 	const [ipInput, setIpInput] = useState('')
 	const [accountInput, setAccountInput] = useState('')
+	const [blockedIpInput, setBlockedIpInput] = useState('')
+	const [blockedAccountInput, setBlockedAccountInput] = useState('')
 	const [loading, setLoading] = useState(false)
 	const [submitting, setSubmitting] = useState(false)
 	const [syncing, setSyncing] = useState(false)
@@ -572,6 +580,8 @@ export default function AdminDashboard() {
 				walletNetworkConfigData,
 				ipData,
 				accountData,
+				blockedIpData,
+				blockedAccountData,
 			] = await Promise.all([
 				faucetRequest<AdminAnalytics>('/analytics'),
 				faucetRequest<ReceivablePayload>('/wallet/receivables'),
@@ -580,6 +590,8 @@ export default function AdminDashboard() {
 				faucetRequest<WalletNetworkConfig>('/wallet/network-config'),
 				faucetRequest<string[]>('/whitelist/ip'),
 				faucetRequest<string[]>('/whitelist/account'),
+				faucetRequest<string[]>('/blacklist/ip'),
+				faucetRequest<string[]>('/blacklist/account'),
 			])
 
 			setAnalytics(analyticsData)
@@ -594,6 +606,8 @@ export default function AdminDashboard() {
 			)
 			setIpWhitelist(ipData)
 			setAccountWhitelist(accountData)
+			setIpBlacklist(blockedIpData)
+			setAccountBlacklist(blockedAccountData)
 		} catch (requestError) {
 			const message =
 				requestError instanceof Error ? requestError.message : 'Request failed'
@@ -705,6 +719,12 @@ export default function AdminDashboard() {
 		setReceivablePage(0)
 		setIpWhitelist([])
 		setAccountWhitelist([])
+		setIpBlacklist([])
+		setAccountBlacklist([])
+		setIpInput('')
+		setAccountInput('')
+		setBlockedIpInput('')
+		setBlockedAccountInput('')
 		setNotice(null)
 		setError(null)
 	}
@@ -895,6 +915,40 @@ export default function AdminDashboard() {
 			})
 			setAccountInput('')
 		}, 'Account whitelist updated')
+	}
+
+	const addBlockedIp = async (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+		const ip = blockedIpInput.trim()
+		if (!ip) return
+
+		await blockIp(ip)
+	}
+
+	const addBlockedAccount = async (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+		const account = blockedAccountInput.trim()
+		if (!account) return
+
+		await blockAccount(account)
+	}
+
+	const blockIp = async (ip: string) => {
+		await runAction(async () => {
+			await faucetRequest(`/blacklist/ip/${encodeURIComponent(ip)}`, {
+				method: 'PUT',
+			})
+			setBlockedIpInput('')
+		}, 'IP blacklist updated')
+	}
+
+	const blockAccount = async (account: string) => {
+		await runAction(async () => {
+			await faucetRequest(`/blacklist/account/${encodeURIComponent(account)}`, {
+				method: 'PUT',
+			})
+			setBlockedAccountInput('')
+		}, 'Account blacklist updated')
 	}
 
 	if (!ready) {
@@ -1519,10 +1573,12 @@ export default function AdminDashboard() {
 										<thead className="border-b border-slate-200 text-xs uppercase text-slate-500 dark:border-zinc-800 dark:text-zinc-500">
 											<tr>
 												<th className="py-2 pr-4">Account</th>
+												<th className="py-2 pr-4">IP</th>
 												<th className="py-2 pr-4">Amount</th>
 												<th className="py-2 pr-4">Country</th>
 												<th className="py-2 pr-4">Time</th>
-												<th className="py-2">Proxy</th>
+												<th className="py-2 pr-4">Proxy</th>
+												<th className="py-2">Actions</th>
 											</tr>
 										</thead>
 										<tbody>
@@ -1535,6 +1591,9 @@ export default function AdminDashboard() {
 														{drop.account}
 													</td>
 													<td className="py-3 pr-4 text-slate-600 dark:text-zinc-400">
+														{drop.ip}
+													</td>
+													<td className="py-3 pr-4 text-slate-600 dark:text-zinc-400">
 														{formatNano(drop.amount)}
 													</td>
 													<td className="py-3 pr-4 text-slate-600 dark:text-zinc-400">
@@ -1544,8 +1603,33 @@ export default function AdminDashboard() {
 													<td className="py-3 pr-4 text-slate-600 dark:text-zinc-400">
 														{formatDateTime(drop.timestamp)}
 													</td>
-													<td className="py-3 text-slate-600 dark:text-zinc-400">
+													<td className="py-3 pr-4 text-slate-600 dark:text-zinc-400">
 														{drop.is_proxy ? 'Yes' : 'No'}
+													</td>
+													<td className="py-3">
+														<div className="flex flex-wrap gap-2">
+															<IconButton
+																variant="danger"
+																disabled={
+																	submitting || ipBlacklist.includes(drop.ip)
+																}
+																onClick={() => void blockIp(drop.ip)}
+															>
+																<NoSymbolIcon className="h-5 w-5" />
+																IP
+															</IconButton>
+															<IconButton
+																variant="danger"
+																disabled={
+																	submitting ||
+																	accountBlacklist.includes(drop.account)
+																}
+																onClick={() => void blockAccount(drop.account)}
+															>
+																<NoSymbolIcon className="h-5 w-5" />
+																Account
+															</IconButton>
+														</div>
 													</td>
 												</tr>
 											))}
@@ -1574,6 +1658,24 @@ export default function AdminDashboard() {
 										</div>
 										<div className="text-xl font-semibold text-slate-900 dark:text-zinc-100">
 											{analytics.adminState.accountWhitelistCount}
+										</div>
+									</div>
+									<div className="flex items-center justify-between gap-4 py-3">
+										<div className="flex items-center gap-2 text-slate-500 dark:text-zinc-500">
+											<NoSymbolIcon className="h-5 w-5 text-rose-500" />
+											IP blacklist
+										</div>
+										<div className="text-xl font-semibold text-slate-900 dark:text-zinc-100">
+											{analytics.adminState.ipBlacklistCount}
+										</div>
+									</div>
+									<div className="flex items-center justify-between gap-4 py-3">
+										<div className="flex items-center gap-2 text-slate-500 dark:text-zinc-500">
+											<NoSymbolIcon className="h-5 w-5 text-amber-500" />
+											Account blacklist
+										</div>
+										<div className="text-xl font-semibold text-slate-900 dark:text-zinc-100">
+											{analytics.adminState.accountBlacklistCount}
 										</div>
 									</div>
 								</div>
@@ -1928,6 +2030,114 @@ export default function AdminDashboard() {
 								{accountWhitelist.length === 0 && (
 									<p className="text-sm text-slate-500 dark:text-zinc-500">
 										No whitelisted accounts.
+									</p>
+								)}
+							</div>
+						</Panel>
+
+						<Panel title="IP blacklist">
+							<form onSubmit={addBlockedIp} className="mb-4 flex gap-2">
+								<input
+									value={blockedIpInput}
+									onChange={event => setBlockedIpInput(event.target.value)}
+									placeholder="IP address"
+									className="h-10 min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-nano focus:ring-2 focus:ring-nano/20 dark:border-zinc-700 dark:bg-midnight-1 dark:text-zinc-100"
+								/>
+								<IconButton
+									type="submit"
+									variant="danger"
+									disabled={submitting || !blockedIpInput.trim()}
+								>
+									<NoSymbolIcon className="h-5 w-5" />
+									Block
+								</IconButton>
+							</form>
+							<div className="max-h-72 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-zinc-700">
+								{ipBlacklist.map(ip => (
+									<div
+										key={ip}
+										className="flex items-center justify-between gap-3 border-t border-slate-100 py-2 first:border-t-0 dark:border-zinc-800"
+									>
+										<span className="break-all text-sm text-slate-800 dark:text-zinc-200">
+											{ip}
+										</span>
+										<IconButton
+											variant="neutral"
+											disabled={submitting}
+											onClick={() =>
+												void runAction(
+													() =>
+														faucetRequest(
+															`/blacklist/ip/${encodeURIComponent(ip)}`,
+															{ method: 'DELETE' },
+														),
+													'IP blacklist updated',
+												)
+											}
+										>
+											<TrashIcon className="h-5 w-5" />
+											Unblock
+										</IconButton>
+									</div>
+								))}
+								{ipBlacklist.length === 0 && (
+									<p className="text-sm text-slate-500 dark:text-zinc-500">
+										No blocked IPs.
+									</p>
+								)}
+							</div>
+						</Panel>
+
+						<Panel title="Account blacklist">
+							<form onSubmit={addBlockedAccount} className="mb-4 flex gap-2">
+								<input
+									value={blockedAccountInput}
+									onChange={event => setBlockedAccountInput(event.target.value)}
+									placeholder="nano_..."
+									className="h-10 min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-nano focus:ring-2 focus:ring-nano/20 dark:border-zinc-700 dark:bg-midnight-1 dark:text-zinc-100"
+								/>
+								<IconButton
+									type="submit"
+									variant="danger"
+									disabled={submitting || !blockedAccountInput.trim()}
+								>
+									<NoSymbolIcon className="h-5 w-5" />
+									Block
+								</IconButton>
+							</form>
+							<div className="max-h-72 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-zinc-700">
+								{accountBlacklist.map(account => (
+									<div
+										key={account}
+										className="flex items-center justify-between gap-3 border-t border-slate-100 py-2 first:border-t-0 dark:border-zinc-800"
+									>
+										<span className="break-all text-sm text-slate-800 dark:text-zinc-200">
+											{account}
+										</span>
+										<IconButton
+											variant="neutral"
+											disabled={submitting}
+											onClick={() =>
+												void runAction(
+													() =>
+														faucetRequest(
+															`/blacklist/account/${encodeURIComponent(
+																account,
+															)}`,
+															{ method: 'DELETE' },
+														),
+													'Account blacklist updated',
+												)
+											}
+										>
+											<TrashIcon className="h-5 w-5" />
+											Unblock
+										</IconButton>
+									</div>
+								))}
+								{accountBlacklist.length === 0 && (
+									<p className="text-sm text-slate-500 dark:text-zinc-500">
+										No blocked accounts.
 									</p>
 								)}
 							</div>
