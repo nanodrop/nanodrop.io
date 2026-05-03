@@ -86,6 +86,7 @@ type WalletNetworkConfig = {
 type WalletNetworkConfigParseResult =
 	| { config: WalletNetworkConfig }
 	| { error: string }
+type WalletProofOfWorkStatus = 'cached' | 'pending'
 type DropReadiness = {
 	amount: string
 	amountNano: string
@@ -342,6 +343,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				receivable,
 				frontier,
 				representative,
+				proofOfWork: this.getWalletProofOfWorkStatus(),
 			})
 		})
 
@@ -352,7 +354,10 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			}
 
 			await this.wallet.sync()
-			return c.json({ success: true })
+			return c.json({
+				success: true,
+				proofOfWork: this.getWalletProofOfWorkStatus(),
+			})
 		})
 
 		this.app.get('/wallet/receivables', async c => {
@@ -992,6 +997,15 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			},
 			state,
 		)
+	}
+
+	getWalletProofOfWorkStatus(): WalletProofOfWorkStatus {
+		const { frontier, work } = this.wallet.state
+		if (!frontier || !work || work.hash !== frontier) {
+			return 'pending'
+		}
+
+		return 'cached'
 	}
 
 	getAdminSettingValue(key: string) {
@@ -1738,6 +1752,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				receivable,
 				frontier,
 				representative,
+				proofOfWork: this.getWalletProofOfWorkStatus(),
 			},
 			adminState: {
 				ipWhitelistCount,

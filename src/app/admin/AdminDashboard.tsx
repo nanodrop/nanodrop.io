@@ -24,6 +24,7 @@ type WalletState = {
 	receivable: string
 	frontier?: string
 	representative?: string
+	proofOfWork: 'cached' | 'pending'
 }
 
 type Drop = {
@@ -1412,6 +1413,14 @@ export default function AdminDashboard() {
 										</div>
 										<div className="mt-1 break-all text-slate-900 dark:text-zinc-100">
 											{analytics.wallet.representative || '-'}
+										</div>
+									</div>
+									<div>
+										<div className="font-semibold text-slate-500 dark:text-zinc-500">
+											Proof of Work
+										</div>
+										<div className="mt-1 text-slate-900 dark:text-zinc-100">
+											{analytics.wallet.proofOfWork}
 										</div>
 									</div>
 								</div>
