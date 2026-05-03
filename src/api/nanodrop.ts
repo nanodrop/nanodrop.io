@@ -201,6 +201,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		})
 
 		this.app.post('/drop', async c => {
+			console.log('Drop request started')
 			try {
 				const startedAt = Date.now()
 				const payload = await c.req.json()
@@ -267,10 +268,12 @@ export class NanoDropDO extends DurableObject<Bindings> {
 
 					return c.json({ hash, amount })
 				} catch (error) {
+					console.error('Drop send error:', error)
 					dequeue()
 					throw error
 				}
 			} catch (error) {
+				console.error('Drop error:', error)
 				this.wallet.sync()
 				throw error
 			}
