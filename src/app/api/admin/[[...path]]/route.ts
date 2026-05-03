@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { hasAdminSession } from '../../_auth'
+import { hasAdminSession } from '../_auth'
 
-const FAUCET_PREFIX = '/api/faucet'
+const DEV_FAUCET_ORIGIN =
+	process.env.WORKER_DEV_ORIGIN || 'http://127.0.0.1:8787'
 const RESPONSE_HEADERS_TO_DROP = [
 	'content-encoding',
 	'content-length',
@@ -44,8 +45,10 @@ const proxyAdminRequest = async (
 	const { path = [] } = await params
 	const pathname =
 		path.length > 0 ? `/${path.map(encodeURIComponent).join('/')}` : ''
-	const targetUrl = new URL(request.url)
-	targetUrl.pathname = `${FAUCET_PREFIX}${pathname}`
+	const targetUrl = new URL(
+		`/admin${pathname}${request.nextUrl.search}`,
+		DEV_FAUCET_ORIGIN,
+	)
 
 	const headers = new Headers(request.headers)
 	for (const headerName of REQUEST_HEADERS_TO_DROP) {

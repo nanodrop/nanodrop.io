@@ -350,7 +350,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			})
 		})
 
-		this.app.post('/wallet/sync', async c => {
+		this.app.post('/admin/wallet/sync', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -363,11 +363,16 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			})
 		})
 
-		this.app.get('/wallet/receivables', async c => {
+		this.app.get('/admin/wallet/receivables', async c => {
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
+			}
+
 			return c.json(this.getFilteredReceivableBlocks())
 		})
 
-		this.app.get('/wallet/receivables/config', async c => {
+		this.app.get('/admin/wallet/receivables/config', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -376,7 +381,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json(this.getReceivableConfig())
 		})
 
-		this.app.put('/wallet/receivables/config', async c => {
+		this.app.put('/admin/wallet/receivables/config', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -396,7 +401,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json(config)
 		})
 
-		this.app.get('/wallet/network-config', async c => {
+		this.app.get('/admin/wallet/network-config', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -405,7 +410,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json(this.getWalletNetworkConfig(env))
 		})
 
-		this.app.put('/wallet/network-config', async c => {
+		this.app.put('/admin/wallet/network-config', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -421,7 +426,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json(this.getWalletNetworkConfig(env))
 		})
 
-		this.app.get('/config', async c => {
+		this.app.get('/admin/config', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -430,7 +435,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json(this.getFaucetConfig())
 		})
 
-		this.app.put('/config', async c => {
+		this.app.put('/admin/config', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -446,7 +451,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json(this.getFaucetConfig())
 		})
 
-		this.app.post('/wallet/receive/:link', async c => {
+		this.app.post('/admin/wallet/receive/:link', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -457,7 +462,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json({ hash })
 		})
 
-		this.app.get('/whitelist/ip', async c => {
+		this.app.get('/admin/whitelist/ip', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -466,7 +471,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json(this.getIPWhitelist())
 		})
 
-		this.app.put('/whitelist/ip/:ipAddress', async c => {
+		this.app.put('/admin/whitelist/ip/:ipAddress', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -482,7 +487,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json({ success: true })
 		})
 
-		this.app.delete('/whitelist/ip/:ipAddress', async c => {
+		this.app.delete('/admin/whitelist/ip/:ipAddress', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -498,7 +503,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json({ success: true })
 		})
 
-		this.app.get('/whitelist/account', async c => {
+		this.app.get('/admin/whitelist/account', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -507,7 +512,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json(this.getAccountWhitelist())
 		})
 
-		this.app.put('/whitelist/account/:account', async c => {
+		this.app.put('/admin/whitelist/account/:account', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -524,7 +529,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json({ success: true })
 		})
 
-		this.app.delete('/whitelist/account/:account', async c => {
+		this.app.delete('/admin/whitelist/account/:account', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -541,7 +546,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json({ success: true })
 		})
 
-		this.app.get('/blacklist/ip', async c => {
+		this.app.get('/admin/blacklist/ip', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -550,7 +555,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json(this.getIPBlacklist())
 		})
 
-		this.app.put('/blacklist/ip/:ipAddress', async c => {
+		this.app.put('/admin/blacklist/ip/:ipAddress', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -566,7 +571,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json({ success: true })
 		})
 
-		this.app.delete('/blacklist/ip/:ipAddress', async c => {
+		this.app.delete('/admin/blacklist/ip/:ipAddress', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -582,7 +587,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json({ success: true })
 		})
 
-		this.app.get('/blacklist/account', async c => {
+		this.app.get('/admin/blacklist/account', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -591,7 +596,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json(this.getAccountBlacklist())
 		})
 
-		this.app.put('/blacklist/account/:account', async c => {
+		this.app.put('/admin/blacklist/account/:account', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -608,7 +613,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json({ success: true })
 		})
 
-		this.app.delete('/blacklist/account/:account', async c => {
+		this.app.delete('/admin/blacklist/account/:account', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)
@@ -625,7 +630,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json({ success: true })
 		})
 
-		this.app.get('/analytics', async c => {
+		this.app.get('/admin/analytics', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
 				return c.json({ error: authError.message }, authError.status)

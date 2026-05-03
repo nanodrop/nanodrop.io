@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const DEV_FAUCET_ORIGIN = 'http://127.0.0.1:8787'
+const DEV_WORKER_ORIGIN =
+	process.env.WORKER_DEV_ORIGIN || 'http://127.0.0.1:8787'
+const PRICE_PATH = '/api/price'
+const PUBLIC_API_PATHS = new Set([
+	'/status',
+	'/drop',
+	'/drops',
+	'/drops/countries',
+	'/wallet',
+])
 const RESPONSE_HEADERS_TO_DROP = [
 	'content-encoding',
 	'content-length',
@@ -15,6 +24,17 @@ type RouteContext = {
 	}>
 }
 
+const resolveTargetPath = (path: string[]) => {
+	if (path.length === 1 && path[0] === 'price') {
+		return PRICE_PATH
+	}
+
+	const pathname = path.length > 0 ? `/${path.join('/')}` : '/'
+	if (!PUBLIC_API_PATHS.has(pathname)) return null
+
+	return pathname
+}
+
 const proxyRequest = async (
 	request: NextRequest,
 	{ params }: RouteContext,
@@ -24,10 +44,14 @@ const proxyRequest = async (
 	}
 
 	const { path = [] } = await params
-	const pathname = path.length > 0 ? `/${path.join('/')}` : ''
+	const targetPath = resolveTargetPath(path)
+	if (!targetPath) {
+		return NextResponse.json({ error: 'Not found' }, { status: 404 })
+	}
+
 	const targetUrl = new URL(
-		`${pathname}${request.nextUrl.search}`,
-		DEV_FAUCET_ORIGIN,
+		`${targetPath}${request.nextUrl.search}`,
+		DEV_WORKER_ORIGIN,
 	)
 
 	const headers = new Headers(request.headers)

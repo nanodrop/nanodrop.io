@@ -192,8 +192,8 @@ const jsonRequest = async <T,>(url: string, options: RequestOptions = {}) => {
 	return payload as T
 }
 
-const faucetRequest = <T,>(path: string, options: RequestOptions = {}) =>
-	jsonRequest<T>(`/api/admin/faucet${path}`, options)
+const adminRequest = <T,>(path: string, options: RequestOptions = {}) =>
+	jsonRequest<T>(`/api/admin${path}`, options)
 
 const formatInteger = (value: number) =>
 	new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(value)
@@ -641,15 +641,15 @@ export default function AdminDashboard() {
 				blockedIpData,
 				blockedAccountData,
 			] = await Promise.all([
-				faucetRequest<AdminAnalytics>('/analytics'),
-				faucetRequest<ReceivablePayload>('/wallet/receivables'),
-				faucetRequest<ReceivableConfig>('/wallet/receivables/config'),
-				faucetRequest<FaucetConfig>('/config'),
-				faucetRequest<WalletNetworkConfig>('/wallet/network-config'),
-				faucetRequest<string[]>('/whitelist/ip'),
-				faucetRequest<string[]>('/whitelist/account'),
-				faucetRequest<string[]>('/blacklist/ip'),
-				faucetRequest<string[]>('/blacklist/account'),
+				adminRequest<AdminAnalytics>('/analytics'),
+				adminRequest<ReceivablePayload>('/wallet/receivables'),
+				adminRequest<ReceivableConfig>('/wallet/receivables/config'),
+				adminRequest<FaucetConfig>('/config'),
+				adminRequest<WalletNetworkConfig>('/wallet/network-config'),
+				adminRequest<string[]>('/whitelist/ip'),
+				adminRequest<string[]>('/whitelist/account'),
+				adminRequest<string[]>('/blacklist/ip'),
+				adminRequest<string[]>('/blacklist/account'),
 			])
 
 			setAnalytics(analyticsData)
@@ -816,7 +816,7 @@ export default function AdminDashboard() {
 		const minReceivableAmount = minReceivableAmountInput.trim()
 
 		await runAction(async () => {
-			const config = await faucetRequest<ReceivableConfig>(
+			const config = await adminRequest<ReceivableConfig>(
 				'/wallet/receivables/config',
 				{
 					method: 'PUT',
@@ -861,7 +861,7 @@ export default function AdminDashboard() {
 		event.preventDefault()
 
 		await runAction(async () => {
-			const config = await faucetRequest<FaucetConfig>('/config', {
+			const config = await adminRequest<FaucetConfig>('/config', {
 				method: 'PUT',
 				body: {
 					minDropAmount: faucetConfigInputs.minDropAmount.trim(),
@@ -916,7 +916,7 @@ export default function AdminDashboard() {
 		event.preventDefault()
 
 		await runAction(async () => {
-			const config = await faucetRequest<WalletNetworkConfig>(
+			const config = await adminRequest<WalletNetworkConfig>(
 				'/wallet/network-config',
 				{
 					method: 'PUT',
@@ -940,7 +940,7 @@ export default function AdminDashboard() {
 		try {
 			await runAction(
 				() =>
-					faucetRequest('/wallet/sync', {
+					adminRequest('/wallet/sync', {
 						method: 'POST',
 					}),
 				'Wallet synced',
@@ -956,7 +956,7 @@ export default function AdminDashboard() {
 		if (!ip) return
 
 		await runAction(async () => {
-			await faucetRequest(`/whitelist/ip/${encodeURIComponent(ip)}`, {
+			await adminRequest(`/whitelist/ip/${encodeURIComponent(ip)}`, {
 				method: 'PUT',
 			})
 			setIpInput('')
@@ -969,7 +969,7 @@ export default function AdminDashboard() {
 		if (!account) return
 
 		await runAction(async () => {
-			await faucetRequest(`/whitelist/account/${encodeURIComponent(account)}`, {
+			await adminRequest(`/whitelist/account/${encodeURIComponent(account)}`, {
 				method: 'PUT',
 			})
 			setAccountInput('')
@@ -994,7 +994,7 @@ export default function AdminDashboard() {
 
 	const blockIp = async (ip: string) => {
 		await runAction(async () => {
-			await faucetRequest(`/blacklist/ip/${encodeURIComponent(ip)}`, {
+			await adminRequest(`/blacklist/ip/${encodeURIComponent(ip)}`, {
 				method: 'PUT',
 			})
 			setBlockedIpInput('')
@@ -1003,7 +1003,7 @@ export default function AdminDashboard() {
 
 	const blockAccount = async (account: string) => {
 		await runAction(async () => {
-			await faucetRequest(`/blacklist/account/${encodeURIComponent(account)}`, {
+			await adminRequest(`/blacklist/account/${encodeURIComponent(account)}`, {
 				method: 'PUT',
 			})
 			setBlockedAccountInput('')
@@ -1682,7 +1682,7 @@ export default function AdminDashboard() {
 														onClick={() =>
 															void runAction(
 																() =>
-																	faucetRequest(
+																	adminRequest(
 																		`/wallet/receive/${encodeURIComponent(link)}`,
 																		{ method: 'POST' },
 																	),
@@ -2203,7 +2203,7 @@ export default function AdminDashboard() {
 											onClick={() =>
 												void runAction(
 													() =>
-														faucetRequest(
+														adminRequest(
 															`/whitelist/ip/${encodeURIComponent(ip)}`,
 															{ method: 'DELETE' },
 														),
@@ -2258,7 +2258,7 @@ export default function AdminDashboard() {
 											onClick={() =>
 												void runAction(
 													() =>
-														faucetRequest(
+														adminRequest(
 															`/whitelist/account/${encodeURIComponent(
 																account,
 															)}`,
@@ -2316,7 +2316,7 @@ export default function AdminDashboard() {
 											onClick={() =>
 												void runAction(
 													() =>
-														faucetRequest(
+														adminRequest(
 															`/blacklist/ip/${encodeURIComponent(ip)}`,
 															{ method: 'DELETE' },
 														),
@@ -2372,7 +2372,7 @@ export default function AdminDashboard() {
 											onClick={() =>
 												void runAction(
 													() =>
-														faucetRequest(
+														adminRequest(
 															`/blacklist/account/${encodeURIComponent(
 																account,
 															)}`,

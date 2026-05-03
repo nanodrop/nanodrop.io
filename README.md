@@ -37,7 +37,9 @@ It's built with **React**, **Next.JS**, **OpenNext**, **Cloudflare Workers**, **
 
 ### API
 
-The faucet API is now internalized in this project and served from the same Worker under `/api/faucet/*`.
+The faucet API is now internalized in this project and served from the same Worker under `/api/*`.
+Only endpoints consumed by public pages are exposed under the public API namespace.
+Administrative faucet operations are exposed through `/api/admin/*`.
 The price API is also Worker-owned and served from `/api/price`.
 
 The internal API keeps the original architecture:
@@ -49,10 +51,11 @@ The internal API keeps the original architecture:
 
 The custom Worker entrypoint lives in [`worker.ts`](/home/anarkrypto/workspace/nanodrop/nanodrop.io/worker.ts) and forwards non-API traffic to the OpenNext-generated handler.
 
-### Admin moderation
+### Admin Dashboard
 
 The admin dashboard is served at `/admin` and authenticates through `ADMIN_TOKEN`.
-Privileged dashboard requests proxy to `/api/faucet/*` with the same bearer token contract used by the Worker API.
+Privileged dashboard requests go through `/api/admin/*`.
+The custom Worker validates the admin session for those requests and forwards them to the faucet Durable Object with the `ADMIN_TOKEN` bearer contract.
 
 The faucet Durable Object stores admin-managed whitelist and blacklist entries in its local SQL storage.
 Blacklist checks run before drop-limit whitelist exemptions, so a blocked IP address or Nano account cannot receive faucet status or drops until it is removed from the blacklist.
@@ -71,8 +74,9 @@ This runs:
 - `next dev` for the UI
 - `wrangler dev --config wrangler.dev.jsonc` for the faucet API and Durable Object
 
-During `npm run dev`, the browser still calls the same-origin faucet route at `/api/faucet`.
-The dev-only route handler at [`src/app/api/faucet/[[...path]]/route.ts`](/home/anarkrypto/workspace/nanodrop/nanodrop.io/src/app/api/faucet/[[...path]]/route.ts) proxies that path to the local faucet worker on `http://127.0.0.1:8787`.
+During `npm run dev`, the browser still calls the same-origin public API under `/api`.
+The dev-only route handler at [`src/app/api/[[...path]]/route.ts`](/home/anarkrypto/workspace/nanodrop/nanodrop.io/src/app/api/[[...path]]/route.ts) proxies the public API paths to the local faucet worker on `http://127.0.0.1:8787`.
+Admin dashboard requests still call `/api/admin/*`; the dev route handler proxies those requests to the local faucet worker under its internal `/admin/*` route namespace.
 The same local Worker also serves `/api/price`; a Next dev rewrite proxies `/api/price` to `http://127.0.0.1:8787/api/price`.
 
 If you want to run only the UI, use:
@@ -107,7 +111,8 @@ Start the Worker preview:
 npm run preview
 ```
 
-In production-like runtimes, the frontend also talks to the same-origin faucet route at `/api/faucet`.
+In production-like runtimes, the frontend also talks to the same-origin public API under `/api`.
+The admin dashboard talks to the same-origin admin route at `/api/admin`.
 The frontend price ticker talks to the same-origin Worker route at `/api/price`.
 
 ### Donations

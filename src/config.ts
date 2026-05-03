@@ -23,6 +23,6 @@ export const SOCIALS = {
 
 export const CONTACT_EMAIL = 'hello@nanodrop.io'
 
-export const API_URL = '/api/faucet'
+export const API_URL = '/api'
 
 export const SITE_URL = resolveSiteUrl()
