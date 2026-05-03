@@ -566,6 +566,7 @@ export default function AdminDashboard() {
 	const [syncing, setSyncing] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [notice, setNotice] = useState<string | null>(null)
+	const [dropActionTarget, setDropActionTarget] = useState<Drop | null>(null)
 
 	const loadDashboard = useCallback(async () => {
 		setLoading(true)
@@ -725,6 +726,7 @@ export default function AdminDashboard() {
 		setAccountInput('')
 		setBlockedIpInput('')
 		setBlockedAccountInput('')
+		setDropActionTarget(null)
 		setNotice(null)
 		setError(null)
 	}
@@ -949,6 +951,20 @@ export default function AdminDashboard() {
 			})
 			setBlockedAccountInput('')
 		}, 'Account blacklist updated')
+	}
+
+	const blockSelectedDropIp = async () => {
+		if (!dropActionTarget) return
+
+		await blockIp(dropActionTarget.ip)
+		setDropActionTarget(null)
+	}
+
+	const blockSelectedDropAccount = async () => {
+		if (!dropActionTarget) return
+
+		await blockAccount(dropActionTarget.account)
+		setDropActionTarget(null)
 	}
 
 	if (!ready) {
@@ -1374,6 +1390,84 @@ export default function AdminDashboard() {
 					</form>
 				</div>
 			)}
+			{dropActionTarget && (
+				<div
+					className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4"
+					role="dialog"
+					aria-modal="true"
+					aria-labelledby="drop-action-title"
+				>
+					<div className="w-full max-w-md rounded-md border border-slate-200 bg-white p-4 shadow-xl dark:border-zinc-800 dark:bg-midnight-2">
+						<div className="mb-4 flex items-center justify-between gap-4">
+							<h2
+								id="drop-action-title"
+								className="text-lg font-semibold text-slate-900 dark:text-zinc-100"
+							>
+								Ban drop source
+							</h2>
+							<button
+								type="button"
+								aria-label="Close drop actions"
+								onClick={() => setDropActionTarget(null)}
+								className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 text-slate-600 transition hover:border-nano hover:text-nano dark:border-zinc-700 dark:text-zinc-300"
+							>
+								<XCircleIcon className="h-5 w-5" />
+							</button>
+						</div>
+						<p className="mb-4 text-sm text-slate-600 dark:text-zinc-400">
+							Choose whether to ban the IP address or the Nano account used by
+							this drop.
+						</p>
+						<div className="mb-4 space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm dark:border-zinc-800 dark:bg-midnight-1">
+							<div>
+								<div className="mb-1 font-semibold uppercase text-slate-500 dark:text-zinc-500">
+									IP
+								</div>
+								<div className="break-all text-slate-900 dark:text-zinc-100">
+									{dropActionTarget.ip}
+								</div>
+							</div>
+							<div>
+								<div className="mb-1 font-semibold uppercase text-slate-500 dark:text-zinc-500">
+									Account
+								</div>
+								<div className="break-all text-slate-900 dark:text-zinc-100">
+									{dropActionTarget.account}
+								</div>
+							</div>
+						</div>
+						<div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+							<IconButton
+								variant="neutral"
+								onClick={() => setDropActionTarget(null)}
+							>
+								Cancel
+							</IconButton>
+							<IconButton
+								variant="danger"
+								disabled={
+									submitting || ipBlacklist.includes(dropActionTarget.ip)
+								}
+								onClick={() => void blockSelectedDropIp()}
+							>
+								<NoSymbolIcon className="h-5 w-5" />
+								Ban IP
+							</IconButton>
+							<IconButton
+								variant="danger"
+								disabled={
+									submitting ||
+									accountBlacklist.includes(dropActionTarget.account)
+								}
+								onClick={() => void blockSelectedDropAccount()}
+							>
+								<NoSymbolIcon className="h-5 w-5" />
+								Ban account
+							</IconButton>
+						</div>
+					</div>
+				</div>
+			)}
 
 			{analytics && (
 				<>
@@ -1607,29 +1701,19 @@ export default function AdminDashboard() {
 														{drop.is_proxy ? 'Yes' : 'No'}
 													</td>
 													<td className="py-3">
-														<div className="flex flex-wrap gap-2">
-															<IconButton
-																variant="danger"
-																disabled={
-																	submitting || ipBlacklist.includes(drop.ip)
-																}
-																onClick={() => void blockIp(drop.ip)}
-															>
-																<NoSymbolIcon className="h-5 w-5" />
-																IP
-															</IconButton>
-															<IconButton
-																variant="danger"
-																disabled={
-																	submitting ||
-																	accountBlacklist.includes(drop.account)
-																}
-																onClick={() => void blockAccount(drop.account)}
-															>
-																<NoSymbolIcon className="h-5 w-5" />
-																Account
-															</IconButton>
-														</div>
+														<button
+															type="button"
+															aria-label="Open drop actions"
+															disabled={
+																submitting ||
+																(ipBlacklist.includes(drop.ip) &&
+																	accountBlacklist.includes(drop.account))
+															}
+															onClick={() => setDropActionTarget(drop)}
+															className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-700 transition enabled:hover:bg-rose-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-300 dark:disabled:border-zinc-800 dark:disabled:bg-zinc-900 dark:disabled:text-zinc-600"
+														>
+															<NoSymbolIcon className="h-5 w-5" />
+														</button>
 													</td>
 												</tr>
 											))}
