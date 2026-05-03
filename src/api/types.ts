@@ -10,7 +10,6 @@ export type Bindings = {
 	DEFAULT_REPRESENTATIVE: string
 	ADMIN_TOKEN: string
 	HCAPTCHA_SECRET?: string
-	ALLOW_ORIGIN?: string
 	DEBUG: string
 }
 

@@ -11,13 +11,13 @@ export { CoinMarketCapDO } from './coinmarketcap'
 
 const app = new Hono<{ Bindings: Bindings }>().onError(errorHandler)
 
+const getAllowedCorsOrigin = (request: Request) => new URL(request.url).origin
+
 app.options('*', c => {
 	return new Response('', {
 		status: 204,
 		headers: {
-			'Access-Control-Allow-Origin': c.env.ALLOW_ORIGIN
-				? new URL(c.env.ALLOW_ORIGIN).origin
-				: '*',
+			'Access-Control-Allow-Origin': getAllowedCorsOrigin(c.req.raw),
 			'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 			'Access-Control-Allow-Headers': 'Content-Type',
 		},
@@ -46,10 +46,7 @@ app.use('*', async c => {
 	const response = await obj.fetch(new Request(c.req.url, c.req.raw))
 
 	const headers = new Headers(response.headers)
-	headers.set(
-		'Access-Control-Allow-Origin',
-		c.env.ALLOW_ORIGIN ? new URL(c.env.ALLOW_ORIGIN).origin : '*',
-	)
+	headers.set('Access-Control-Allow-Origin', getAllowedCorsOrigin(c.req.raw))
 
 	return new Response(response.body, {
 		status: response.status,

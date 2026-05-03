@@ -179,7 +179,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		})
 
 		this.app.get('/status', async c => {
-			const originError = this.getOriginError(c.req.raw, env)
+			const originError = this.getOriginError(c.req.raw)
 			if (originError) {
 				return c.json({ error: originError.message }, originError.status)
 			}
@@ -215,7 +215,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 
 				const account = formatNanoAddress(payload.account)
 
-				const originError = this.getOriginError(c.req.raw, env)
+				const originError = this.getOriginError(c.req.raw)
 				if (originError) {
 					return c.json({ error: originError.message }, originError.status)
 				}
@@ -1460,19 +1460,22 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		)
 	}
 
-	getOriginError(request: Request, env: Bindings) {
-		if (
-			env.ALLOW_ORIGIN &&
-			new URL(env.ALLOW_ORIGIN).origin !== request.headers.get('origin')
-		) {
-			return { message: 'Origin mismatch', status: 400 as const }
-		}
-
+	getOriginError(request: Request) {
 		const origin = request.headers.get('origin') || 'Unknown'
 		if (origin.includes('api.nanodrop.io')) {
 			return {
 				message: 'Temporarily unavailable due spam',
 				status: 403 as const,
+			}
+		}
+
+		if (origin !== 'Unknown') {
+			try {
+				if (new URL(origin).origin !== new URL(request.url).origin) {
+					return { message: 'Origin mismatch', status: 400 as const }
+				}
+			} catch {
+				return { message: 'Origin mismatch', status: 400 as const }
 			}
 		}
 

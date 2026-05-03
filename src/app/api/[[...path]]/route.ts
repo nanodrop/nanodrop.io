@@ -57,6 +57,9 @@ const proxyRequest = async (
 	const headers = new Headers(request.headers)
 	headers.set('host', targetUrl.host)
 	headers.set('accept-encoding', 'identity')
+	if (headers.has('origin')) {
+		headers.set('origin', targetUrl.origin)
+	}
 
 	const upstreamResponse = await fetch(targetUrl, {
 		method: request.method,
