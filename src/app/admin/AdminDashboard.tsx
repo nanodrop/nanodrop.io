@@ -52,8 +52,6 @@ type AdminAnalytics = {
 	adminState: {
 		ipWhitelistCount: number
 		accountWhitelistCount: number
-		temporaryIpBlacklistCount: number
-		temporaryAccountBlacklistCount: number
 	}
 }
 
@@ -76,6 +74,49 @@ type ReceivableConfig = {
 	minReceivableAmount: string
 	minReceivableAmountRaw: string
 }
+type FaucetConfig = {
+	minDropAmount: string
+	maxDropAmount: string
+	divideBalanceBy: number
+	periodDays: number
+	periodMs: number
+	maxDropPerIpSimultaneously: number
+	maxDropsPerAccount: number
+	maxDropsPerIp: number
+	maxDropsPerProxyIp: number
+	maxDropsPerIpInLimitedCountry: number
+	verificationRequiredByDefault: boolean
+	verifyWhenProxy: boolean
+	banProxies: boolean
+	proxyAmountDivideBy: number
+	limitedCountries: string[]
+}
+type WalletNetworkConfig = {
+	rpcUrls: string[]
+	workerUrls: string[]
+	representative: string
+}
+type FaucetConfigInputs = {
+	minDropAmount: string
+	maxDropAmount: string
+	divideBalanceBy: string
+	periodDays: string
+	maxDropPerIpSimultaneously: string
+	maxDropsPerAccount: string
+	maxDropsPerIp: string
+	maxDropsPerProxyIp: string
+	maxDropsPerIpInLimitedCountry: string
+	verificationRequiredByDefault: boolean
+	verifyWhenProxy: boolean
+	banProxies: boolean
+	proxyAmountDivideBy: string
+	limitedCountries: string
+}
+type WalletNetworkConfigInputs = {
+	rpcUrls: string
+	workerUrls: string
+	representative: string
+}
 type ReceivableItem = {
 	key: string
 	link: string
@@ -87,7 +128,27 @@ type RequestOptions = Omit<RequestInit, 'body'> & {
 	body?: unknown
 }
 
-const DEFAULT_MIN_RECEIVABLE_AMOUNT = '0.0001'
+const EMPTY_FAUCET_CONFIG_INPUTS: FaucetConfigInputs = {
+	minDropAmount: '',
+	maxDropAmount: '',
+	divideBalanceBy: '',
+	periodDays: '',
+	maxDropPerIpSimultaneously: '',
+	maxDropsPerAccount: '',
+	maxDropsPerIp: '',
+	maxDropsPerProxyIp: '',
+	maxDropsPerIpInLimitedCountry: '',
+	verificationRequiredByDefault: false,
+	verifyWhenProxy: false,
+	banProxies: false,
+	proxyAmountDivideBy: '',
+	limitedCountries: '',
+}
+const EMPTY_WALLET_NETWORK_CONFIG_INPUTS: WalletNetworkConfigInputs = {
+	rpcUrls: '',
+	workerUrls: '',
+	representative: '',
+}
 const RECEIVABLES_PAGE_SIZE = 10
 const countryNames = Countries as Record<string, string>
 
@@ -162,6 +223,37 @@ const formatDateTime = (timestamp: number) =>
 		minute: '2-digit',
 	}).format(new Date(timestamp))
 
+const formatCountryCodes = (countries: string[]) => {
+	if (countries.length === 0) return 'None'
+
+	return countries
+		.map(country => {
+			const name = countryNames[country]
+			return name ? `${name} (${country})` : country
+		})
+		.join(', ')
+}
+
+const parseCountryCodesInput = (value: string) =>
+	Array.from(
+		new Set(
+			value
+				.split(/[\s,;]+/)
+				.map(country => country.trim().toUpperCase())
+				.filter(Boolean),
+		),
+	)
+
+const resolveUrlListInput = (value: string) =>
+	Array.from(
+		new Set(
+			value
+				.split(/[,\n]+/)
+				.map(url => url.trim())
+				.filter(Boolean),
+		),
+	)
+
 const resolveReceivableItems = (receivables: ReceivablePayload | null) => {
 	if (!receivables) return []
 
@@ -207,6 +299,41 @@ const parseRawAmount = (amount?: string) => {
 		return BigInt(amount)
 	} catch {
 		return BigInt(0)
+	}
+}
+
+const resolveFaucetConfigInputs = (
+	config: FaucetConfig | null,
+): FaucetConfigInputs => {
+	if (!config) return EMPTY_FAUCET_CONFIG_INPUTS
+
+	return {
+		minDropAmount: config.minDropAmount,
+		maxDropAmount: config.maxDropAmount,
+		divideBalanceBy: String(config.divideBalanceBy),
+		periodDays: String(config.periodDays),
+		maxDropPerIpSimultaneously: String(config.maxDropPerIpSimultaneously),
+		maxDropsPerAccount: String(config.maxDropsPerAccount),
+		maxDropsPerIp: String(config.maxDropsPerIp),
+		maxDropsPerProxyIp: String(config.maxDropsPerProxyIp),
+		maxDropsPerIpInLimitedCountry: String(config.maxDropsPerIpInLimitedCountry),
+		verificationRequiredByDefault: config.verificationRequiredByDefault,
+		verifyWhenProxy: config.verifyWhenProxy,
+		banProxies: config.banProxies,
+		proxyAmountDivideBy: String(config.proxyAmountDivideBy),
+		limitedCountries: config.limitedCountries.join(', '),
+	}
+}
+
+const resolveWalletNetworkConfigInputs = (
+	config: WalletNetworkConfig | null,
+): WalletNetworkConfigInputs => {
+	if (!config) return EMPTY_WALLET_NETWORK_CONFIG_INPUTS
+
+	return {
+		rpcUrls: config.rpcUrls.join('\n'),
+		workerUrls: config.workerUrls.join('\n'),
+		representative: config.representative,
 	}
 }
 
@@ -267,6 +394,118 @@ function IconButton({
 	)
 }
 
+function ConfigInput({
+	id,
+	label,
+	value,
+	onChange,
+	min,
+	max,
+	step,
+	suffix,
+}: {
+	id: string
+	label: string
+	value: string
+	onChange: (value: string) => void
+	min?: string
+	max?: string
+	step?: string
+	suffix?: string
+}) {
+	return (
+		<div>
+			<label
+				htmlFor={id}
+				className="mb-2 block text-sm font-semibold text-slate-700 dark:text-zinc-300"
+			>
+				{label}
+			</label>
+			<div className="flex items-center rounded-md border border-slate-300 bg-white focus-within:border-nano focus-within:ring-2 focus-within:ring-nano/20 dark:border-zinc-700 dark:bg-midnight-1">
+				<input
+					id={id}
+					type="number"
+					inputMode="decimal"
+					min={min}
+					max={max}
+					step={step}
+					value={value}
+					onChange={event => onChange(event.target.value)}
+					className="h-11 min-w-0 flex-1 rounded-md bg-transparent px-3 text-slate-900 outline-none dark:text-zinc-100"
+				/>
+				{suffix && (
+					<span className="px-3 text-sm font-semibold text-slate-500 dark:text-zinc-500">
+						{suffix}
+					</span>
+				)}
+			</div>
+		</div>
+	)
+}
+
+function ConfigTextarea({
+	id,
+	label,
+	value,
+	onChange,
+	placeholder,
+	rows = 3,
+}: {
+	id: string
+	label: string
+	value: string
+	onChange: (value: string) => void
+	placeholder?: string
+	rows?: number
+}) {
+	return (
+		<div>
+			<label
+				htmlFor={id}
+				className="mb-2 block text-sm font-semibold text-slate-700 dark:text-zinc-300"
+			>
+				{label}
+			</label>
+			<textarea
+				id={id}
+				value={value}
+				onChange={event => onChange(event.target.value)}
+				rows={rows}
+				placeholder={placeholder}
+				className="w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-nano focus:ring-2 focus:ring-nano/20 dark:border-zinc-700 dark:bg-midnight-1 dark:text-zinc-100"
+			/>
+		</div>
+	)
+}
+
+function ConfigToggle({
+	id,
+	label,
+	checked,
+	onChange,
+}: {
+	id: string
+	label: string
+	checked: boolean
+	onChange: (checked: boolean) => void
+}) {
+	return (
+		<label
+			htmlFor={id}
+			className="flex min-h-11 items-center justify-between gap-4 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 dark:border-zinc-700 dark:bg-midnight-1 dark:text-zinc-300"
+		>
+			<span>{label}</span>
+			<input
+				id={id}
+				type="checkbox"
+				checked={checked}
+				onChange={event => onChange(event.target.checked)}
+				className="h-5 w-5 rounded border-slate-300 text-nano focus:ring-nano dark:border-zinc-700"
+			/>
+		</label>
+	)
+}
+
 function Panel({
 	title,
 	children,
@@ -298,9 +537,16 @@ export default function AdminDashboard() {
 	const [receivableConfig, setReceivableConfig] =
 		useState<ReceivableConfig | null>(null)
 	const [receivableConfigOpen, setReceivableConfigOpen] = useState(false)
-	const [minReceivableAmountInput, setMinReceivableAmountInput] = useState(
-		DEFAULT_MIN_RECEIVABLE_AMOUNT,
-	)
+	const [minReceivableAmountInput, setMinReceivableAmountInput] = useState('')
+	const [faucetConfig, setFaucetConfig] = useState<FaucetConfig | null>(null)
+	const [faucetConfigOpen, setFaucetConfigOpen] = useState(false)
+	const [faucetConfigInputs, setFaucetConfigInputs] =
+		useState<FaucetConfigInputs>(EMPTY_FAUCET_CONFIG_INPUTS)
+	const [walletNetworkConfig, setWalletNetworkConfig] =
+		useState<WalletNetworkConfig | null>(null)
+	const [walletNetworkConfigOpen, setWalletNetworkConfigOpen] = useState(false)
+	const [walletNetworkConfigInputs, setWalletNetworkConfigInputs] =
+		useState<WalletNetworkConfigInputs>(EMPTY_WALLET_NETWORK_CONFIG_INPUTS)
 	const [receivablePage, setReceivablePage] = useState(0)
 	const [ipWhitelist, setIpWhitelist] = useState<string[]>([])
 	const [accountWhitelist, setAccountWhitelist] = useState<string[]>([])
@@ -321,12 +567,16 @@ export default function AdminDashboard() {
 				analyticsData,
 				receivableData,
 				receivableConfigData,
+				faucetConfigData,
+				walletNetworkConfigData,
 				ipData,
 				accountData,
 			] = await Promise.all([
 				faucetRequest<AdminAnalytics>('/analytics'),
 				faucetRequest<ReceivablePayload>('/wallet/receivables'),
 				faucetRequest<ReceivableConfig>('/wallet/receivables/config'),
+				faucetRequest<FaucetConfig>('/config'),
+				faucetRequest<WalletNetworkConfig>('/wallet/network-config'),
 				faucetRequest<string[]>('/whitelist/ip'),
 				faucetRequest<string[]>('/whitelist/account'),
 			])
@@ -335,6 +585,12 @@ export default function AdminDashboard() {
 			setReceivables(receivableData)
 			setReceivableConfig(receivableConfigData)
 			setMinReceivableAmountInput(receivableConfigData.minReceivableAmount)
+			setFaucetConfig(faucetConfigData)
+			setFaucetConfigInputs(resolveFaucetConfigInputs(faucetConfigData))
+			setWalletNetworkConfig(walletNetworkConfigData)
+			setWalletNetworkConfigInputs(
+				resolveWalletNetworkConfigInputs(walletNetworkConfigData),
+			)
 			setIpWhitelist(ipData)
 			setAccountWhitelist(accountData)
 		} catch (requestError) {
@@ -438,7 +694,13 @@ export default function AdminDashboard() {
 		setReceivables(null)
 		setReceivableConfig(null)
 		setReceivableConfigOpen(false)
-		setMinReceivableAmountInput(DEFAULT_MIN_RECEIVABLE_AMOUNT)
+		setMinReceivableAmountInput('')
+		setFaucetConfig(null)
+		setFaucetConfigOpen(false)
+		setFaucetConfigInputs(EMPTY_FAUCET_CONFIG_INPUTS)
+		setWalletNetworkConfig(null)
+		setWalletNetworkConfigOpen(false)
+		setWalletNetworkConfigInputs(EMPTY_WALLET_NETWORK_CONFIG_INPUTS)
 		setReceivablePage(0)
 		setIpWhitelist([])
 		setAccountWhitelist([])
@@ -465,9 +727,7 @@ export default function AdminDashboard() {
 	}
 
 	const openReceivableConfig = () => {
-		setMinReceivableAmountInput(
-			receivableConfig?.minReceivableAmount || DEFAULT_MIN_RECEIVABLE_AMOUNT,
-		)
+		setMinReceivableAmountInput(receivableConfig?.minReceivableAmount || '')
 		setReceivableConfigOpen(true)
 	}
 
@@ -488,6 +748,111 @@ export default function AdminDashboard() {
 			setReceivablePage(0)
 			setReceivableConfigOpen(false)
 		}, 'Receivable config updated')
+	}
+
+	const updateFaucetConfigInput = <Field extends keyof FaucetConfigInputs>(
+		field: Field,
+		value: FaucetConfigInputs[Field],
+	) => {
+		setFaucetConfigInputs(inputs => ({ ...inputs, [field]: value }))
+	}
+
+	const openFaucetConfig = () => {
+		setFaucetConfigInputs(resolveFaucetConfigInputs(faucetConfig))
+		setFaucetConfigOpen(true)
+	}
+
+	const faucetConfigInputComplete = (
+		[
+			'minDropAmount',
+			'maxDropAmount',
+			'divideBalanceBy',
+			'periodDays',
+			'maxDropPerIpSimultaneously',
+			'maxDropsPerAccount',
+			'maxDropsPerIp',
+			'maxDropsPerProxyIp',
+			'maxDropsPerIpInLimitedCountry',
+			'proxyAmountDivideBy',
+		] as const
+	).every(field => faucetConfigInputs[field].trim().length > 0)
+
+	const saveFaucetConfig = async (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+
+		await runAction(async () => {
+			const config = await faucetRequest<FaucetConfig>('/config', {
+				method: 'PUT',
+				body: {
+					minDropAmount: faucetConfigInputs.minDropAmount.trim(),
+					maxDropAmount: faucetConfigInputs.maxDropAmount.trim(),
+					divideBalanceBy: faucetConfigInputs.divideBalanceBy.trim(),
+					periodDays: faucetConfigInputs.periodDays.trim(),
+					maxDropPerIpSimultaneously:
+						faucetConfigInputs.maxDropPerIpSimultaneously.trim(),
+					maxDropsPerAccount: faucetConfigInputs.maxDropsPerAccount.trim(),
+					maxDropsPerIp: faucetConfigInputs.maxDropsPerIp.trim(),
+					maxDropsPerProxyIp: faucetConfigInputs.maxDropsPerProxyIp.trim(),
+					maxDropsPerIpInLimitedCountry:
+						faucetConfigInputs.maxDropsPerIpInLimitedCountry.trim(),
+					verificationRequiredByDefault:
+						faucetConfigInputs.verificationRequiredByDefault,
+					verifyWhenProxy: faucetConfigInputs.verifyWhenProxy,
+					banProxies: faucetConfigInputs.banProxies,
+					proxyAmountDivideBy: faucetConfigInputs.proxyAmountDivideBy.trim(),
+					limitedCountries: parseCountryCodesInput(
+						faucetConfigInputs.limitedCountries,
+					),
+				},
+			})
+			setFaucetConfig(config)
+			setFaucetConfigInputs(resolveFaucetConfigInputs(config))
+			setFaucetConfigOpen(false)
+		}, 'Faucet config updated')
+	}
+
+	const updateWalletNetworkConfigInput = <
+		Field extends keyof WalletNetworkConfigInputs,
+	>(
+		field: Field,
+		value: WalletNetworkConfigInputs[Field],
+	) => {
+		setWalletNetworkConfigInputs(inputs => ({ ...inputs, [field]: value }))
+	}
+
+	const openWalletNetworkConfig = () => {
+		setWalletNetworkConfigInputs(
+			resolveWalletNetworkConfigInputs(walletNetworkConfig),
+		)
+		setWalletNetworkConfigOpen(true)
+	}
+
+	const walletNetworkConfigInputComplete =
+		resolveUrlListInput(walletNetworkConfigInputs.rpcUrls).length > 0 &&
+		resolveUrlListInput(walletNetworkConfigInputs.workerUrls).length > 0 &&
+		walletNetworkConfigInputs.representative.trim().length > 0
+
+	const saveWalletNetworkConfig = async (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+
+		await runAction(async () => {
+			const config = await faucetRequest<WalletNetworkConfig>(
+				'/wallet/network-config',
+				{
+					method: 'PUT',
+					body: {
+						rpcUrls: resolveUrlListInput(walletNetworkConfigInputs.rpcUrls),
+						workerUrls: resolveUrlListInput(
+							walletNetworkConfigInputs.workerUrls,
+						),
+						representative: walletNetworkConfigInputs.representative.trim(),
+					},
+				},
+			)
+			setWalletNetworkConfig(config)
+			setWalletNetworkConfigInputs(resolveWalletNetworkConfigInputs(config))
+			setWalletNetworkConfigOpen(false)
+		}, 'Wallet network config updated')
 	}
 
 	const syncWallet = async () => {
@@ -678,6 +1043,275 @@ export default function AdminDashboard() {
 							<IconButton
 								type="submit"
 								disabled={submitting || !minReceivableAmountInput.trim()}
+							>
+								Save
+							</IconButton>
+						</div>
+					</form>
+				</div>
+			)}
+			{faucetConfigOpen && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 px-4 py-6">
+					<form
+						onSubmit={saveFaucetConfig}
+						className="w-full max-w-2xl rounded-md border border-slate-200 bg-white p-4 shadow-xl dark:border-zinc-800 dark:bg-midnight-2"
+					>
+						<div className="mb-4 flex items-center justify-between gap-4">
+							<h2 className="text-lg font-semibold text-slate-900 dark:text-zinc-100">
+								Faucet config
+							</h2>
+							<button
+								type="button"
+								aria-label="Close faucet settings"
+								onClick={() => setFaucetConfigOpen(false)}
+								className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 text-slate-600 transition hover:border-nano hover:text-nano dark:border-zinc-700 dark:text-zinc-300"
+							>
+								<XCircleIcon className="h-5 w-5" />
+							</button>
+						</div>
+						<div className="grid gap-4 sm:grid-cols-2">
+							<ConfigInput
+								id="min-drop-amount"
+								label="Min drop amount"
+								value={faucetConfigInputs.minDropAmount}
+								onChange={value =>
+									updateFaucetConfigInput('minDropAmount', value)
+								}
+								min="0"
+								step="0.000000000001"
+								suffix="XNO"
+							/>
+							<ConfigInput
+								id="max-drop-amount"
+								label="Max drop amount"
+								value={faucetConfigInputs.maxDropAmount}
+								onChange={value =>
+									updateFaucetConfigInput('maxDropAmount', value)
+								}
+								min="0"
+								step="0.000000000001"
+								suffix="XNO"
+							/>
+							<ConfigInput
+								id="divide-balance-by"
+								label="Divide balance by"
+								value={faucetConfigInputs.divideBalanceBy}
+								onChange={value =>
+									updateFaucetConfigInput('divideBalanceBy', value)
+								}
+								min="1"
+								step="1"
+							/>
+							<ConfigInput
+								id="period-days"
+								label="Period"
+								value={faucetConfigInputs.periodDays}
+								onChange={value => updateFaucetConfigInput('periodDays', value)}
+								min="1"
+								max="30"
+								step="1"
+								suffix="days"
+							/>
+							<ConfigInput
+								id="max-drop-per-ip-simultaneously"
+								label="Max simultaneous IP drops"
+								value={faucetConfigInputs.maxDropPerIpSimultaneously}
+								onChange={value =>
+									updateFaucetConfigInput('maxDropPerIpSimultaneously', value)
+								}
+								min="1"
+								step="1"
+							/>
+							<ConfigInput
+								id="max-drops-per-account"
+								label="Max drops per account"
+								value={faucetConfigInputs.maxDropsPerAccount}
+								onChange={value =>
+									updateFaucetConfigInput('maxDropsPerAccount', value)
+								}
+								min="0"
+								step="1"
+							/>
+							<ConfigInput
+								id="max-drops-per-ip"
+								label="Max drops per IP"
+								value={faucetConfigInputs.maxDropsPerIp}
+								onChange={value =>
+									updateFaucetConfigInput('maxDropsPerIp', value)
+								}
+								min="0"
+								step="1"
+							/>
+							<ConfigInput
+								id="max-drops-per-proxy-ip"
+								label="Max drops per proxy IP"
+								value={faucetConfigInputs.maxDropsPerProxyIp}
+								onChange={value =>
+									updateFaucetConfigInput('maxDropsPerProxyIp', value)
+								}
+								min="0"
+								step="1"
+							/>
+							<ConfigInput
+								id="proxy-amount-divide-by"
+								label="Proxy amount divider"
+								value={faucetConfigInputs.proxyAmountDivideBy}
+								onChange={value =>
+									updateFaucetConfigInput('proxyAmountDivideBy', value)
+								}
+								min="1"
+								step="1"
+							/>
+							<ConfigInput
+								id="max-drops-per-limited-country-ip"
+								label="Max drops per limited country IP"
+								value={faucetConfigInputs.maxDropsPerIpInLimitedCountry}
+								onChange={value =>
+									updateFaucetConfigInput(
+										'maxDropsPerIpInLimitedCountry',
+										value,
+									)
+								}
+								min="0"
+								step="1"
+							/>
+							<div className="sm:col-span-2">
+								<label
+									htmlFor="limited-countries"
+									className="mb-2 block text-sm font-semibold text-slate-700 dark:text-zinc-300"
+								>
+									Limited countries
+								</label>
+								<textarea
+									id="limited-countries"
+									value={faucetConfigInputs.limitedCountries}
+									onChange={event =>
+										updateFaucetConfigInput(
+											'limitedCountries',
+											event.target.value,
+										)
+									}
+									rows={3}
+									placeholder="BR, US, IN"
+									className="w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-nano focus:ring-2 focus:ring-nano/20 dark:border-zinc-700 dark:bg-midnight-1 dark:text-zinc-100"
+								/>
+							</div>
+							<ConfigToggle
+								id="verification-required-by-default"
+								label="Verification required by default"
+								checked={faucetConfigInputs.verificationRequiredByDefault}
+								onChange={checked =>
+									updateFaucetConfigInput(
+										'verificationRequiredByDefault',
+										checked,
+									)
+								}
+							/>
+							<ConfigToggle
+								id="verify-when-proxy"
+								label="Verify when proxy"
+								checked={faucetConfigInputs.verifyWhenProxy}
+								onChange={checked =>
+									updateFaucetConfigInput('verifyWhenProxy', checked)
+								}
+							/>
+							<ConfigToggle
+								id="ban-proxies"
+								label="Ban proxies"
+								checked={faucetConfigInputs.banProxies}
+								onChange={checked =>
+									updateFaucetConfigInput('banProxies', checked)
+								}
+							/>
+						</div>
+						<div className="mt-4 flex justify-end gap-2">
+							<IconButton
+								variant="neutral"
+								onClick={() => setFaucetConfigOpen(false)}
+							>
+								Cancel
+							</IconButton>
+							<IconButton
+								type="submit"
+								disabled={submitting || !faucetConfigInputComplete}
+							>
+								Save
+							</IconButton>
+						</div>
+					</form>
+				</div>
+			)}
+			{walletNetworkConfigOpen && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 px-4 py-6">
+					<form
+						onSubmit={saveWalletNetworkConfig}
+						className="w-full max-w-2xl rounded-md border border-slate-200 bg-white p-4 shadow-xl dark:border-zinc-800 dark:bg-midnight-2"
+					>
+						<div className="mb-4 flex items-center justify-between gap-4">
+							<h2 className="text-lg font-semibold text-slate-900 dark:text-zinc-100">
+								Wallet network
+							</h2>
+							<button
+								type="button"
+								aria-label="Close wallet network settings"
+								onClick={() => setWalletNetworkConfigOpen(false)}
+								className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 text-slate-600 transition hover:border-nano hover:text-nano dark:border-zinc-700 dark:text-zinc-300"
+							>
+								<XCircleIcon className="h-5 w-5" />
+							</button>
+						</div>
+						<div className="space-y-4">
+							<ConfigTextarea
+								id="rpc-urls"
+								label="RPC URLs"
+								value={walletNetworkConfigInputs.rpcUrls}
+								onChange={value =>
+									updateWalletNetworkConfigInput('rpcUrls', value)
+								}
+								placeholder="https://node.example.com"
+								rows={4}
+							/>
+							<ConfigTextarea
+								id="worker-urls"
+								label="Worker URLs"
+								value={walletNetworkConfigInputs.workerUrls}
+								onChange={value =>
+									updateWalletNetworkConfigInput('workerUrls', value)
+								}
+								placeholder="https://work.example.com"
+								rows={4}
+							/>
+							<div>
+								<label
+									htmlFor="wallet-representative"
+									className="mb-2 block text-sm font-semibold text-slate-700 dark:text-zinc-300"
+								>
+									Representative
+								</label>
+								<input
+									id="wallet-representative"
+									value={walletNetworkConfigInputs.representative}
+									onChange={event =>
+										updateWalletNetworkConfigInput(
+											'representative',
+											event.target.value,
+										)
+									}
+									placeholder="nano_..."
+									className="h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-nano focus:ring-2 focus:ring-nano/20 dark:border-zinc-700 dark:bg-midnight-1 dark:text-zinc-100"
+								/>
+							</div>
+						</div>
+						<div className="mt-4 flex justify-end gap-2">
+							<IconButton
+								variant="neutral"
+								onClick={() => setWalletNetworkConfigOpen(false)}
+							>
+								Cancel
+							</IconButton>
+							<IconButton
+								type="submit"
+								disabled={submitting || !walletNetworkConfigInputComplete}
 							>
 								Save
 							</IconButton>
@@ -933,24 +1567,202 @@ export default function AdminDashboard() {
 											{analytics.adminState.accountWhitelistCount}
 										</div>
 									</div>
-									<div className="flex items-center justify-between gap-4 py-3">
-										<div className="text-slate-500 dark:text-zinc-500">
-											Temp IP blocks
-										</div>
-										<div className="text-xl font-semibold text-slate-900 dark:text-zinc-100">
-											{analytics.adminState.temporaryIpBlacklistCount}
-										</div>
-									</div>
-									<div className="flex items-center justify-between gap-4 py-3">
-										<div className="text-slate-500 dark:text-zinc-500">
-											Temp account blocks
-										</div>
-										<div className="text-xl font-semibold text-slate-900 dark:text-zinc-100">
-											{analytics.adminState.temporaryAccountBlacklistCount}
-										</div>
-									</div>
 								</div>
 							</Panel>
+
+							{walletNetworkConfig && (
+								<Panel
+									title="Wallet network"
+									actions={
+										<button
+											type="button"
+											aria-label="Wallet network settings"
+											title="Wallet network settings"
+											onClick={openWalletNetworkConfig}
+											className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 transition hover:border-nano hover:text-nano dark:border-zinc-700 dark:bg-midnight-1 dark:text-zinc-300"
+										>
+											<Cog6ToothIcon className="h-5 w-5" />
+										</button>
+									}
+								>
+									<div className="space-y-3 text-sm">
+										<div>
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												RPC URLs
+											</div>
+											<div className="mt-1 space-y-1">
+												{walletNetworkConfig.rpcUrls.map(url => (
+													<div
+														key={url}
+														className="break-all text-slate-900 dark:text-zinc-100"
+													>
+														{url}
+													</div>
+												))}
+											</div>
+										</div>
+										<div>
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												Worker URLs
+											</div>
+											<div className="mt-1 space-y-1">
+												{walletNetworkConfig.workerUrls.map(url => (
+													<div
+														key={url}
+														className="break-all text-slate-900 dark:text-zinc-100"
+													>
+														{url}
+													</div>
+												))}
+											</div>
+										</div>
+										<div>
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												Representative
+											</div>
+											<div className="mt-1 break-all text-slate-900 dark:text-zinc-100">
+												{walletNetworkConfig.representative}
+											</div>
+										</div>
+									</div>
+								</Panel>
+							)}
+
+							{faucetConfig && (
+								<Panel
+									title="Faucet config"
+									actions={
+										<button
+											type="button"
+											aria-label="Faucet settings"
+											title="Faucet settings"
+											onClick={openFaucetConfig}
+											className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 transition hover:border-nano hover:text-nano dark:border-zinc-700 dark:bg-midnight-1 dark:text-zinc-300"
+										>
+											<Cog6ToothIcon className="h-5 w-5" />
+										</button>
+									}
+								>
+									<div className="grid gap-3 text-sm sm:grid-cols-2">
+										<div>
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												Min drop
+											</div>
+											<div className="mt-1 text-slate-900 dark:text-zinc-100">
+												{faucetConfig.minDropAmount} XNO
+											</div>
+										</div>
+										<div>
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												Max drop
+											</div>
+											<div className="mt-1 text-slate-900 dark:text-zinc-100">
+												{faucetConfig.maxDropAmount} XNO
+											</div>
+										</div>
+										<div>
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												Balance divider
+											</div>
+											<div className="mt-1 text-slate-900 dark:text-zinc-100">
+												{formatInteger(faucetConfig.divideBalanceBy)}
+											</div>
+										</div>
+										<div>
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												Period
+											</div>
+											<div className="mt-1 text-slate-900 dark:text-zinc-100">
+												{faucetConfig.periodDays} days
+											</div>
+										</div>
+										<div>
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												Simultaneous IP drops
+											</div>
+											<div className="mt-1 text-slate-900 dark:text-zinc-100">
+												{formatInteger(faucetConfig.maxDropPerIpSimultaneously)}
+											</div>
+										</div>
+										<div>
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												Account limit
+											</div>
+											<div className="mt-1 text-slate-900 dark:text-zinc-100">
+												{formatInteger(faucetConfig.maxDropsPerAccount)}
+											</div>
+										</div>
+										<div>
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												IP limit
+											</div>
+											<div className="mt-1 text-slate-900 dark:text-zinc-100">
+												{formatInteger(faucetConfig.maxDropsPerIp)}
+											</div>
+										</div>
+										<div>
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												Proxy IP limit
+											</div>
+											<div className="mt-1 text-slate-900 dark:text-zinc-100">
+												{formatInteger(faucetConfig.maxDropsPerProxyIp)}
+											</div>
+										</div>
+										<div>
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												Proxy amount divider
+											</div>
+											<div className="mt-1 text-slate-900 dark:text-zinc-100">
+												{formatInteger(faucetConfig.proxyAmountDivideBy)}
+											</div>
+										</div>
+										<div>
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												Limited country IP limit
+											</div>
+											<div className="mt-1 text-slate-900 dark:text-zinc-100">
+												{formatInteger(
+													faucetConfig.maxDropsPerIpInLimitedCountry,
+												)}
+											</div>
+										</div>
+										<div className="sm:col-span-2">
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												Limited countries
+											</div>
+											<div className="mt-1 text-slate-900 dark:text-zinc-100">
+												{formatCountryCodes(faucetConfig.limitedCountries)}
+											</div>
+										</div>
+										<div>
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												Default verification
+											</div>
+											<div className="mt-1 text-slate-900 dark:text-zinc-100">
+												{faucetConfig.verificationRequiredByDefault
+													? 'On'
+													: 'Off'}
+											</div>
+										</div>
+										<div>
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												Verify proxy
+											</div>
+											<div className="mt-1 text-slate-900 dark:text-zinc-100">
+												{faucetConfig.verifyWhenProxy ? 'On' : 'Off'}
+											</div>
+										</div>
+										<div>
+											<div className="font-semibold text-slate-500 dark:text-zinc-500">
+												Ban proxies
+											</div>
+											<div className="mt-1 text-slate-900 dark:text-zinc-100">
+												{faucetConfig.banProxies ? 'On' : 'Off'}
+											</div>
+										</div>
+									</div>
+								</Panel>
+							)}
 
 							<Panel title="Drops by country">
 								<div className="space-y-3">

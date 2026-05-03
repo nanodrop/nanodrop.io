@@ -9,26 +9,51 @@ import { errorHandler } from './middlewares'
 import type { Bindings } from './types'
 import { TunedBigNumber, formatNanoAddress, isValidIPv4OrIpv6 } from './utils'
 
-const TMP_IP_BLACKLIST_EXPIRATION = 1000 * 60 * 5
-const MIN_DROP_AMOUNT = 0.000001
-const MAX_DROP_AMOUNT = 0.01
-const DIVIDE_BALANCE_BY = 10000
-const PERIOD = 1000 * 60 * 60 * 24 * 7
-const MAX_DROPS_PER_IP = 5
-const MAX_DROPS_PER_PROXY_IP = 3
-const MAX_DROP_PER_IP_SIMULTANEOUSLY = 3
+const MILLISECONDS_PER_MINUTE = 1000 * 60
+const MILLISECONDS_PER_DAY = MILLISECONDS_PER_MINUTE * 60 * 24
 const ENABLE_LIMIT_PER_IP_IN_DEV = false
-const MAX_DROPS_PER_ACCOUNT = 3
-const MAX_TMP_ACCOUNT_BLACKLIST_LENGTH = 10000
-const VERIFICATION_REQUIRED_BY_DEFAULT = true
-const VERIFY_WHEN_PROXY = true
-const BAN_PROXIES = false
-const PROXY_AMOUNT_DIVIDE_BY = 10
-const LIMITED_COUNTRIES: string[] = []
-const MAX_DROPS_PER_IP_IN_LIMITED_COUNTRY = 2
 const LOCAL_REQUEST_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '::1'])
-const DEFAULT_MIN_RECEIVABLE_AMOUNT = '0.0001'
-const MIN_RECEIVABLE_AMOUNT_SETTING_KEY = 'min_receivable_amount_raw'
+const MIN_PERIOD_DAYS = 1
+const MAX_PERIOD_DAYS = 30
+const DEFAULT_FAUCET_CONFIG = {
+	minReceivableAmount: '0.0001',
+	minDropAmount: '0.000001',
+	maxDropAmount: '0.01',
+	divideBalanceBy: 10000,
+	periodDays: 7,
+	maxDropPerIpSimultaneously: 3,
+	maxDropsPerAccount: 3,
+	maxDropsPerIp: 5,
+	maxDropsPerProxyIp: 3,
+	maxDropsPerIpInLimitedCountry: 2,
+	verificationRequiredByDefault: true,
+	verifyWhenProxy: true,
+	banProxies: false,
+	proxyAmountDivideBy: 10,
+	limitedCountries: [] as string[],
+}
+const FAUCET_CONFIG_SETTING_KEYS = {
+	minReceivableAmountRaw: 'min_receivable_amount_raw',
+	minDropAmount: 'min_drop_amount',
+	maxDropAmount: 'max_drop_amount',
+	divideBalanceBy: 'divide_balance_by',
+	periodDays: 'period_days',
+	maxDropPerIpSimultaneously: 'max_drop_per_ip_simultaneously',
+	maxDropsPerAccount: 'max_drops_per_account',
+	maxDropsPerIp: 'max_drops_per_ip',
+	maxDropsPerProxyIp: 'max_drops_per_proxy_ip',
+	maxDropsPerIpInLimitedCountry: 'max_drops_per_ip_in_limited_country',
+	verificationRequiredByDefault: 'verification_required_by_default',
+	verifyWhenProxy: 'verify_when_proxy',
+	banProxies: 'ban_proxies',
+	proxyAmountDivideBy: 'proxy_amount_divide_by',
+	limitedCountries: 'limited_countries',
+}
+const WALLET_NETWORK_CONFIG_SETTING_KEYS = {
+	rpcUrls: 'rpc_urls',
+	workerUrls: 'worker_urls',
+	representative: 'representative',
+}
 
 type CountRow = { count: number }
 type AverageRow = { average: number | null }
@@ -39,6 +64,28 @@ type AdminSettingRow = { value: string }
 type CountryDropsRow = { country_code: string; count: number }
 type DailyDropsRow = { day: string; count: number }
 type ReceivableBlock = { blockHash: string; amount: string }
+type FaucetConfigValues = Omit<
+	typeof DEFAULT_FAUCET_CONFIG,
+	'minReceivableAmount'
+>
+type FaucetConfig = FaucetConfigValues & {
+	periodMs: number
+}
+type FaucetConfigParseResult =
+	| { config: FaucetConfigValues }
+	| { error: string }
+type StringParseResult = { value: string } | { error: string }
+type NumberParseResult = { value: number } | { error: string }
+type BooleanParseResult = { value: boolean } | { error: string }
+type StringArrayParseResult = { value: string[] } | { error: string }
+type WalletNetworkConfig = {
+	rpcUrls: string[]
+	workerUrls: string[]
+	representative: string
+}
+type WalletNetworkConfigParseResult =
+	| { config: WalletNetworkConfig }
+	| { error: string }
 type DropReadiness = {
 	amount: string
 	amountNano: string
@@ -105,30 +152,26 @@ const getCountryCode = (request: Request, isDev: boolean) => {
 
 export class NanoDropDO extends DurableObject<Bindings> {
 	app = new Hono<{ Bindings: Bindings }>().onError(errorHandler)
-	wallet: NanoWallet
+	wallet!: NanoWallet
 	sql: SqlStorage
 	static version = 'v1.0.0'
 	db: D1Database
 	ipDropQueue = new Map<string, Set<Promise<void>>>()
 	isDev: boolean
+	private readonly persistWalletState = (state: NanoWalletState) => {
+		this.saveWalletState(state)
+	}
 
 	constructor(state: DurableObjectState, env: Bindings) {
 		super(state, env)
 		this.isDev = env.__DEV__ === 'true'
 		this.sql = state.storage.sql
 		this.db = env.NANODROP_DB
-		this.wallet = new NanoWallet({
-			rpcUrls: env.RPC_URLS.split(','),
-			workerUrls: env.WORKER_URLS.split(','),
-			privateKey: env.PRIVATE_KEY,
-			representative: env.REPRESENTATIVE,
-			debug: env.DEBUG === 'true',
-			timeout: 30000,
-		})
+		this.wallet = this.createWallet(this.getEnvWalletNetworkConfig(env), env)
 
 		state.blockConcurrencyWhile(async () => {
 			this.initSqlSchema()
-			await this.init()
+			await this.init(env)
 		})
 
 		this.app.get('/status', async c => {
@@ -345,6 +388,56 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			return c.json(config)
 		})
 
+		this.app.get('/wallet/network-config', async c => {
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
+			}
+
+			return c.json(this.getWalletNetworkConfig(env))
+		})
+
+		this.app.put('/wallet/network-config', async c => {
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
+			}
+
+			const payload = await c.req.json().catch(() => null)
+			const parsed = this.parseWalletNetworkConfigPayload(payload)
+			if ('error' in parsed) {
+				return c.json({ error: parsed.error }, 400)
+			}
+
+			this.setWalletNetworkConfig(parsed.config, env)
+			return c.json(this.getWalletNetworkConfig(env))
+		})
+
+		this.app.get('/config', async c => {
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
+			}
+
+			return c.json(this.getFaucetConfig())
+		})
+
+		this.app.put('/config', async c => {
+			const authError = this.getAdminAuthError(c.req.raw, env)
+			if (authError) {
+				return c.json({ error: authError.message }, authError.status)
+			}
+
+			const payload = await c.req.json().catch(() => null)
+			const parsed = this.parseFaucetConfigPayload(payload)
+			if ('error' in parsed) {
+				return c.json({ error: parsed.error }, 400)
+			}
+
+			this.setFaucetConfig(parsed.config)
+			return c.json(this.getFaucetConfig())
+		})
+
 		this.app.post('/wallet/receive/:link', async c => {
 			const authError = this.getAdminAuthError(c.req.raw, env)
 			if (authError) {
@@ -376,7 +469,6 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				return c.json({ error: 'Invalid IP' }, 400)
 			}
 
-			this.removeIPFromTmpBlacklist(ip)
 			this.addIPToWhitelist(ip)
 
 			return c.json({ success: true })
@@ -419,7 +511,6 @@ export class NanoDropDO extends DurableObject<Bindings> {
 
 			const account = formatNanoAddress(c.req.param('account'))
 
-			this.removeAccountFromTmpBlacklist(account)
 			this.addAccountToWhitelist(account)
 
 			return c.json({ success: true })
@@ -478,43 +569,20 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				created_at INTEGER NOT NULL
 			);
 
-			CREATE TABLE IF NOT EXISTS temporary_account_blacklist (
-				sequence INTEGER PRIMARY KEY AUTOINCREMENT,
-				checksum TEXT UNIQUE NOT NULL,
-				created_at INTEGER NOT NULL
-			);
-
-			CREATE TABLE IF NOT EXISTS temporary_ip_blacklist (
-				ip TEXT PRIMARY KEY,
-				expires_at INTEGER NOT NULL
-			);
-
 			CREATE TABLE IF NOT EXISTS admin_settings (
 				key TEXT PRIMARY KEY,
 				value TEXT NOT NULL,
 				updated_at INTEGER NOT NULL
 			);
-
-			CREATE INDEX IF NOT EXISTS temporary_ip_blacklist_expires_at_index
-				ON temporary_ip_blacklist(expires_at);
 		`)
 	}
 
-	async init() {
-		this.wallet.configure({
-			minAmountRaw: this.getMinReceivableAmountRaw(),
-		})
-
+	async init(env: Bindings) {
 		const walletState = this.getWalletState()
-		if (walletState) {
-			this.wallet.update(walletState)
-		} else {
+		this.replaceWallet(env, walletState)
+		if (!walletState) {
 			this.wallet.sync()
 		}
-
-		this.wallet.subscribe(state => {
-			this.saveWalletState(state)
-		})
 	}
 
 	getWalletState() {
@@ -527,6 +595,647 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		}
 
 		return JSON.parse(row.value.state) as NanoWalletState
+	}
+
+	getFaucetConfig(): FaucetConfig {
+		const config = {
+			minDropAmount: this.getNanoAmountSetting(
+				FAUCET_CONFIG_SETTING_KEYS.minDropAmount,
+				DEFAULT_FAUCET_CONFIG.minDropAmount,
+			),
+			maxDropAmount: this.getNanoAmountSetting(
+				FAUCET_CONFIG_SETTING_KEYS.maxDropAmount,
+				DEFAULT_FAUCET_CONFIG.maxDropAmount,
+			),
+			divideBalanceBy: this.getIntegerSetting(
+				FAUCET_CONFIG_SETTING_KEYS.divideBalanceBy,
+				DEFAULT_FAUCET_CONFIG.divideBalanceBy,
+				1,
+			),
+			periodDays: this.getIntegerSetting(
+				FAUCET_CONFIG_SETTING_KEYS.periodDays,
+				DEFAULT_FAUCET_CONFIG.periodDays,
+				MIN_PERIOD_DAYS,
+				MAX_PERIOD_DAYS,
+			),
+			maxDropPerIpSimultaneously: this.getIntegerSetting(
+				FAUCET_CONFIG_SETTING_KEYS.maxDropPerIpSimultaneously,
+				DEFAULT_FAUCET_CONFIG.maxDropPerIpSimultaneously,
+				1,
+			),
+			maxDropsPerAccount: this.getIntegerSetting(
+				FAUCET_CONFIG_SETTING_KEYS.maxDropsPerAccount,
+				DEFAULT_FAUCET_CONFIG.maxDropsPerAccount,
+				0,
+			),
+			maxDropsPerIp: this.getIntegerSetting(
+				FAUCET_CONFIG_SETTING_KEYS.maxDropsPerIp,
+				DEFAULT_FAUCET_CONFIG.maxDropsPerIp,
+				0,
+			),
+			maxDropsPerProxyIp: this.getIntegerSetting(
+				FAUCET_CONFIG_SETTING_KEYS.maxDropsPerProxyIp,
+				DEFAULT_FAUCET_CONFIG.maxDropsPerProxyIp,
+				0,
+			),
+			maxDropsPerIpInLimitedCountry: this.getIntegerSetting(
+				FAUCET_CONFIG_SETTING_KEYS.maxDropsPerIpInLimitedCountry,
+				DEFAULT_FAUCET_CONFIG.maxDropsPerIpInLimitedCountry,
+				0,
+			),
+			verificationRequiredByDefault: this.getBooleanSetting(
+				FAUCET_CONFIG_SETTING_KEYS.verificationRequiredByDefault,
+				DEFAULT_FAUCET_CONFIG.verificationRequiredByDefault,
+			),
+			verifyWhenProxy: this.getBooleanSetting(
+				FAUCET_CONFIG_SETTING_KEYS.verifyWhenProxy,
+				DEFAULT_FAUCET_CONFIG.verifyWhenProxy,
+			),
+			banProxies: this.getBooleanSetting(
+				FAUCET_CONFIG_SETTING_KEYS.banProxies,
+				DEFAULT_FAUCET_CONFIG.banProxies,
+			),
+			proxyAmountDivideBy: this.getIntegerSetting(
+				FAUCET_CONFIG_SETTING_KEYS.proxyAmountDivideBy,
+				DEFAULT_FAUCET_CONFIG.proxyAmountDivideBy,
+				1,
+			),
+			limitedCountries: this.getStringArraySetting(
+				FAUCET_CONFIG_SETTING_KEYS.limitedCountries,
+				DEFAULT_FAUCET_CONFIG.limitedCountries,
+				this.isValidCountryCode,
+			),
+		}
+
+		return {
+			...config,
+			periodMs: config.periodDays * MILLISECONDS_PER_DAY,
+		}
+	}
+
+	getEnvWalletNetworkConfig(env: Bindings): WalletNetworkConfig {
+		return {
+			rpcUrls: this.parseUrlList(env.DEFAULT_RPC_URLS),
+			workerUrls: this.parseUrlList(env.DEFAULT_WORKER_URLS),
+			representative: env.DEFAULT_REPRESENTATIVE.trim(),
+		}
+	}
+
+	getWalletNetworkConfig(env: Bindings): WalletNetworkConfig {
+		const fallback = this.getEnvWalletNetworkConfig(env)
+
+		return {
+			rpcUrls: this.getUrlListSetting(
+				WALLET_NETWORK_CONFIG_SETTING_KEYS.rpcUrls,
+				fallback.rpcUrls,
+			),
+			workerUrls: this.getUrlListSetting(
+				WALLET_NETWORK_CONFIG_SETTING_KEYS.workerUrls,
+				fallback.workerUrls,
+			),
+			representative: this.getRepresentativeSetting(
+				WALLET_NETWORK_CONFIG_SETTING_KEYS.representative,
+				fallback.representative,
+			),
+		}
+	}
+
+	parseWalletNetworkConfigPayload(
+		payload: unknown,
+	): WalletNetworkConfigParseResult {
+		const input =
+			payload && typeof payload === 'object'
+				? (payload as Record<string, unknown>)
+				: null
+
+		if (!input) {
+			return { error: 'Invalid network config' }
+		}
+
+		const rpcUrls = this.parseUrlListInput(input.rpcUrls, 'rpcUrls')
+		if ('error' in rpcUrls) return rpcUrls
+
+		const workerUrls = this.parseUrlListInput(input.workerUrls, 'workerUrls')
+		if ('error' in workerUrls) return workerUrls
+
+		const representative =
+			typeof input.representative === 'string'
+				? input.representative.trim()
+				: ''
+
+		if (!checkAddress(representative)) {
+			return { error: 'Invalid representative' }
+		}
+
+		return {
+			config: {
+				rpcUrls: rpcUrls.value,
+				workerUrls: workerUrls.value,
+				representative: formatNanoAddress(representative),
+			},
+		}
+	}
+
+	parseFaucetConfigPayload(payload: unknown): FaucetConfigParseResult {
+		const input =
+			payload && typeof payload === 'object'
+				? (payload as Record<string, unknown>)
+				: null
+
+		if (!input) {
+			return { error: 'Invalid config' }
+		}
+
+		const minDropAmount = this.parsePositiveNanoInput(
+			input.minDropAmount,
+			'minDropAmount',
+		)
+		if ('error' in minDropAmount) return minDropAmount
+
+		const maxDropAmount = this.parsePositiveNanoInput(
+			input.maxDropAmount,
+			'maxDropAmount',
+		)
+		if ('error' in maxDropAmount) return maxDropAmount
+
+		const minDropAmountRaw = convert(minDropAmount.value, {
+			from: Unit.NANO,
+			to: Unit.raw,
+		})
+		const maxDropAmountRaw = convert(maxDropAmount.value, {
+			from: Unit.NANO,
+			to: Unit.raw,
+		})
+		if (TunedBigNumber(maxDropAmountRaw).isLessThan(minDropAmountRaw)) {
+			return { error: 'maxDropAmount must be greater than minDropAmount' }
+		}
+
+		const divideBalanceBy = this.parseIntegerInput(
+			input.divideBalanceBy,
+			'divideBalanceBy',
+			1,
+		)
+		if ('error' in divideBalanceBy) return divideBalanceBy
+
+		const periodDays = this.parseIntegerInput(
+			input.periodDays,
+			'periodDays',
+			MIN_PERIOD_DAYS,
+			MAX_PERIOD_DAYS,
+		)
+		if ('error' in periodDays) return periodDays
+
+		const maxDropPerIpSimultaneously = this.parseIntegerInput(
+			input.maxDropPerIpSimultaneously,
+			'maxDropPerIpSimultaneously',
+			1,
+		)
+		if ('error' in maxDropPerIpSimultaneously) {
+			return maxDropPerIpSimultaneously
+		}
+
+		const maxDropsPerAccount = this.parseIntegerInput(
+			input.maxDropsPerAccount,
+			'maxDropsPerAccount',
+			0,
+		)
+		if ('error' in maxDropsPerAccount) return maxDropsPerAccount
+
+		const maxDropsPerIp = this.parseIntegerInput(
+			input.maxDropsPerIp,
+			'maxDropsPerIp',
+			0,
+		)
+		if ('error' in maxDropsPerIp) return maxDropsPerIp
+
+		const maxDropsPerProxyIp = this.parseIntegerInput(
+			input.maxDropsPerProxyIp,
+			'maxDropsPerProxyIp',
+			0,
+		)
+		if ('error' in maxDropsPerProxyIp) return maxDropsPerProxyIp
+
+		const maxDropsPerIpInLimitedCountry = this.parseIntegerInput(
+			input.maxDropsPerIpInLimitedCountry,
+			'maxDropsPerIpInLimitedCountry',
+			0,
+		)
+		if ('error' in maxDropsPerIpInLimitedCountry) {
+			return maxDropsPerIpInLimitedCountry
+		}
+
+		const verificationRequiredByDefault = this.parseBooleanInput(
+			input.verificationRequiredByDefault,
+			'verificationRequiredByDefault',
+		)
+		if ('error' in verificationRequiredByDefault) {
+			return verificationRequiredByDefault
+		}
+
+		const verifyWhenProxy = this.parseBooleanInput(
+			input.verifyWhenProxy,
+			'verifyWhenProxy',
+		)
+		if ('error' in verifyWhenProxy) {
+			return verifyWhenProxy
+		}
+
+		const banProxies = this.parseBooleanInput(input.banProxies, 'banProxies')
+		if ('error' in banProxies) {
+			return banProxies
+		}
+
+		const proxyAmountDivideBy = this.parseIntegerInput(
+			input.proxyAmountDivideBy,
+			'proxyAmountDivideBy',
+			1,
+		)
+		if ('error' in proxyAmountDivideBy) {
+			return proxyAmountDivideBy
+		}
+
+		const limitedCountries =
+			input.limitedCountries === undefined
+				? { value: this.getFaucetConfig().limitedCountries }
+				: this.parseCountryCodesInput(
+						input.limitedCountries,
+						'limitedCountries',
+					)
+		if ('error' in limitedCountries) {
+			return limitedCountries
+		}
+
+		return {
+			config: {
+				minDropAmount: minDropAmount.value,
+				maxDropAmount: maxDropAmount.value,
+				divideBalanceBy: divideBalanceBy.value,
+				periodDays: periodDays.value,
+				maxDropPerIpSimultaneously: maxDropPerIpSimultaneously.value,
+				maxDropsPerAccount: maxDropsPerAccount.value,
+				maxDropsPerIp: maxDropsPerIp.value,
+				maxDropsPerProxyIp: maxDropsPerProxyIp.value,
+				maxDropsPerIpInLimitedCountry: maxDropsPerIpInLimitedCountry.value,
+				verificationRequiredByDefault: verificationRequiredByDefault.value,
+				verifyWhenProxy: verifyWhenProxy.value,
+				banProxies: banProxies.value,
+				proxyAmountDivideBy: proxyAmountDivideBy.value,
+				limitedCountries: limitedCountries.value,
+			},
+		}
+	}
+
+	setFaucetConfig(config: FaucetConfigValues) {
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.minDropAmount,
+			config.minDropAmount,
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.maxDropAmount,
+			config.maxDropAmount,
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.divideBalanceBy,
+			String(config.divideBalanceBy),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.periodDays,
+			String(config.periodDays),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.maxDropPerIpSimultaneously,
+			String(config.maxDropPerIpSimultaneously),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.maxDropsPerAccount,
+			String(config.maxDropsPerAccount),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.maxDropsPerIp,
+			String(config.maxDropsPerIp),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.maxDropsPerProxyIp,
+			String(config.maxDropsPerProxyIp),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.maxDropsPerIpInLimitedCountry,
+			String(config.maxDropsPerIpInLimitedCountry),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.verificationRequiredByDefault,
+			String(config.verificationRequiredByDefault),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.verifyWhenProxy,
+			String(config.verifyWhenProxy),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.banProxies,
+			String(config.banProxies),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.proxyAmountDivideBy,
+			String(config.proxyAmountDivideBy),
+		)
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.limitedCountries,
+			JSON.stringify(config.limitedCountries),
+		)
+	}
+
+	setWalletNetworkConfig(config: WalletNetworkConfig, env: Bindings) {
+		this.setAdminSetting(
+			WALLET_NETWORK_CONFIG_SETTING_KEYS.rpcUrls,
+			JSON.stringify(config.rpcUrls),
+		)
+		this.setAdminSetting(
+			WALLET_NETWORK_CONFIG_SETTING_KEYS.workerUrls,
+			JSON.stringify(config.workerUrls),
+		)
+		this.setAdminSetting(
+			WALLET_NETWORK_CONFIG_SETTING_KEYS.representative,
+			config.representative,
+		)
+		this.replaceWallet(env, this.wallet.state)
+	}
+
+	replaceWallet(env: Bindings, walletState: NanoWalletState | null) {
+		if (this.wallet) {
+			this.wallet.unsubscribe(this.persistWalletState)
+		}
+
+		this.wallet = this.createWallet(
+			this.getWalletNetworkConfig(env),
+			env,
+			walletState,
+		)
+		this.wallet.configure({
+			minAmountRaw: this.getMinReceivableAmountRaw(),
+		})
+		this.wallet.subscribe(this.persistWalletState)
+	}
+
+	createWallet(
+		config: WalletNetworkConfig,
+		env: Bindings,
+		state?: NanoWalletState | null,
+	) {
+		return new NanoWallet(
+			{
+				rpcUrls: config.rpcUrls,
+				workerUrls: config.workerUrls,
+				privateKey: env.PRIVATE_KEY,
+				representative: config.representative,
+				debug: env.DEBUG === 'true',
+				timeout: 30000,
+			},
+			state,
+		)
+	}
+
+	getAdminSettingValue(key: string) {
+		const row = this.sql
+			.exec<AdminSettingRow>(
+				'SELECT value FROM admin_settings WHERE key = ?',
+				key,
+			)
+			.next()
+
+		return row.done ? null : row.value.value
+	}
+
+	setAdminSetting(key: string, value: string) {
+		this.sql.exec(
+			`
+				INSERT INTO admin_settings (key, value, updated_at)
+				VALUES (?, ?, ?)
+				ON CONFLICT(key) DO UPDATE SET
+					value = excluded.value,
+					updated_at = excluded.updated_at
+			`,
+			key,
+			value,
+			Date.now(),
+		)
+	}
+
+	getNanoAmountSetting(key: string, fallback: string) {
+		const value = this.getAdminSettingValue(key)
+		if (value && this.isValidPositiveNanoAmount(value)) {
+			return value
+		}
+
+		return fallback
+	}
+
+	getIntegerSetting(
+		key: string,
+		fallback: number,
+		min: number,
+		max = Number.MAX_SAFE_INTEGER,
+	) {
+		const value = this.getAdminSettingValue(key)
+		if (value === null) {
+			return fallback
+		}
+
+		if (!/^-?\d+$/.test(value.trim())) {
+			return fallback
+		}
+
+		const numberValue = Number(value)
+
+		if (
+			Number.isSafeInteger(numberValue) &&
+			numberValue >= min &&
+			numberValue <= max
+		) {
+			return numberValue
+		}
+
+		return fallback
+	}
+
+	getBooleanSetting(key: string, fallback: boolean) {
+		const value = this.getAdminSettingValue(key)
+		if (value === null) {
+			return fallback
+		}
+
+		if (value === 'true') return true
+		if (value === 'false') return false
+
+		return fallback
+	}
+
+	getStringArraySetting(
+		key: string,
+		fallback: string[],
+		isValid: (value: string) => boolean,
+	) {
+		const value = this.getAdminSettingValue(key)
+		if (value === null) {
+			return fallback
+		}
+
+		try {
+			const parsed = JSON.parse(value) as unknown
+			if (
+				Array.isArray(parsed) &&
+				parsed.every(item => typeof item === 'string' && isValid(item))
+			) {
+				return Array.from(new Set(parsed as string[]))
+			}
+		} catch {}
+
+		return fallback
+	}
+
+	getUrlListSetting(key: string, fallback: string[]) {
+		const value = this.getAdminSettingValue(key)
+		if (value === null) {
+			return fallback
+		}
+
+		try {
+			const parsed = JSON.parse(value) as unknown
+			const urls = this.parseUrlListInput(parsed, key)
+			if ('value' in urls) {
+				return urls.value
+			}
+		} catch {}
+
+		return fallback
+	}
+
+	getRepresentativeSetting(key: string, fallback: string) {
+		const value = this.getAdminSettingValue(key)
+		if (value && checkAddress(value)) {
+			return formatNanoAddress(value)
+		}
+
+		return fallback
+	}
+
+	parseUrlList(value: unknown) {
+		const items = Array.isArray(value)
+			? value
+			: typeof value === 'string'
+				? value.split(/[,\n]+/)
+				: []
+
+		return Array.from(
+			new Set(
+				items
+					.map(item => (typeof item === 'string' ? item.trim() : ''))
+					.filter(Boolean),
+			),
+		)
+	}
+
+	parseUrlListInput(value: unknown, field: string): StringArrayParseResult {
+		const urls = this.parseUrlList(value)
+
+		if (urls.length === 0) {
+			return { error: `Invalid ${field}` }
+		}
+
+		for (const url of urls) {
+			if (!this.isValidHttpUrl(url)) {
+				return { error: `Invalid ${field}` }
+			}
+		}
+
+		return { value: urls }
+	}
+
+	isValidHttpUrl(value: string) {
+		try {
+			const url = new URL(value)
+			return url.protocol === 'http:' || url.protocol === 'https:'
+		} catch {
+			return false
+		}
+	}
+
+	parsePositiveNanoInput(value: unknown, field: string): StringParseResult {
+		const amount =
+			typeof value === 'number'
+				? value.toString()
+				: typeof value === 'string'
+					? value.trim()
+					: ''
+
+		if (!this.isValidPositiveNanoAmount(amount)) {
+			return { error: `Invalid ${field}` }
+		}
+
+		return { value: amount }
+	}
+
+	parseIntegerInput(
+		value: unknown,
+		field: string,
+		min: number,
+		max = Number.MAX_SAFE_INTEGER,
+	): NumberParseResult {
+		const numberValue =
+			typeof value === 'number'
+				? value
+				: typeof value === 'string'
+					? Number(value.trim())
+					: NaN
+		const isIntegerString =
+			typeof value === 'string' && /^-?\d+$/.test(value.trim())
+
+		if (
+			!Number.isSafeInteger(numberValue) ||
+			(typeof value === 'string' && !isIntegerString) ||
+			numberValue < min ||
+			numberValue > max
+		) {
+			return { error: `Invalid ${field}` }
+		}
+
+		return { value: numberValue }
+	}
+
+	parseBooleanInput(value: unknown, field: string): BooleanParseResult {
+		if (typeof value === 'boolean') {
+			return { value }
+		}
+
+		if (typeof value === 'string') {
+			const normalized = value.trim()
+			if (normalized === 'true') return { value: true }
+			if (normalized === 'false') return { value: false }
+		}
+
+		return { error: `Invalid ${field}` }
+	}
+
+	parseCountryCodesInput(
+		value: unknown,
+		field: string,
+	): StringArrayParseResult {
+		if (!Array.isArray(value)) {
+			return { error: `Invalid ${field}` }
+		}
+
+		const countries = value.map(country =>
+			typeof country === 'string' ? country.trim().toUpperCase() : '',
+		)
+
+		if (countries.some(country => !this.isValidCountryCode(country))) {
+			return { error: `Invalid ${field}` }
+		}
+
+		return { value: Array.from(new Set(countries)) }
+	}
+
+	isValidCountryCode(countryCode: string) {
+		return /^[A-Z]{2}$/.test(countryCode)
 	}
 
 	getReceivableConfig() {
@@ -542,18 +1251,15 @@ export class NanoDropDO extends DurableObject<Bindings> {
 	}
 
 	getMinReceivableAmountRaw() {
-		const row = this.sql
-			.exec<AdminSettingRow>(
-				'SELECT value FROM admin_settings WHERE key = ?',
-				MIN_RECEIVABLE_AMOUNT_SETTING_KEY,
-			)
-			.next()
+		const value = this.getAdminSettingValue(
+			FAUCET_CONFIG_SETTING_KEYS.minReceivableAmountRaw,
+		)
 
-		if (!row.done) {
-			return row.value.value
+		if (value) {
+			return value
 		}
 
-		return convert(DEFAULT_MIN_RECEIVABLE_AMOUNT, {
+		return convert(DEFAULT_FAUCET_CONFIG.minReceivableAmount, {
 			from: Unit.NANO,
 			to: Unit.raw,
 		})
@@ -565,17 +1271,9 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			to: Unit.raw,
 		})
 
-		this.sql.exec(
-			`
-				INSERT INTO admin_settings (key, value, updated_at)
-				VALUES (?, ?, ?)
-				ON CONFLICT(key) DO UPDATE SET
-					value = excluded.value,
-					updated_at = excluded.updated_at
-			`,
-			MIN_RECEIVABLE_AMOUNT_SETTING_KEY,
+		this.setAdminSetting(
+			FAUCET_CONFIG_SETTING_KEYS.minReceivableAmountRaw,
 			minReceivableAmountRaw,
-			Date.now(),
 		)
 
 		this.wallet.configure({ minAmountRaw: minReceivableAmountRaw })
@@ -592,6 +1290,23 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				!TunedBigNumber(amount).isNegative() &&
 				convert(amount, { from: Unit.NANO, to: Unit.raw }) !== ''
 			)
+		} catch {
+			return false
+		}
+	}
+
+	isValidPositiveNanoAmount(amount: string) {
+		try {
+			if (
+				amount.length === 0 ||
+				!TunedBigNumber(amount).isFinite() ||
+				!TunedBigNumber(amount).isGreaterThan(0)
+			) {
+				return false
+			}
+
+			const rawAmount = convert(amount, { from: Unit.NANO, to: Unit.raw })
+			return TunedBigNumber(rawAmount).isGreaterThan(0)
 		} catch {
 			return false
 		}
@@ -662,36 +1377,31 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			throw new HTTPException(400, { message: 'Country header is missing' })
 		}
 
+		const config = this.getFaucetConfig()
+
 		const [dropsCount, ipInfo] = await this.db.batch<Record<string, any>>([
 			this.db
 				.prepare(
 					'SELECT COUNT(*) as count FROM drops WHERE ip = ?1 AND timestamp >= ?2',
 				)
-				.bind(ip, Date.now() - PERIOD),
+				.bind(ip, Date.now() - config.periodMs),
 			this.db.prepare('SELECT is_proxy FROM ip_info WHERE ip = ?1').bind(ip),
 		])
 
 		const count = dropsCount.results
 			? (dropsCount.results[0].count as number)
 			: 0
-		const limitedByCountry = LIMITED_COUNTRIES.includes(countryCode)
+		const limitedByCountry = config.limitedCountries.includes(countryCode)
 
 		if (
-			(count >= MAX_DROPS_PER_IP ||
-				(limitedByCountry && count >= MAX_DROPS_PER_IP_IN_LIMITED_COUNTRY)) &&
+			(count >= config.maxDropsPerIp ||
+				(limitedByCountry && count >= config.maxDropsPerIpInLimitedCountry)) &&
 			(!this.isDev || ENABLE_LIMIT_PER_IP_IN_DEV) &&
 			!this.ipIsWhitelisted(ip)
 		) {
 			throw new HTTPException(403, {
 				message: 'Drop limit reached for your IP',
 			})
-		}
-
-		if (
-			(!this.isDev || ENABLE_LIMIT_PER_IP_IN_DEV) &&
-			this.ipIsInTmpBlacklist(ip)
-		) {
-			throw new HTTPException(403, { message: 'Limit reached for this IP' })
 		}
 
 		let canBeProxy = false
@@ -718,11 +1428,11 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			canBeProxy = ipInfo.results[0].is_proxy ? true : false
 		}
 
-		if (canBeProxy && BAN_PROXIES) {
+		if (canBeProxy && config.banProxies) {
 			throw new HTTPException(403, { message: 'Proxies are not allowed' })
 		}
 
-		if (canBeProxy && count >= MAX_DROPS_PER_PROXY_IP) {
+		if (canBeProxy && count >= config.maxDropsPerProxyIp) {
 			throw new HTTPException(403, {
 				message: 'Drop limit reached for your ip',
 			})
@@ -739,48 +1449,43 @@ export class NanoDropDO extends DurableObject<Bindings> {
 					.prepare(
 						'SELECT COUNT(*) as count FROM drops WHERE account = ?1 AND timestamp >= ?2',
 					)
-					.bind(account, Date.now() - PERIOD)
+					.bind(account, Date.now() - config.periodMs)
 					.all<CountRow>()
 				const accountDropsCount = results?.[0]?.count || 0
 
-				if (accountDropsCount >= MAX_DROPS_PER_ACCOUNT) {
+				if (accountDropsCount >= config.maxDropsPerAccount) {
 					throw new HTTPException(403, {
 						message: 'Limit reached for this account',
 					})
 				}
 			}
-
-			if (!accountWhitelisted && this.accountIsInTmpBlacklist(account)) {
-				throw new HTTPException(403, {
-					message: 'Limit reached for this account',
-				})
-			}
 		}
 
-		const defaultAmount = this.getDropAmount()
+		const defaultAmount = this.getDropAmount(config)
 		if (defaultAmount === '0') {
 			throw new HTTPException(500, { message: 'Insufficient balance' })
 		}
 
 		const amount = canBeProxy
 			? TunedBigNumber(defaultAmount)
-					.dividedBy(PROXY_AMOUNT_DIVIDE_BY)
+					.dividedBy(config.proxyAmountDivideBy)
 					.toString(10)
 			: defaultAmount
 		const amountNano = convert(amount, { from: Unit.raw, to: Unit.NANO })
 		const verificationRequired =
-			VERIFICATION_REQUIRED_BY_DEFAULT || (canBeProxy && VERIFY_WHEN_PROXY)
+			config.verificationRequiredByDefault ||
+			(canBeProxy && config.verifyWhenProxy)
 
 		return { ip, amount, amountNano, verificationRequired }
 	}
 
-	getDropAmount() {
+	getDropAmount(config = this.getFaucetConfig()) {
 		const balance = this.wallet.balance
-		const min = convert(MIN_DROP_AMOUNT.toString(), {
+		const min = convert(config.minDropAmount, {
 			from: Unit.NANO,
 			to: Unit.raw,
 		})
-		const max = convert(MAX_DROP_AMOUNT.toString(), {
+		const max = convert(config.maxDropAmount, {
 			from: Unit.NANO,
 			to: Unit.raw,
 		})
@@ -788,7 +1493,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		if (TunedBigNumber(balance).isLessThan(min)) return '0'
 
 		const amount = TunedBigNumber(balance)
-			.dividedBy(DIVIDE_BALANCE_BY)
+			.dividedBy(config.divideBalanceBy)
 			.toString(10)
 		const amountFixed = TunedBigNumber(amount)
 			.minus(amount.substring(1, amount.length))
@@ -822,55 +1527,19 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		timestamp: number
 		took: number
 	}) {
-		const [dropsCountResult, ipCountResult] = await this.db.batch<
-			Record<string, any>
-		>([
-			this.db
-				.prepare(
-					'SELECT COUNT(*) as count FROM drops WHERE account = ?1 AND timestamp >= ?2',
-				)
-				.bind(data.account, Date.now() - PERIOD),
-			this.db
-				.prepare(
-					'SELECT COUNT(*) as count FROM drops WHERE ip = ?1 AND timestamp >= ?2',
-				)
-				.bind(data.ip, Date.now() - PERIOD),
-			this.db
-				.prepare(
-					'INSERT INTO drops (hash, account, amount, ip, timestamp, took) VALUES (?1, ?2, ?3, ?4, ?5, ?6)',
-				)
-				.bind(
-					data.hash,
-					data.account,
-					data.amount,
-					data.ip,
-					data.timestamp,
-					data.took,
-				),
-		])
-
-		const dropsCount = dropsCountResult.results
-			? (dropsCountResult.results[0].count as number)
-			: 0
-
-		if (
-			dropsCount + 1 >= MAX_DROPS_PER_ACCOUNT &&
-			(!this.isDev || ENABLE_LIMIT_PER_IP_IN_DEV)
-		) {
-			if (!this.accountIsWhitelisted(data.account)) {
-				this.addAccountToTmpBlacklist(data.account)
-			}
-		}
-
-		const ipCount = ipCountResult.results
-			? (ipCountResult.results[0].count as number)
-			: 0
-
-		if (ipCount + 1 >= MAX_DROPS_PER_IP) {
-			if (!this.ipIsWhitelisted(data.ip)) {
-				this.addIPToTmpBlacklist(data.ip)
-			}
-		}
+		await this.db
+			.prepare(
+				'INSERT INTO drops (hash, account, amount, ip, timestamp, took) VALUES (?1, ?2, ?3, ?4, ?5, ?6)',
+			)
+			.bind(
+				data.hash,
+				data.account,
+				data.amount,
+				data.ip,
+				data.timestamp,
+				data.took,
+			)
+			.run()
 	}
 
 	async enqueueIPDrop(ip: string): Promise<() => void> {
@@ -880,7 +1549,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			this.ipDropQueue.set(ip, promises)
 		}
 
-		if (promises.size >= MAX_DROP_PER_IP_SIMULTANEOUSLY) {
+		if (promises.size >= this.getFaucetConfig().maxDropPerIpSimultaneously) {
 			throw new HTTPException(403, { message: 'Many simultaneous requests' })
 		}
 
@@ -967,112 +1636,11 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		this.sql.exec('DELETE FROM account_whitelist WHERE account = ?', account)
 	}
 
-	accountIsInTmpBlacklist(account: string) {
-		const checksum = account.slice(-8)
-		const row = this.sql
-			.exec<CountRow>(
-				'SELECT COUNT(*) as count FROM temporary_account_blacklist WHERE checksum = ?',
-				checksum,
-			)
-			.one()
-
-		return row.count > 0
-	}
-
-	addAccountToTmpBlacklist(account: string) {
-		const checksum = account.slice(-8)
-		this.sql.exec(
-			`
-				INSERT OR IGNORE INTO temporary_account_blacklist (checksum, created_at)
-				VALUES (?, ?)
-			`,
-			checksum,
-			Date.now(),
-		)
-
-		const { count } = this.sql
-			.exec<CountRow>(
-				'SELECT COUNT(*) as count FROM temporary_account_blacklist',
-			)
-			.one()
-		const excess = count - MAX_TMP_ACCOUNT_BLACKLIST_LENGTH
-
-		if (excess > 0) {
-			this.sql.exec(
-				`
-					DELETE FROM temporary_account_blacklist
-					WHERE sequence IN (
-						SELECT sequence
-						FROM temporary_account_blacklist
-						ORDER BY sequence ASC
-						LIMIT ?
-					)
-				`,
-				excess,
-			)
-		}
-	}
-
-	removeAccountFromTmpBlacklist(account: string) {
-		const checksum = account.slice(-8)
-		this.sql.exec(
-			'DELETE FROM temporary_account_blacklist WHERE checksum = ?',
-			checksum,
-		)
-	}
-
-	ipIsInTmpBlacklist(ip: string) {
-		const now = Date.now()
-		this.pruneExpiredIPBlacklist(now)
-		const row = this.sql
-			.exec<CountRow>(
-				`
-					SELECT COUNT(*) as count
-					FROM temporary_ip_blacklist
-					WHERE ip = ? AND expires_at > ?
-				`,
-				ip,
-				now,
-			)
-			.one()
-
-		return row.count > 0
-	}
-
-	addIPToTmpBlacklist(ip: string) {
-		const now = Date.now()
-		this.pruneExpiredIPBlacklist(now)
-		const expiresAt = now + TMP_IP_BLACKLIST_EXPIRATION
-
-		this.sql.exec(
-			`
-				INSERT INTO temporary_ip_blacklist (ip, expires_at)
-				VALUES (?, ?)
-				ON CONFLICT(ip) DO UPDATE SET expires_at = excluded.expires_at
-			`,
-			ip,
-			expiresAt,
-		)
-	}
-
-	removeIPFromTmpBlacklist(ip: string) {
-		this.sql.exec('DELETE FROM temporary_ip_blacklist WHERE ip = ?', ip)
-	}
-
-	pruneExpiredIPBlacklist(now = Date.now()) {
-		this.sql.exec(
-			'DELETE FROM temporary_ip_blacklist WHERE expires_at <= ?',
-			now,
-		)
-	}
-
 	async getAdminAnalytics() {
 		const now = Date.now()
 		const oneDayAgo = now - 1000 * 60 * 60 * 24
 		const sevenDaysAgo = now - 1000 * 60 * 60 * 24 * 7
 		const fourteenDaysAgo = now - 1000 * 60 * 60 * 24 * 14
-
-		this.pruneExpiredIPBlacklist(now)
 
 		const [
 			totalDrops,
@@ -1134,14 +1702,6 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		const accountWhitelistCount = this.sql
 			.exec<CountRow>('SELECT COUNT(*) as count FROM account_whitelist')
 			.one().count
-		const temporaryIpBlacklistCount = this.sql
-			.exec<CountRow>('SELECT COUNT(*) as count FROM temporary_ip_blacklist')
-			.one().count
-		const temporaryAccountBlacklistCount = this.sql
-			.exec<CountRow>(
-				'SELECT COUNT(*) as count FROM temporary_account_blacklist',
-			)
-			.one().count
 
 		const { balance, receivable, frontier, representative } = this.wallet.state
 
@@ -1182,8 +1742,6 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			adminState: {
 				ipWhitelistCount,
 				accountWhitelistCount,
-				temporaryIpBlacklistCount,
-				temporaryAccountBlacklistCount,
 			},
 		}
 	}
