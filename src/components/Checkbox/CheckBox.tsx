@@ -73,8 +73,13 @@ export default function CheckBox({ nanoAddress }: CheckBoxProps) {
 			}}
 			className={clsx('!rounded')}
 			disabled={isLoading}
-			href={isSent ? explorerLinkFromHash(dropData?.hash || '') : undefined}
-			target={isSent ? '_blank' : undefined}
+			component={isSent ? 'a' : 'button'}
+			{...(isSent
+				? {
+						href: explorerLinkFromHash(dropData?.hash || ''),
+						target: '_blank',
+					}
+				: {})}
 			aria-labelledby="checkbox-anchor-label"
 		>
 			<Verification />
