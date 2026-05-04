@@ -40,6 +40,41 @@ Administrative routes are served under `/api/admin/*`.
 The dashboard manages faucet settings, wallet operations, whitelist entries, and blacklist entries.
 Blacklist rules take precedence over whitelist exemptions.
 
+### Architecture
+
+NanoDrop runs as one Cloudflare Worker deployment: OpenNext serves the Next.js
+frontend, an internal Hono API handles faucet and admin requests, Durable
+Objects coordinate stateful workflows, and D1 is the external SQLite source of
+truth for drop history and analytics.
+
+```mermaid
+flowchart LR
+    Browser[Browser]
+    Worker[Cloudflare Worker router]
+    Next[Next.js / OpenNext runtime]
+    Hono[Internal Hono API]
+    NanoDO[NanoDropDO]
+    PriceDO[CoinMarketCapDO]
+    D1[(D1 external SQLite)]
+    Nano[Nano network / RPC workers]
+    Captcha[hCaptcha]
+    CMC[CoinMarketCap]
+    ProxyCheck[Proxy reputation service]
+
+    Browser --> Worker
+    Worker --> Next
+    Worker --> Hono
+    Hono --> NanoDO
+    Hono --> PriceDO
+    NanoDO --> D1
+    NanoDO --> Nano
+    NanoDO --> Captcha
+    NanoDO --> ProxyCheck
+    PriceDO --> CMC
+```
+
+Detailed architecture notes live in [docs/architecture.md](docs/architecture.md).
+
 ### Local development
 
 Default local development starts both the UI and the Worker API:
