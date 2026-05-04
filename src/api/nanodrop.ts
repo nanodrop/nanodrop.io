@@ -11,6 +11,7 @@ import { TunedBigNumber, formatNanoAddress, isValidIPv4OrIpv6 } from './utils'
 
 const MILLISECONDS_PER_MINUTE = 1000 * 60
 const MILLISECONDS_PER_DAY = MILLISECONDS_PER_MINUTE * 60 * 24
+const DROP_QUEUE_RETRY_DELAY_MS = MILLISECONDS_PER_MINUTE
 const ENABLE_LIMIT_PER_IP_IN_DEV = false
 const LOCAL_REQUEST_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '::1'])
 const MIN_PERIOD_DAYS = 1
@@ -66,6 +67,21 @@ type AdminSettingRow = { value: string }
 type CountryDropsRow = { country_code: string; count: number }
 type DailyDropsRow = { day: string; count: number }
 type ReceivableBlock = { blockHash: string; amount: string }
+type DropPersistenceData = {
+	hash: string
+	account: string
+	amount: string
+	ip: string
+	timestamp: number
+	took: number
+}
+type DropPersistenceQueueRow = DropPersistenceData & {
+	id: number
+	attempts: number
+	last_error: string | null
+	created_at: number
+	updated_at: number
+}
 type FaucetConfigValues = Omit<
 	typeof DEFAULT_FAUCET_CONFIG,
 	'minReceivableAmount'
@@ -162,6 +178,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 	db: D1Database
 	ipDropQueue = new Map<string, Set<Promise<void>>>()
 	isDev: boolean
+	dropQueueProcessing: Promise<void> | null = null
 	private readonly persistWalletState = (state: NanoWalletState) => {
 		this.saveWalletState(state)
 	}
@@ -176,6 +193,7 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		state.blockConcurrencyWhile(async () => {
 			this.initSqlSchema()
 			await this.init(env)
+			this.processDropQueueInBackground()
 		})
 
 		this.app.get('/status', async c => {
@@ -221,11 +239,23 @@ export class NanoDropDO extends DurableObject<Bindings> {
 					return c.json({ error: originError.message }, originError.status)
 				}
 
-				const { amount, verificationRequired, ip } =
-					await this.getDropReadiness(c.req.raw, account)
-				const dequeue = await this.enqueueIPDrop(ip)
+				let { amount, verificationRequired, ip } = await this.getDropReadiness(
+					c.req.raw,
+					account,
+				)
+				const { dequeue, waited } = await this.enqueueIPDrop(ip)
 
 				try {
+					if (waited) {
+						const updatedReadiness = await this.getDropReadiness(
+							c.req.raw,
+							account,
+						)
+						amount = updatedReadiness.amount
+						verificationRequired = updatedReadiness.verificationRequired
+						ip = updatedReadiness.ip
+					}
+
 					if (verificationRequired) {
 						if (!payload.captchaToken) {
 							return c.json({ error: 'Captcha token is missing' }, 400)
@@ -255,22 +285,35 @@ export class NanoDropDO extends DurableObject<Bindings> {
 					const timestamp = Date.now()
 					const took = timestamp - startedAt
 
-					this.saveDrop({
+					const drop = {
 						hash,
 						account,
 						amount,
 						ip,
 						timestamp,
 						took,
-					}).finally(() => {
-						dequeue()
-					})
+					}
+
+					try {
+						this.enqueueDropPersistence(drop)
+					} catch (error) {
+						console.error('Failed enqueuing drop persistence:', {
+							hash,
+							account,
+							ip,
+							error: this.getErrorMessage(error),
+						})
+						throw error
+					}
+
+					this.processDropQueueInBackground()
 
 					return c.json({ hash, amount })
 				} catch (error) {
 					console.error('Drop send error:', error)
-					dequeue()
 					throw error
+				} finally {
+					dequeue()
 				}
 			} catch (error) {
 				console.error('Drop error:', error)
@@ -684,7 +727,30 @@ export class NanoDropDO extends DurableObject<Bindings> {
 				value TEXT NOT NULL,
 				updated_at INTEGER NOT NULL
 			);
-		`)
+
+			CREATE TABLE IF NOT EXISTS drop_persistence_queue (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				hash TEXT NOT NULL UNIQUE,
+				account TEXT NOT NULL,
+				amount TEXT NOT NULL,
+				ip TEXT NOT NULL,
+				timestamp INTEGER NOT NULL,
+				took INTEGER NOT NULL,
+				attempts INTEGER NOT NULL DEFAULT 0,
+				last_error TEXT,
+				created_at INTEGER NOT NULL,
+				updated_at INTEGER NOT NULL
+			);
+
+			CREATE INDEX IF NOT EXISTS drop_persistence_queue_fifo_idx
+				ON drop_persistence_queue (created_at ASC, id ASC);
+
+			CREATE INDEX IF NOT EXISTS drop_persistence_queue_ip_idx
+				ON drop_persistence_queue (ip, timestamp);
+
+			CREATE INDEX IF NOT EXISTS drop_persistence_queue_account_idx
+				ON drop_persistence_queue (account, timestamp);
+			`)
 	}
 
 	async init(env: Bindings) {
@@ -1509,18 +1575,19 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			throw new HTTPException(403, { message: 'This account is blocked' })
 		}
 
+		const periodStart = Date.now() - config.periodMs
 		const [dropsCount, ipInfo] = await this.db.batch<Record<string, any>>([
 			this.db
 				.prepare(
 					'SELECT COUNT(*) as count FROM drops WHERE ip = ?1 AND timestamp >= ?2',
 				)
-				.bind(ip, Date.now() - config.periodMs),
+				.bind(ip, periodStart),
 			this.db.prepare('SELECT is_proxy FROM ip_info WHERE ip = ?1').bind(ip),
 		])
 
-		const count = dropsCount.results
-			? (dropsCount.results[0].count as number)
-			: 0
+		const count =
+			(dropsCount.results ? (dropsCount.results[0].count as number) : 0) +
+			this.countQueuedDropsByIp(ip, periodStart)
 		const limitedByCountry = config.limitedCountries.includes(countryCode)
 
 		if (
@@ -1579,9 +1646,11 @@ export class NanoDropDO extends DurableObject<Bindings> {
 					.prepare(
 						'SELECT COUNT(*) as count FROM drops WHERE account = ?1 AND timestamp >= ?2',
 					)
-					.bind(account, Date.now() - config.periodMs)
+					.bind(account, periodStart)
 					.all<CountRow>()
-				const accountDropsCount = results?.[0]?.count || 0
+				const accountDropsCount =
+					(results?.[0]?.count || 0) +
+					this.countQueuedDropsByAccount(account, periodStart)
 
 				if (accountDropsCount >= config.maxDropsPerAccount) {
 					throw new HTTPException(403, {
@@ -1649,17 +1718,10 @@ export class NanoDropDO extends DurableObject<Bindings> {
 		return data.isBad as boolean
 	}
 
-	async saveDrop(data: {
-		hash: string
-		account: string
-		amount: string
-		ip: string
-		timestamp: number
-		took: number
-	}) {
+	async saveDrop(data: DropPersistenceData) {
 		await this.db
 			.prepare(
-				'INSERT INTO drops (hash, account, amount, ip, timestamp, took) VALUES (?1, ?2, ?3, ?4, ?5, ?6)',
+				'INSERT OR IGNORE INTO drops (hash, account, amount, ip, timestamp, took) VALUES (?1, ?2, ?3, ?4, ?5, ?6)',
 			)
 			.bind(
 				data.hash,
@@ -1672,7 +1734,160 @@ export class NanoDropDO extends DurableObject<Bindings> {
 			.run()
 	}
 
-	async enqueueIPDrop(ip: string): Promise<() => void> {
+	enqueueDropPersistence(data: DropPersistenceData) {
+		const now = Date.now()
+		this.sql.exec(
+			`
+				INSERT INTO drop_persistence_queue (
+					hash,
+					account,
+					amount,
+					ip,
+					timestamp,
+					took,
+					created_at,
+					updated_at
+				)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+				ON CONFLICT(hash) DO UPDATE SET
+					account = excluded.account,
+					amount = excluded.amount,
+					ip = excluded.ip,
+					timestamp = excluded.timestamp,
+					took = excluded.took,
+					updated_at = excluded.updated_at
+			`,
+			data.hash,
+			data.account,
+			data.amount,
+			data.ip,
+			data.timestamp,
+			data.took,
+			now,
+			now,
+		)
+	}
+
+	processDropQueueInBackground() {
+		const processing = this.ensureDropQueueProcessing()
+		this.ctx.waitUntil(processing)
+	}
+
+	ensureDropQueueProcessing() {
+		if (!this.dropQueueProcessing) {
+			this.dropQueueProcessing = this.processDropQueue()
+				.catch(async error => {
+					console.error('Drop persistence queue processing failed:', error)
+					await this.scheduleDropQueueRetry()
+				})
+				.finally(() => {
+					this.dropQueueProcessing = null
+				})
+		}
+
+		return this.dropQueueProcessing
+	}
+
+	async processDropQueue() {
+		while (true) {
+			const drop = this.getNextQueuedDrop()
+			if (!drop) {
+				return
+			}
+
+			try {
+				await this.saveDrop(drop)
+				this.removeQueuedDrop(drop.id)
+			} catch (error) {
+				const message = this.getErrorMessage(error)
+				const attempts = drop.attempts + 1
+				console.error('Failed inserting queued drop into D1:', {
+					queueId: drop.id,
+					hash: drop.hash,
+					account: drop.account,
+					ip: drop.ip,
+					attempts,
+					error: message,
+				})
+				this.markQueuedDropFailed(drop.id, attempts, message)
+				await this.scheduleDropQueueRetry()
+				return
+			}
+		}
+	}
+
+	getNextQueuedDrop() {
+		const row = this.sql
+			.exec<DropPersistenceQueueRow>(
+				`
+					SELECT id, hash, account, amount, ip, timestamp, took, attempts, last_error, created_at, updated_at
+					FROM drop_persistence_queue
+					ORDER BY created_at ASC, id ASC
+					LIMIT 1
+				`,
+			)
+			.next()
+
+		return row.done ? null : row.value
+	}
+
+	removeQueuedDrop(id: number) {
+		this.sql.exec('DELETE FROM drop_persistence_queue WHERE id = ?', id)
+	}
+
+	markQueuedDropFailed(id: number, attempts: number, error: string) {
+		this.sql.exec(
+			`
+				UPDATE drop_persistence_queue
+				SET attempts = ?, last_error = ?, updated_at = ?
+				WHERE id = ?
+			`,
+			attempts,
+			error.slice(0, 1000),
+			Date.now(),
+			id,
+		)
+	}
+
+	countQueuedDropsByIp(ip: string, periodStart: number) {
+		return this.sql
+			.exec<CountRow>(
+				`
+					SELECT COUNT(*) as count
+					FROM drop_persistence_queue
+					WHERE ip = ? AND timestamp >= ?
+				`,
+				ip,
+				periodStart,
+			)
+			.one().count
+	}
+
+	countQueuedDropsByAccount(account: string, periodStart: number) {
+		return this.sql
+			.exec<CountRow>(
+				`
+					SELECT COUNT(*) as count
+					FROM drop_persistence_queue
+					WHERE account = ? AND timestamp >= ?
+				`,
+				account,
+				periodStart,
+			)
+			.one().count
+	}
+
+	async scheduleDropQueueRetry() {
+		await this.ctx.storage.setAlarm(Date.now() + DROP_QUEUE_RETRY_DELAY_MS)
+	}
+
+	getErrorMessage(error: unknown) {
+		return error instanceof Error ? error.message : String(error)
+	}
+
+	async enqueueIPDrop(
+		ip: string,
+	): Promise<{ dequeue: () => void; waited: boolean }> {
 		let promises = this.ipDropQueue.get(ip)
 		if (!promises) {
 			promises = new Set<Promise<void>>()
@@ -1693,12 +1908,15 @@ export class NanoDropDO extends DurableObject<Bindings> {
 
 		await Promise.all(previousPromises).catch(() => {})
 
-		return () => {
-			resolve!()
-			promises.delete(promise)
-			if (promises.size === 0) {
-				this.ipDropQueue.delete(ip)
-			}
+		return {
+			waited: previousPromises.length > 0,
+			dequeue: () => {
+				resolve!()
+				promises.delete(promise)
+				if (promises.size === 0) {
+					this.ipDropQueue.delete(ip)
+				}
+			},
 		}
 	}
 
@@ -1951,6 +2169,10 @@ export class NanoDropDO extends DurableObject<Bindings> {
 
 	firstCount(result: D1Result<Record<string, any>>) {
 		return result.results ? (result.results[0] as CountRow).count || 0 : 0
+	}
+
+	async alarm() {
+		await this.ensureDropQueueProcessing()
 	}
 
 	fetch(request: Request) {
