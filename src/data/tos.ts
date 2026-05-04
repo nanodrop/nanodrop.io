@@ -1,4 +1,4 @@
-# NanoDrop.io - Terms of Service
+export const tosContent = `# NanoDrop.io - Terms of Service
 
 _Effective Date: October 10, 2023_
 
@@ -58,3 +58,4 @@ We may update these Terms of Service from time to time without prior notice. Any
 If you have any questions or concerns regarding these Terms of Service or our privacy practices, please contact us at hello@nanodrop.io.
 
 By using NanoDrop.io, you agree to these Terms of Service. Thank you for using our service!
+`
